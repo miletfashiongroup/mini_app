@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
     build: {
       sourcemap: true,
       outDir: 'dist',
-    },
+    }, //проверка
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
