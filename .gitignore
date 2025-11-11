@@ -1,0 +1,30 @@
+# General
+.DS_Store
+node_modules/
+.env
+.env.*
+*.pyc
+__pycache__/
+.idea/
+.vscode/
+*.log
+coverage/
+dist/
+build/
+.sass-cache/
+pip-wheel-metadata/
+.mypy_cache/
+pytest_cache/
+.husky/
+
+# Python
+packages/backend/.venv/
+packages/backend/.mypy_cache/
+packages/backend/.pytest_cache/
+
+# Node
+packages/frontend/.pnpm-store/
+packages/frontend/.turbo/
+
+# Docker
+volumes/
