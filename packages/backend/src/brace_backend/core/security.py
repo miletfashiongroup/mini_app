@@ -41,7 +41,7 @@ def parse_init_data(raw: str) -> dict[str, Any]:
 def _build_data_check_string(parsed: dict[str, Any]) -> str:
     segments = []
     for key, value in sorted(parsed.items()):
-        if isinstance(value, (dict, list)):
+        if isinstance(value, dict | list):
             encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
         else:
             encoded = str(value)
