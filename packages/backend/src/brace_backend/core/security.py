@@ -74,6 +74,12 @@ def verify_init_data(init_data: str) -> TelegramInitData:
 
 
 async def validate_request(init_data_header: str | None) -> TelegramInitData:
+    if settings.telegram_dev_mode:
+        mock_payload = {
+            "user": settings.telegram_dev_user,
+            "auth_date": int(time.time()),
+        }
+        return TelegramInitData(mock_payload)
     if not init_data_header:
         raise AccessDeniedError("X-Telegram-Init-Data header is required.")
     return verify_init_data(init_data_header)

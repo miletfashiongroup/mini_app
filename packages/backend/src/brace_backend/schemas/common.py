@@ -1,17 +1,13 @@
-from typing import Any, Generic, TypeVar
+from typing import Generic, TypeVar
 
 from pydantic import BaseModel, Field
 
 
 class Pagination(BaseModel):
-    limit: int = Field(default=20, ge=1, le=100)
-    offset: int = Field(default=0, ge=0)
-
-
-class PageMeta(BaseModel):
-    limit: int
-    offset: int
-    total: int | None = None
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1, le=200)
+    total: int = Field(ge=0)
+    pages: int = Field(ge=1)
 
 
 class InitDataPayload(BaseModel):
@@ -21,11 +17,17 @@ class InitDataPayload(BaseModel):
 T = TypeVar("T")
 
 
-class ListResponse(BaseModel, Generic[T]):
-    data: list[T]
-    meta: PageMeta | None = None
+class ErrorResponse(BaseModel):
+    type: str
+    message: str
 
 
-class ResourceResponse(BaseModel, Generic[T]):
+class BaseResponse(BaseModel, Generic[T]):
+    data: T | None = None
+    error: ErrorResponse | None = None
+    pagination: Pagination | None = None
+
+
+class SuccessResponse(BaseResponse[T], Generic[T]):
     data: T
-    meta: dict[str, Any] | None = None
+    error: ErrorResponse | None = None

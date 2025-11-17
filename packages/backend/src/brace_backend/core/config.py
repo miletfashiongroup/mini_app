@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -21,10 +22,16 @@ class Settings(BaseSettings):
     database_echo: bool = False
     database_pool_size: int = 5
     database_max_overflow: int = 5
-    redis_url: str = "redis://redis:6379/0"
-
     telegram_bot_token: str = ""
     telegram_webapp_secret: str = ""
+    telegram_dev_mode: bool = False
+    telegram_dev_user: dict[str, Any] = {
+        "id": 999_000,
+        "first_name": "Dev",
+        "last_name": "User",
+        "username": "brace_dev",
+        "language_code": "en",
+    }
 
     cors_origins: list[str] = ["http://localhost", "http://localhost:4173"]
 

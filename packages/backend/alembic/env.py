@@ -1,33 +1,42 @@
 from __future__ import annotations
 
+import os
 from logging.config import fileConfig
 
-from brace_backend import domain  # noqa: F401
-from brace_backend.core.config import settings
-from brace_backend.domain.base import Base
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection, make_url
 
-from alembic import context
+from brace_backend import domain  # noqa: F401 - гарантируем регистрацию моделей
+from brace_backend.core.config import settings
+from brace_backend.domain.base import Base
 
 config = context.config
-# Alembic executes migrations synchronously even when the application uses async
-# SQLAlchemy sessions. Psycopg's async dialect attempts to spin up an asyncio loop,
-# which fails on Windows (ProactorEventLoop is unsupported) and is unnecessary for
-# Alembic. Force the sync psycopg driver (+psycopg) while keeping the rest of the URL.
-driver_safe_url = make_url(settings.database_url)
-if driver_safe_url.drivername.endswith("+psycopg_async"):
-    driver_safe_url = driver_safe_url.set(drivername=driver_safe_url.drivername.replace("+psycopg_async", "+psycopg"))
-config.set_main_option("sqlalchemy.url", driver_safe_url.render_as_string(hide_password=False))
 
+# 1) Берем DSN для Alembic. В Docker он приходит из ALEMBIC_DATABASE_URL.
+#    Если переменной нет, используем BRACE_DATABASE_URL, чтобы локально работало.
+alembic_url = os.getenv("ALEMBIC_DATABASE_URL", settings.database_url)
+
+# 2) Независимо от того, async или sync, приводим драйвер к +psycopg.
+url_obj = make_url(alembic_url)
+if url_obj.drivername.endswith("+psycopg_async"):
+    url_obj = url_obj.set(drivername=url_obj.drivername.replace("+psycopg_async",
+                                                               "+psycopg"))
+elif url_obj.drivername.endswith("+asyncpg"):
+    url_obj = url_obj.set(drivername=url_obj.drivername.replace("+asyncpg",
+                                                               "+psycopg"))
+
+config.set_main_option("sqlalchemy.url", url_obj.render_as_string(hide_password=False))
+
+# Подключаем логирование (если оно активировано в ini)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
 
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
+    """Для offline-режима Alembic генерирует SQL без подключения к БД."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
 
@@ -36,6 +45,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """Общий код для online-миграций."""
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -43,6 +53,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 def run_migrations_online() -> None:
+    """Online-режим: создаем синхронный движок и прогоняем upgrade/downgrade."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

@@ -18,5 +18,8 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 COPY packages/backend/src ./src
 COPY packages/backend/alembic ./alembic
 COPY packages/backend/alembic.ini ./alembic.ini
+COPY packages/backend/entrypoint.sh ./entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 ENV PYTHONPATH=/app/src
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "brace_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

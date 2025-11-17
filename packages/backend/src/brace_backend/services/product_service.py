@@ -5,29 +5,21 @@ from uuid import UUID
 from brace_backend.core.exceptions import NotFoundError
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.product import Product
-from brace_backend.schemas.common import ListResponse, PageMeta, Pagination, ResourceResponse
 from brace_backend.schemas.products import ProductRead
 
 
 class ProductService:
     async def list_products(
-        self, uow: UnitOfWork, pagination: Pagination
-    ) -> ListResponse[ProductRead]:
-        products = await uow.products.list_products(
-            offset=pagination.offset, limit=pagination.limit
-        )
-        return ListResponse[ProductRead](
-            data=[self._to_schema(product) for product in products],
-            meta=PageMeta(limit=pagination.limit, offset=pagination.offset),
-        )
+        self, uow: UnitOfWork, *, page: int | None, page_size: int | None
+    ) -> tuple[list[ProductRead], int]:
+        products, total = await uow.products.list_products(page=page, page_size=page_size)
+        return [self._to_schema(product) for product in products], total
 
-    async def get_product(
-        self, uow: UnitOfWork, product_id: UUID
-    ) -> ResourceResponse[ProductRead]:
+    async def get_product(self, uow: UnitOfWork, product_id: UUID) -> ProductRead:
         product = await uow.products.get_with_variants(product_id)
         if not product:
             raise NotFoundError("Product not found.")
-        return ResourceResponse[ProductRead](data=self._to_schema(product))
+        return self._to_schema(product)
 
     def _to_schema(self, product: Product) -> ProductRead:
         return ProductRead(

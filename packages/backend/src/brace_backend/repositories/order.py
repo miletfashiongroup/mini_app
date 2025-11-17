@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from decimal import Decimal
+from math import ceil
 from typing import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from brace_backend.domain.order import Order, OrderItem
@@ -16,13 +18,39 @@ class OrderRepository(SQLAlchemyRepository[Order]):
     def _base_stmt(self):
         return select(Order).options(selectinload(Order.items))
 
-    async def list_for_user(self, user_id: UUID) -> Sequence[Order]:
-        stmt = self._base_stmt().where(Order.user_id == user_id).order_by(Order.created_at.desc())
-        result = await self.session.scalars(stmt)
-        return result.unique().all()
+    async def list_for_user(
+        self, user_id: UUID, *, page: int | None = None, page_size: int | None = None
+    ) -> tuple[Sequence[Order], int]:
+        base_stmt = (
+            self._base_stmt()
+            .where(Order.user_id == user_id)
+            .order_by(Order.created_at.desc())
+        )
+        if page is None or page_size is None:
+            result = await self.session.scalars(base_stmt)
+            orders = result.unique().all()
+            return orders, len(orders)
 
-    async def create(self, *, user_id: UUID, status: str = "pending") -> Order:
-        order = Order(user_id=user_id, status=status)
+        offset = (page - 1) * page_size
+        stmt = base_stmt.offset(offset).limit(page_size)
+        result = await self.session.scalars(stmt)
+        orders = result.unique().all()
+
+        total_stmt = select(func.count()).select_from(
+            select(Order.id).where(Order.user_id == user_id).subquery()
+        )
+        total = await self.session.scalar(total_stmt)
+        return orders, int(total or 0)
+
+    async def create(
+        self,
+        *,
+        user_id: UUID,
+        status: str = "pending",
+        shipping_address: str | None = None,
+        note: str | None = None,
+    ) -> Order:
+        order = Order(user_id=user_id, status=status, shipping_address=shipping_address, note=note)
         await self.add(order)
         await self.session.flush()
         return order
@@ -34,7 +62,7 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         product_id: UUID,
         size: str,
         quantity: int,
-        unit_price: float,
+        unit_price: Decimal,
     ) -> OrderItem:
         item = OrderItem(
             order_id=order.id,

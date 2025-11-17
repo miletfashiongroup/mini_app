@@ -11,7 +11,7 @@ class OrderItemRead(BaseModel):
     product_id: UUID
     size: str
     quantity: int
-    unit_price: float
+    unit_price: str
 
 
 class OrderRead(BaseModel):
@@ -19,7 +19,9 @@ class OrderRead(BaseModel):
 
     id: UUID
     status: str
-    total_amount: float
+    total_amount: str
+    shipping_address: str | None = None
+    note: str | None = None
     created_at: datetime
     items: list[OrderItemRead]
 
@@ -27,7 +29,3 @@ class OrderRead(BaseModel):
 class OrderCreate(BaseModel):
     shipping_address: str | None = None
     note: str | None = None
-
-
-class OrderCollection(BaseModel):
-    items: list[OrderRead]

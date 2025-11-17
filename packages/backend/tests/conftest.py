@@ -8,11 +8,18 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 from pytest_factoryboy import register
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
+from brace_backend.api.deps import get_current_init_data, get_current_user, get_uow
+from brace_backend.core.security import TelegramInitData
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.base import Base
+from brace_backend.domain.user import User
+from brace_backend.main import app
 from tests.factories import (
     CartItemFactory,
     OrderFactory,
@@ -35,6 +42,8 @@ if os.name == "posix":
     if windows_tmp.startswith("/mnt/") and os.path.isdir(fallback_tmp):
         os.environ["TMP"] = os.environ["TEMP"] = os.environ["TMPDIR"] = fallback_tmp
         tempfile.tempdir = fallback_tmp
+elif os.name == "nt":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -42,13 +51,44 @@ if str(SRC) not in sys.path:
     sys.path.append(str(SRC))
 
 
-@pytest.fixture(scope="session")
-async def async_engine():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/brace_test"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", DEFAULT_TEST_DB)
+os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
+
+
+def _quoted_tables() -> str:
+    qualified = []
+    for table in Base.metadata.sorted_tables:
+        if table.schema:
+            qualified.append(f'"{table.schema}"."{table.name}"')
+        else:
+            qualified.append(f'"{table.name}"')
+    return ", ".join(qualified)
+
+
+async def _reset_database(engine) -> None:
+    """Convenience helper used by fixtures that spin up their own sessions."""
+    table_list = _quoted_tables()
+    if not table_list:
+        return
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text(f"TRUNCATE {table_list} RESTART IDENTITY CASCADE"))
+
+
+@pytest.fixture(scope="session")
+def async_engine():
+    setup_engine = create_async_engine(TEST_DATABASE_URL, future=True, poolclass=NullPool)
+
+    async def _prepare_schema(engine):
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+    asyncio.run(_prepare_schema(setup_engine))
+    asyncio.run(setup_engine.dispose())
+
+    engine = create_async_engine(TEST_DATABASE_URL, future=True, poolclass=NullPool)
     yield engine
-    await engine.dispose()
+    asyncio.run(engine.dispose())
 
 
 @pytest.fixture
@@ -57,7 +97,8 @@ def session_factory(async_engine):
 
 
 @pytest.fixture
-async def session(session_factory) -> AsyncIterator[AsyncSession]:
+async def session(session_factory, async_engine) -> AsyncIterator[AsyncSession]:
+    await _reset_database(async_engine)
     async with session_factory() as session:
         try:
             yield session
@@ -69,3 +110,75 @@ async def session(session_factory) -> AsyncIterator[AsyncSession]:
 @pytest.fixture
 async def uow(session: AsyncSession) -> UnitOfWork:
     return UnitOfWork(session)
+
+
+@pytest.fixture
+async def api_client(
+    session_factory: async_sessionmaker[AsyncSession],
+    async_engine,
+    user_factory,
+    product_factory,
+    product_variant_factory,
+):
+    """HTTP client wired to the async test database via dependency overrides."""
+
+    await _reset_database(async_engine)
+
+    user = user_factory(telegram_id=1111)
+    async with session_factory() as session:
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
+
+    async def override_get_uow() -> AsyncIterator[UnitOfWork]:
+        async with session_factory() as session:
+            yield UnitOfWork(session)
+
+    async def override_get_current_user() -> User:
+        async with session_factory() as session:
+            return await session.get(User, user.id)
+
+    async def override_get_current_init_data() -> TelegramInitData:
+        return TelegramInitData({"user": {"id": user.telegram_id, "username": user.username}})
+
+    async def create_product(
+        *,
+        size: str = "M",
+        stock: int = 20,
+        price: float = 30.0,
+        name: str | None = None,
+        description: str | None = None,
+    ):
+        """Persist a new product with a single variant for HTTP-level tests."""
+
+        overrides = {}
+        if name:
+            overrides["name"] = name
+        if description:
+            overrides["description"] = description
+
+        product = product_factory(**overrides)
+        variant = product_variant_factory(product=product, size=size, stock=stock, price=price)
+        product.variants.append(variant)
+        async with session_factory() as session:
+            session.add(product)
+            await session.commit()
+        return product, variant
+
+    overrides = {
+        get_uow: override_get_uow,
+        get_current_user: override_get_current_user,
+        get_current_init_data: override_get_current_init_data,
+    }
+    app.dependency_overrides.update(overrides)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as client:
+        yield client, {
+            "user": user,
+            "session_factory": session_factory,
+            "create_product": create_product,
+            "overrides": overrides,
+        }
+
+    app.dependency_overrides.clear()
+    await _reset_database(async_engine)

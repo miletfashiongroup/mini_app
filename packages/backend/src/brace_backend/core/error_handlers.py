@@ -1,32 +1,25 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from brace_backend.core.exceptions import AppError
 from brace_backend.core.logging import logger
-from brace_backend.schemas.errors import ErrorObject, ErrorResponse
+from brace_backend.schemas.common import BaseResponse, ErrorResponse
 
 
 def _build_error_response(
     *,
     status_code: int,
-    code: str,
-    title: str,
-    trace_id: str | None,
-    detail: str | None = None,
+    error_type: str,
+    message: str,
 ) -> JSONResponse:
-    payload = ErrorResponse(
-        errors=[
-            ErrorObject(
-                status=status_code,
-                code=code,
-                title=title,
-                detail=detail,
-                trace_id=trace_id,
-            )
-        ]
+    payload = BaseResponse[Any](
+        data=None,
+        error=ErrorResponse(type=error_type, message=message),
     ).model_dump()
     return JSONResponse(status_code=status_code, content=payload)
 
@@ -40,10 +33,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
         return _build_error_response(
             status_code=exc.status_code,
-            code=exc.code,
-            title=exc.message,
-            trace_id=trace_id,
-            detail=str(exc.detail or ""),
+            error_type=exc.code,
+            message=exc.message,
         )
 
     @app.exception_handler(HTTPException)
@@ -55,9 +46,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
         return _build_error_response(
             status_code=exc.status_code,
-            code="http_error",
-            title=detail,
-            trace_id=trace_id,
+            error_type="http_error",
+            message=detail,
         )
 
     @app.exception_handler(RequestValidationError)
@@ -68,10 +58,8 @@ def register_exception_handlers(app: FastAPI) -> None:
         logger.bind(trace_id=trace_id).warning("Request validation failed", errors=exc.errors())
         return _build_error_response(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            code="validation_error",
-            title="Request validation failed",
-            trace_id=trace_id,
-            detail=str(exc.errors()),
+            error_type="validation_error",
+            message="Request validation failed",
         )
 
     @app.exception_handler(Exception)
@@ -82,7 +70,6 @@ def register_exception_handlers(app: FastAPI) -> None:
         logger.bind(trace_id=trace_id).exception("Unhandled error")
         return _build_error_response(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            code="internal_error",
-            title="Unexpected error",
-            trace_id=trace_id,
+            error_type="internal_error",
+            message="Unexpected error",
         )

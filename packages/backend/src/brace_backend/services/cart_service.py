@@ -8,6 +8,8 @@ from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.cart import CartItem
 from brace_backend.schemas.cart import CartCollection, CartItemCreate, CartItemRead
 
+MAX_CART_ITEM_QUANTITY = 10
+
 
 def _to_money(value: Decimal | float | int) -> float:
     return float(value)
@@ -39,9 +41,14 @@ class CartService:
             user_id=user_id, product_id=product.id, size=payload.size
         )
         if existing:
-            existing.quantity += payload.quantity
+            new_quantity = existing.quantity + payload.quantity
+            self._validate_quantity(new_quantity)
+            self._validate_stock(new_quantity, variant.stock)
+            existing.quantity = new_quantity
             cart_item = existing
         else:
+            self._validate_quantity(payload.quantity)
+            self._validate_stock(payload.quantity, variant.stock)
             cart_item = CartItem(
                 user_id=user_id,
                 product_id=product.id,
@@ -72,6 +79,16 @@ class CartService:
             unit_price=_to_money(item.unit_price),
             hero_media_url=item.product.hero_media_url if item.product else None,
         )
+
+    def _validate_quantity(self, quantity: int) -> None:
+        if quantity < 1 or quantity > MAX_CART_ITEM_QUANTITY:
+            raise ValidationError(
+                f"Quantity must be between 1 and {MAX_CART_ITEM_QUANTITY} per product."
+            )
+
+    def _validate_stock(self, requested: int, stock: int | None) -> None:
+        if stock is not None and requested > stock:
+            raise ValidationError("Requested quantity exceeds available stock.")
 
 
 cart_service = CartService()

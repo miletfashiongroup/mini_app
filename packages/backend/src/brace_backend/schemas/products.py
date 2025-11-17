@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ProductVariant(BaseModel):
@@ -22,7 +22,7 @@ class ProductRead(BaseModel):
     hero_media_url: str | None = None
     created_at: datetime
     updated_at: datetime
-    variants: list[ProductVariant] = []
+    variants: list[ProductVariant] = Field(default_factory=list)
 
 
 class ProductCreate(BaseModel):
