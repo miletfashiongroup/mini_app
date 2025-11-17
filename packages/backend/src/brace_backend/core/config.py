@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from functools import lru_cache
 from typing import Any
 
+from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Centralised configuration shared by FastAPI, Alembic and background jobs."""
+    """Strongly-typed application settings that are shared across ASGI, workers, and tooling."""
 
     app_name: str = "BRACE Backend"
     environment: str = "development"
@@ -22,8 +25,15 @@ class Settings(BaseSettings):
     database_echo: bool = False
     database_pool_size: int = 5
     database_max_overflow: int = 5
-    telegram_bot_token: str = ""
-    telegram_webapp_secret: str = ""
+    redis_url: str = "memory://"
+
+    # ### IMPORTANT — Place BRACE_TELEGRAM_BOT_TOKEN in production environments:
+    # # .env
+    # # infra/docker-compose.prod.yml
+    # # k8s/deploy.yaml
+    telegram_bot_token: str = Field(..., min_length=1)
+
+    telegram_webapp_secret: str | None = None
     telegram_dev_mode: bool = False
     telegram_dev_user: dict[str, Any] = {
         "id": 999_000,
@@ -44,7 +54,13 @@ class Settings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    try:
+        return Settings()
+    except ValidationError as exc:  # pragma: no cover - fails fast during startup
+        raise RuntimeError(
+            "BRACE_TELEGRAM_BOT_TOKEN is required. Add it to .env, "
+            "infra/docker-compose.prod.yml, and k8s/deploy.yaml."
+        ) from exc
 
 
 settings = get_settings()

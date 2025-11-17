@@ -8,18 +8,19 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
+from brace_backend.api.deps import get_current_init_data, get_current_user, get_uow
+from brace_backend.core.database import ensure_async_dsn
+from brace_backend.core.security import TelegramInitData
+from brace_backend.db.uow import UnitOfWork
+from brace_backend.domain.base import Base
+from brace_backend.domain.user import User
+from brace_backend.main import app
 from httpx import ASGITransport, AsyncClient
 from pytest_factoryboy import register
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from brace_backend.api.deps import get_current_init_data, get_current_user, get_uow
-from brace_backend.core.security import TelegramInitData
-from brace_backend.db.uow import UnitOfWork
-from brace_backend.domain.base import Base
-from brace_backend.domain.user import User
-from brace_backend.main import app
 from tests.factories import (
     CartItemFactory,
     OrderFactory,
@@ -52,7 +53,7 @@ if str(SRC) not in sys.path:
 
 
 DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/brace_test"
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", DEFAULT_TEST_DB)
+TEST_DATABASE_URL = ensure_async_dsn(os.getenv("TEST_DATABASE_URL", DEFAULT_TEST_DB))
 os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
 
 

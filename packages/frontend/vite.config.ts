@@ -6,11 +6,13 @@ import path from 'path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname, '../../'));
   const isVitest = mode === 'test' || process.env.VITEST;
+  const backendUrl =
+    process.env.VITE_BACKEND_URL || env.VITE_BACKEND_URL || 'http://localhost:8000';
 
   return {
     plugins: [isVitest ? react() : reactSwc()],
     define: {
-      __BACKEND_URL__: JSON.stringify(env.VITE_BACKEND_URL || 'http://localhost:8000'),
+      __BACKEND_URL__: JSON.stringify(backendUrl),
     },
     server: {
       port: 4173,
@@ -19,7 +21,7 @@ export default defineConfig(({ mode }) => {
     build: {
       sourcemap: true,
       outDir: 'dist',
-    }, //проверка
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),

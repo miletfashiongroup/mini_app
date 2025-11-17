@@ -19,5 +19,5 @@ class CartItem(BaseModel):
     quantity: Mapped[int] = mapped_column(default=1)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
-    user: Mapped["User"] = relationship(back_populates="cart_items")
-    product: Mapped["Product"] = relationship(back_populates="cart_items")
+    user: Mapped[User] = relationship(back_populates="cart_items")
+    product: Mapped[Product] = relationship(back_populates="cart_items")

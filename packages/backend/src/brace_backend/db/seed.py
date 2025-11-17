@@ -3,13 +3,13 @@ from __future__ import annotations
 import logging
 import os
 from decimal import Decimal
-from pathlib import Path
 
 from sqlalchemy import func, select
-from sqlalchemy.engine import Engine, create_engine, make_url
+from sqlalchemy.engine import Engine, create_engine
 from sqlalchemy.orm import Session
 
 from brace_backend.core.config import settings
+from brace_backend.core.database import ensure_sync_dsn
 from brace_backend.domain.product import Product, ProductVariant
 
 LOG = logging.getLogger("brace_backend.db.seed")
@@ -18,12 +18,7 @@ LOG = logging.getLogger("brace_backend.db.seed")
 def _engine() -> Engine:
     """Return a synchronous engine suitable for seeding."""
     seed_url = os.getenv("SEED_DATABASE_URL", settings.database_url)
-    url_obj = make_url(seed_url)
-    if url_obj.drivername.endswith("+psycopg_async"):
-        url_obj = url_obj.set(drivername=url_obj.drivername.replace("+psycopg_async", "+psycopg"))
-    elif url_obj.drivername.endswith("+asyncpg"):
-        url_obj = url_obj.set(drivername=url_obj.drivername.replace("+asyncpg", "+psycopg"))
-    return create_engine(url_obj)
+    return create_engine(ensure_sync_dsn(seed_url))
 
 
 def _needs_seeding(session: Session) -> bool:

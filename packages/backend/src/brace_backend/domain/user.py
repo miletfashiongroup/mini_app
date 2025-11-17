@@ -15,9 +15,9 @@ class User(BaseModel):
     username: Mapped[str | None] = mapped_column(String(255), index=True)
     language_code: Mapped[str | None] = mapped_column(String(10))
 
-    orders: Mapped[list["Order"]] = relationship(
+    orders: Mapped[list[Order]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
-    cart_items: Mapped[list["CartItem"]] = relationship(
+    cart_items: Mapped[list[CartItem]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

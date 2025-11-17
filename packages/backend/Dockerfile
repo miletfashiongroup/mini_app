@@ -1,25 +1,49 @@
-# syntax=docker/dockerfile:1.7
 
-FROM python:3.12-slim AS base
-ENV PYTHONUNBUFFERED=1
+ARG PYTHON_VERSION=3.12-slim
+
+FROM python:${PYTHON_VERSION} AS deps
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_DEFAULT_TIMEOUT=240 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_RETRIES=5 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VERSION=1.8.3 \
+    PATH="/opt/poetry/bin:$PATH"
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential curl \
+ && rm -rf /var/lib/apt/lists/*
 
-FROM base AS builder
-RUN pip install poetry==1.8.3
-# Copy only backend manifests to keep Docker layer cache stable.
+RUN curl -sSL https://install.python-poetry.org | python3 -
+
 COPY packages/backend/pyproject.toml packages/backend/poetry.lock* ./ 
-RUN poetry export -f requirements.txt --without-hashes -o requirements.txt
+RUN poetry config virtualenvs.create false \
+ && poetry export --without-hashes -f requirements.txt -o requirements.txt \
+ && python -m venv /opt/venv \
+ && /opt/venv/bin/pip install --upgrade pip \
+ && /opt/venv/bin/pip install --timeout=240 --retries=5 --no-cache-dir -r requirements.txt
 
-FROM base AS runtime
-COPY --from=builder /app/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+FROM python:${PYTHON_VERSION} AS runtime
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app/src \
+    PATH="/opt/venv/bin:$PATH"
+WORKDIR /app
+
+COPY --from=deps /opt/venv /opt/venv
 COPY packages/backend/src ./src
 COPY packages/backend/alembic ./alembic
-COPY packages/backend/alembic.ini ./alembic.ini
-COPY packages/backend/entrypoint.sh ./entrypoint.sh
+COPY packages/backend/alembic.ini .
+COPY packages/backend/entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
-ENV PYTHONPATH=/app/src
+
+FROM runtime AS smoke-runner
+COPY packages/backend/tests ./tests
+ENTRYPOINT []
+
+FROM runtime AS app
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["uvicorn", "brace_backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

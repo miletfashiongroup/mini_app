@@ -25,6 +25,8 @@ packages/backend/.pytest_cache/
 # Node
 packages/frontend/.pnpm-store/
 packages/frontend/.turbo/
+packages/frontend/vite.config.ts.timestamp-*
+*.tsbuildinfo
 
 # Docker
 volumes/

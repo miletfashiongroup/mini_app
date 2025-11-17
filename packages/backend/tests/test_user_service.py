@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from brace_backend.core.exceptions import ValidationError
 from brace_backend.core.security import TelegramInitData
 from brace_backend.services.user_service import user_service

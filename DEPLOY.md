@@ -22,6 +22,7 @@ Reference deployment to free/low-cost services: Render (backend), Railway (Postg
 | --- | --- | --- |
 | `BRACE_TELEGRAM_BOT_TOKEN` | backend | `123456:ABCDEF` |
 | `BRACE_DATABASE_URL` | backend | `postgresql+psycopg_async://user:pass@host:port/db` |
+| `BRACE_REDIS_URL` | backend | `redis://<host>:6379/0` |
 | `BRACE_CORS_ORIGINS` | backend | `["https://brace.vercel.app"]` |
 | `BRACE_RATE_LIMIT` | backend | `120/minute` |
 | `VITE_BACKEND_URL` | frontend | `https://brace-api.onrender.com` |

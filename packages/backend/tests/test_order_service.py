@@ -1,5 +1,4 @@
 import pytest
-
 from brace_backend.core.exceptions import ValidationError
 from brace_backend.schemas.cart import CartItemCreate
 from brace_backend.schemas.orders import OrderCreate

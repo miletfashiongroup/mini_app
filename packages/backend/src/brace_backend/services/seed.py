@@ -1,10 +1,9 @@
 import asyncio
 import uuid
 
-from sqlalchemy import select
-
 from brace_backend.db.session import session_manager
 from brace_backend.domain import Product, ProductVariant
+from sqlalchemy import select
 
 
 async def seed_products() -> None:

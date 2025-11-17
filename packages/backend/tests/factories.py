@@ -1,12 +1,11 @@
 import uuid
 
 import factory
-from factory import fuzzy
-
 from brace_backend.domain.cart import CartItem
 from brace_backend.domain.order import Order, OrderItem
 from brace_backend.domain.product import Product, ProductVariant
 from brace_backend.domain.user import User
+from factory import fuzzy
 
 
 class UserFactory(factory.Factory):

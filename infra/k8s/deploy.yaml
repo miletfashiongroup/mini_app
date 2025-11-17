@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brace-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: brace-backend
+  template:
+    metadata:
+      labels:
+        app: brace-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/brace/backend:latest
+          env:
+            ### IMPORTANT — Keep BRACE_TELEGRAM_BOT_TOKEN synced with .env and docker-compose.
+            - name: BRACE_TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: brace-secrets
+                  key: telegramBotToken
+            - name: BRACE_REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: brace-secrets
+                  key: redisUrl

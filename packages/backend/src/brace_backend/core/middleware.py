@@ -3,11 +3,10 @@ from __future__ import annotations
 import time
 from uuid import uuid4
 
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from brace_backend.core.config import settings
 from brace_backend.core.logging import logger, set_trace_id
+from fastapi import Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class ObservabilityMiddleware(BaseHTTPMiddleware):

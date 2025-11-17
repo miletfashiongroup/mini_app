@@ -3,7 +3,6 @@ from __future__ import annotations
 import uuid
 
 import pytest
-
 from brace_backend.core.exceptions import NotFoundError
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.services.product_service import product_service

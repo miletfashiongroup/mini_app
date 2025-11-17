@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, status
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-
 from brace_backend.core.exceptions import AppError
 from brace_backend.core.logging import logger
 from brace_backend.schemas.common import BaseResponse, ErrorResponse
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 
 def _build_error_response(

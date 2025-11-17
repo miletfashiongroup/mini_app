@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import select
-
 from brace_backend.api.deps import get_current_init_data, get_current_user
 from brace_backend.domain.product import ProductVariant
 from brace_backend.main import app
+from sqlalchemy import select
 
 pytestmark = pytest.mark.asyncio
 

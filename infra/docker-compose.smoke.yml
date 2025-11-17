@@ -3,6 +3,11 @@ x-backend-build: &backend-build
   dockerfile: packages/backend/Dockerfile
   target: app
 
+x-smoke-build: &smoke-build
+  context: ..
+  dockerfile: packages/backend/Dockerfile
+  target: smoke-runner
+
 x-frontend-build: &frontend-build
   context: ..
   dockerfile: packages/frontend/Dockerfile
@@ -10,11 +15,10 @@ x-frontend-build: &frontend-build
 services:
   db:
     image: postgres:16-alpine
-    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-brace}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: brace
     healthcheck:
       test:
         [
@@ -25,20 +29,15 @@ services:
       timeout: 5s
       retries: 10
     volumes:
-      - db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - smoke_db_data:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
-    ports:
-      - "6379:6379"
 
   backend:
     build: *backend-build
@@ -48,16 +47,12 @@ services:
       BRACE_DATABASE_URL: postgresql+psycopg_async://postgres:postgres@db:5432/brace
       ALEMBIC_DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/brace
       BRACE_REDIS_URL: redis://redis:6379/0
-      BRACE_ENVIRONMENT: production
-      BRACE_CORS_ORIGINS: ${BRACE_CORS_ORIGINS:-["http://localhost","http://localhost:4173"]}
+      BRACE_ENVIRONMENT: test
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
     healthcheck:
       test:
         [
@@ -72,14 +67,11 @@ services:
     build:
       <<: *frontend-build
       args:
-        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8000}
-        VITE_APP_URL: ${VITE_APP_URL:-http://localhost}
+        VITE_BACKEND_URL: http://backend:8000
+        VITE_APP_URL: http://frontend
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "80:80"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost >/dev/null 2>&1"]
       interval: 10s
@@ -87,11 +79,7 @@ services:
       retries: 5
 
   smoke-tests:
-    profiles: ["smoke"]
-    build:
-      context: ..
-      dockerfile: packages/backend/Dockerfile
-      target: smoke-runner
+    build: *smoke-build
     env_file:
       - ../.env
     environment:
@@ -111,4 +99,4 @@ services:
     restart: "no"
 
 volumes:
-  db_data:
+  smoke_db_data:

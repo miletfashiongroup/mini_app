@@ -1,23 +1,33 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import hmac
 import json
 import os
 import time
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
+from urllib.parse import quote
 from uuid import UUID
 
 import httpx
+from brace_backend.core.security import build_signature
+from brace_backend.domain.base import Base
+from brace_backend.domain.product import Product, ProductVariant
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-from brace_backend.domain.base import Base
-from brace_backend.domain.product import Product, ProductVariant
+
+def _require_env(name: str) -> str:
+    value = os.getenv(name)
+    if not value:
+        raise RuntimeError(
+            f"{name} is required for full-stack smoke tests. "
+            "Add it to .env, infra/docker-compose.prod.yml, or your deployment secrets."
+        )
+    return value
+
 
 DATABASE_URL = os.getenv(
     "SMOKE_DATABASE_URL",
@@ -25,7 +35,7 @@ DATABASE_URL = os.getenv(
 )
 BACKEND_BASE_URL = os.getenv("SMOKE_BACKEND_URL", "http://localhost:8000")
 FRONTEND_BASE_URL = os.getenv("SMOKE_FRONTEND_URL", "http://localhost")
-TELEGRAM_BOT_TOKEN = os.getenv("SMOKE_TELEGRAM_BOT_TOKEN", "brace-smoke-secret")
+TELEGRAM_BOT_TOKEN = _require_env("BRACE_TELEGRAM_BOT_TOKEN")
 
 
 @dataclass
@@ -38,21 +48,12 @@ class SeededProduct:
     stock: int
 
 
-def _build_data_check_string(payload: dict[str, Any]) -> str:
-    parts = []
-    for key, value in sorted(payload.items()):
-        encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False) if isinstance(value, (dict, list)) else str(value)
-        parts.append(f"{key}={encoded}")
-    return "\n".join(parts)
-
-
 def build_telegram_init_header(user_payload: dict[str, Any]) -> str:
     auth_date = int(time.time())
     payload = {"user": user_payload, "auth_date": auth_date}
-    check_string = _build_data_check_string(payload)
-    secret = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
-    signature = hmac.new(secret, msg=check_string.encode(), digestmod=hashlib.sha256).hexdigest()
-    return f"auth_date={auth_date}&user={json.dumps(user_payload)}&hash={signature}"
+    signature = build_signature(payload.copy(), secret_token=TELEGRAM_BOT_TOKEN)
+    encoded_user = quote(json.dumps(user_payload, separators=(",", ":"), ensure_ascii=False))
+    return f"auth_date={auth_date}&user={encoded_user}&hash={signature}"
 
 
 async def reset_database(engine) -> None:
@@ -123,7 +124,9 @@ async def scenario_products(client: httpx.AsyncClient, products: list[SeededProd
     assert paged["pagination"]["page"] == 2
     assert paged["pagination"]["pages"] == 2
     detail = assert_envelope(await client.get(f"/api/products/{products[0].id}"))
-    assert detail["data"]["id"] == products[0].id
+    assert detail["data"]["id"] == str(
+        products[0].id
+    ), f"Product detail mismatch: {detail['data']['id']} != {products[0].id}"
 
 
 async def scenario_cart_and_orders(client: httpx.AsyncClient, products: list[SeededProduct], engine) -> None:
@@ -226,13 +229,13 @@ async def run_smoke() -> None:
             try:
                 await coroutine
                 results.append((name, True, None))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results.append((name, False, str(exc)))
     for name, coroutine in [("Frontend availability", scenario_frontend_health())]:
         try:
             await coroutine
             results.append((name, True, None))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             results.append((name, False, str(exc)))
     print("\nFull-stack smoke test summary:\n")
     for name, ok, msg in results:

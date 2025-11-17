@@ -4,8 +4,8 @@ BRACE is a production-ready monorepo for a Telegram Mini App that sells premium 
 
 ## Tech Stack
 - **Frontend**: Vite, React 18, TypeScript, TailwindCSS, TanStack Query, Zustand, Telegram WebApp SDK
-- **Backend**: FastAPI, async SQLAlchemy (psycopg 3 async driver), PostgreSQL, Alembic, SlowAPI rate limiting
-- **Infra**: Docker, docker-compose, nginx, GitHub Actions, Makefile helpers
+- **Backend**: FastAPI, async SQLAlchemy (psycopg 3 async driver), PostgreSQL, Redis-backed SlowAPI rate limiting, Alembic
+- **Infra**: Docker, docker-compose, Redis, nginx, GitHub Actions, Makefile helpers
 - **Security**: Telegram initData HMAC validation, DOMPurify, rate limiting, strict CORS
 
 ## Repository Layout
@@ -16,6 +16,7 @@ packages/
 infra/
   docker-compose.prod.yml
   nginx/app.conf
+scripts/run-smoke.sh
 .github/workflows/ci.yml
 README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
 .env.example
@@ -30,22 +31,62 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
 - Comprehensive documentation: quickstart, verification, deployment, change-log, postmortem templates
 
 ## Quickstart
-1. Copy `.env.example` to `.env` and fill secrets (Telegram bot token, production URLs, DB creds).
-2. Install toolchains:
+1. **Configure environment**
+   ```bash
+   cp .env.example .env
+   ```
+   Populate `BRACE_TELEGRAM_BOT_TOKEN`, database credentials, and the `VITE_*` URLs that the frontend will embed.
+2. **Install toolchains**
    ```bash
    make backend-install frontend-install
    ```
-3. Apply DB migrations & seed demo products:
+3. **Provision local data stores**  
+   The backend & pytest suites expect PostgreSQL and Redis. Start the infra stack once:
+   ```bash
+   docker compose -f infra/docker-compose.prod.yml up -d db redis
+   ```
+4. **Backend development loop**
    ```bash
    cd packages/backend
    poetry run alembic upgrade head
    poetry run python -m brace_backend.services.seed
+   poetry run uvicorn brace_backend.main:app --reload
    ```
-4. Run services locally (replicates production topology):
+   The API is available at `http://localhost:8000/api/health`.
+5. **Frontend development loop**
    ```bash
-   docker compose -f infra/docker-compose.prod.yml up --build
+   cd packages/frontend
+   npm run dev -- --host
    ```
-5. Open `http://localhost` for the Mini App shell and `http://localhost/api/health` for backend health.
+   Visit `http://localhost:4173`; Vite proxies API calls to the backend URL from `.env`.
+6. **Full stack via Docker Compose**
+   ```bash
+   make docker-up          # build + run backend, frontend, postgres, redis
+   make docker-logs        # follow backend/frontend logs
+   make docker-down        # stop stack and wipe volumes
+   ```
+   Frontend is served at `http://localhost`, backend at `http://localhost:8000`.
+7. **Smoke tests / CI validation**
+   ```bash
+   make smoke
+   # or directly:
+   docker compose -f infra/docker-compose.prod.yml --profile smoke up --build smoke-tests
+   ```
+   The smoke runner resets PostgreSQL, seeds fixtures, hits all public APIs, checks the frontend, and exits non‑zero on any failure.
+
+## Environment Variables
+`.env.example` contains sane defaults; override sensitive values per environment.
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `BRACE_DATABASE_URL` | Async SQLAlchemy DSN for the app | `postgresql+psycopg_async://postgres:postgres@db:5432/brace` |
+| `ALEMBIC_DATABASE_URL` | Sync DSN used by Alembic/entrypoint migrations | `postgresql+psycopg://postgres:postgres@db:5432/brace` |
+| `BRACE_REDIS_URL` | SlowAPI limiter storage | `memory://` locally, overridden to `redis://redis:6379/0` inside Docker |
+| `BRACE_TELEGRAM_BOT_TOKEN` | Required for initData validation | _(set per BotFather)_ |
+| `BRACE_CORS_ORIGINS` | Allowed origins array | `["http://localhost","http://localhost:4173"]` |
+| `VITE_BACKEND_URL` | API base URL compiled into the frontend bundle | `http://localhost:8000` |
+| `VITE_APP_URL` | Public frontend URL for Telegram `/setdomain` | `http://localhost` |
+| `POSTGRES_USER/PASSWORD/DB` | Docker Compose Postgres bootstrap | `postgres / postgres / brace` |
 
 ## API Surface
 | Endpoint | Description |
@@ -59,12 +100,18 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
 
 Refer to `packages/backend/tests` for usage examples.
 
+## Testing
+- **Backend unit/integration**: `make backend-test` (requires PostgreSQL reachable at `postgresql://postgres:postgres@localhost:5432/brace_test`; run `docker compose -f infra/docker-compose.prod.yml up -d db redis` beforehand).
+- **Frontend lint/unit**: `cd packages/frontend && npm run lint && npm run test`.
+- **Smoke/e2e**: `make smoke` (wraps `infra/docker-compose.smoke.yml`) or `docker compose -f infra/docker-compose.prod.yml --profile smoke up --abort-on-container-exit smoke-tests`.
+
 ## Security & Compliance
 - initData is required on all protected routes via the `X-Telegram-Init-Data` header.
 - FastAPI dependency verifies signature + freshness (5 minute TTL) via HMAC-SHA256.
 - nginx only exposes port 80; backend stays inside Docker network.
 - DOMPurify sanitizes dynamic text pages client-side.
 - SlowAPI enforces `60/minute` rate limit per IP; adjust via `BRACE_RATE_LIMIT`.
+- Rate-limit counters are kept in Redis (Compose) with an automatic in-memory fallback for local development.
 - No secrets are committed; all sensitive data lives in `.env` or CI secrets.
 
 ## CI/CD Overview

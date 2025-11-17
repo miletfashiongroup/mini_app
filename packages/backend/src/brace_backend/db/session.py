@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from brace_backend.core.config import settings
-from brace_backend.domain.base import Base
+from brace_backend.core.database import ensure_async_dsn
 
 
 class SessionManager:
@@ -14,7 +14,7 @@ class SessionManager:
 
     def __init__(self) -> None:
         self._engine = create_async_engine(
-            settings.database_url,
+            ensure_async_dsn(settings.database_url),
             echo=settings.database_echo,
             future=True,
             pool_pre_ping=True,

@@ -16,11 +16,11 @@ class Product(BaseModel):
     description: Mapped[str | None] = mapped_column(Text)
     hero_media_url: Mapped[str | None] = mapped_column(String(512))
 
-    variants: Mapped[list["ProductVariant"]] = relationship(
+    variants: Mapped[list[ProductVariant]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
-    order_items: Mapped[list["OrderItem"]] = relationship(back_populates="product")
-    cart_items: Mapped[list["CartItem"]] = relationship(back_populates="product")
+    order_items: Mapped[list[OrderItem]] = relationship(back_populates="product")
+    cart_items: Mapped[list[CartItem]] = relationship(back_populates="product")
 
 
 class ProductVariant(BaseModel):

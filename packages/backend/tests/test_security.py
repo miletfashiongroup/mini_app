@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import json
 import time
+from typing import ClassVar
 from urllib.parse import quote
 
 import pytest
-
 from brace_backend.core.exceptions import AccessDeniedError
 from brace_backend.core.security import (
     TELEGRAM_MAX_AGE_SECONDS,
     TelegramInitData,
-    _build_data_check_string,
+    build_data_check_string,
     parse_init_data,
     validate_request,
     verify_init_data,
@@ -24,7 +24,7 @@ def override_settings(monkeypatch):
     class DummySettings:
         telegram_bot_token = "unit-test-secret"
         telegram_dev_mode = False
-        telegram_dev_user = {"id": 999, "username": "dev"}
+        telegram_dev_user: ClassVar[dict] = {"id": 999, "username": "dev"}
 
     monkeypatch.setattr("brace_backend.core.security.settings", DummySettings())
     return DummySettings
@@ -33,12 +33,12 @@ def override_settings(monkeypatch):
 def build_init_header(user: dict, *, auth_date: int) -> str:
     """Construct raw init data string trusted by verify_init_data."""
     payload = {"auth_date": auth_date, "user": user}
-    check_string = _build_data_check_string(payload.copy())
+    check_string = build_data_check_string(payload.copy())
 
     import hashlib
     import hmac
 
-    secret_key = hashlib.sha256("unit-test-secret".encode()).digest()
+    secret_key = hashlib.sha256(b"unit-test-secret").digest()
     digest = hmac.new(secret_key, msg=check_string.encode(), digestmod=hashlib.sha256).hexdigest()
     return f"auth_date={auth_date}&user={quote(json.dumps(user))}&hash={digest}"
 

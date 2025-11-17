@@ -4,9 +4,8 @@ import sys
 from contextvars import ContextVar
 from typing import Any
 
-from loguru import logger
-
 from brace_backend.core.config import Settings
+from loguru import logger
 
 TRACE_ID_VAR: ContextVar[str | None] = ContextVar("trace_id", default=None)
 

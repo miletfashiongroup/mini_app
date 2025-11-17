@@ -5,7 +5,12 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from brace_backend.repositories import CartRepository, OrderRepository, ProductRepository, UserRepository
+from brace_backend.repositories import (
+    CartRepository,
+    OrderRepository,
+    ProductRepository,
+    UserRepository,
+)
 
 
 @dataclass

@@ -8,11 +8,32 @@ from slowapi.util import get_remote_address
 from brace_backend.api import api_router
 from brace_backend.core.config import settings
 from brace_backend.core.error_handlers import register_exception_handlers
-from brace_backend.core.logging import configure_logging
+from brace_backend.core.logging import configure_logging, logger
 from brace_backend.core.middleware import ObservabilityMiddleware
 
 configure_logging(settings)
-limiter = Limiter(key_func=get_remote_address, default_limits=[settings.rate_limit])
+
+
+def _create_limiter() -> Limiter:
+    try:
+        return Limiter(
+            key_func=get_remote_address,
+            default_limits=[settings.rate_limit],
+            storage_uri=settings.redis_url,
+        )
+    except Exception as exc:  # pragma: no cover - only fires when redis config is broken
+        logger.warning(
+            "Rate limiter redis storage misconfigured; falling back to in-memory.",
+            redis_url=settings.redis_url,
+            error=str(exc),
+        )
+        return Limiter(
+            key_func=get_remote_address,
+            default_limits=[settings.rate_limit],
+        )
+
+
+limiter = _create_limiter()
 
 
 def create_app() -> FastAPI:

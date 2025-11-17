@@ -18,8 +18,8 @@ class Order(BaseModel):
     shipping_address: Mapped[str | None] = mapped_column(String(512))
     note: Mapped[str | None] = mapped_column(Text)
 
-    user: Mapped["User"] = relationship(back_populates="orders")
-    items: Mapped[list["OrderItem"]] = relationship(
+    user: Mapped[User] = relationship(back_populates="orders")
+    items: Mapped[list[OrderItem]] = relationship(
         back_populates="order", cascade="all, delete-orphan"
     )
 
@@ -34,4 +34,4 @@ class OrderItem(BaseModel):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
 
     order: Mapped[Order] = relationship(back_populates="items")
-    product: Mapped["Product"] = relationship(back_populates="order_items")
+    product: Mapped[Product] = relationship(back_populates="order_items")

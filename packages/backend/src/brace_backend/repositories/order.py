@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
-from math import ceil
-from typing import Sequence
 from uuid import UUID
 
 from sqlalchemy import func, select

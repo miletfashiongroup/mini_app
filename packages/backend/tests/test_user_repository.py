@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
-from brace_backend.domain.user import User
 from brace_backend.repositories.user import UserRepository
 
 pytestmark = pytest.mark.asyncio
