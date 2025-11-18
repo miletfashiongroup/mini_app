@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import secrets
 import time
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any
 from urllib.parse import quote
 from uuid import UUID
@@ -29,10 +29,21 @@ def _require_env(name: str) -> str:
     return value
 
 
-DATABASE_URL = os.getenv(
-    "SMOKE_DATABASE_URL",
-    os.getenv("DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/brace"),
-)
+def _require_smoke_database_url() -> str:
+    url = os.getenv(
+        "SMOKE_DATABASE_URL",
+        os.getenv(
+            "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/brace_smoke"
+        ),
+    )
+    if "brace_smoke" not in url.rsplit("/", 1)[-1]:
+        raise RuntimeError(
+            "SMOKE_DATABASE_URL must point to a dedicated brace_smoke database to avoid truncating production data."
+        )  # PRINCIPAL-FIX
+    return url
+
+
+DATABASE_URL = _require_smoke_database_url()
 BACKEND_BASE_URL = os.getenv("SMOKE_BACKEND_URL", "http://localhost:8000")
 FRONTEND_BASE_URL = os.getenv("SMOKE_FRONTEND_URL", "http://localhost")
 TELEGRAM_BOT_TOKEN = _require_env("BRACE_TELEGRAM_BOT_TOKEN")
@@ -44,16 +55,17 @@ class SeededProduct:
     variant_id: UUID
     size: str
     name: str
-    price: Decimal
+    price_minor_units: int
     stock: int
 
 
 def build_telegram_init_header(user_payload: dict[str, Any]) -> str:
     auth_date = int(time.time())
-    payload = {"user": user_payload, "auth_date": auth_date}
+    payload = {"user": user_payload, "auth_date": auth_date, "nonce": secrets.token_hex(8)}
     signature = build_signature(payload.copy(), secret_token=TELEGRAM_BOT_TOKEN)
     encoded_user = quote(json.dumps(user_payload, separators=(",", ":"), ensure_ascii=False))
-    return f"auth_date={auth_date}&user={encoded_user}&hash={signature}"
+    nonce = payload["nonce"]
+    return f"auth_date={auth_date}&nonce={nonce}&user={encoded_user}&hash={signature}"
 
 
 async def reset_database(engine) -> None:
@@ -68,18 +80,29 @@ async def seed_products(engine) -> list[SeededProduct]:
     session_factory = async_sessionmaker(bind=engine, expire_on_commit=False, class_=AsyncSession)
     products: list[SeededProduct] = []
     catalog = [
-        ("Smoke Tee", Decimal("39.99"), "M", 50),
-        ("Smoke Hoodie", Decimal("59.99"), "L", 25),
-        ("Smoke Joggers", Decimal("45.00"), "S", 10),
+        ("Smoke Tee", 3999, "M", 50),
+        ("Smoke Hoodie", 5999, "L", 25),
+        ("Smoke Joggers", 4500, "S", 10),
     ]
     async with session_factory() as session:
-        for name, price, size, stock in catalog:
+        for name, price_minor_units, size, stock in catalog:
             product = Product(name=name, description=f"{name} description", hero_media_url=None)
-            variant = ProductVariant(product=product, size=size, price=price, stock=stock)
+            variant = ProductVariant(
+                product=product, size=size, price_minor_units=price_minor_units, stock=stock
+            )
             product.variants.append(variant)
             session.add(product)
             await session.flush()
-            products.append(SeededProduct(id=product.id, variant_id=variant.id, size=size, name=name, price=price, stock=stock))
+            products.append(
+                SeededProduct(
+                    id=product.id,
+                    variant_id=variant.id,
+                    size=size,
+                    name=name,
+                    price_minor_units=price_minor_units,
+                    stock=stock,
+                )
+            )
         await session.commit()
     return products
 
@@ -143,10 +166,10 @@ async def scenario_cart_and_orders(client: httpx.AsyncClient, products: list[See
         status=201,
     )
     cart = assert_envelope(await client.get("/api/cart", headers=headers))
-    assert cart["data"]["total_amount"] >= float(primary.price)
+    assert cart["data"]["total_minor_units"] >= primary.price_minor_units
     assert_envelope(await client.delete(f"/api/cart/{created['data']['id']}", headers=headers))
     empty = assert_envelope(await client.get("/api/cart", headers=headers))
-    assert empty["data"]["total_amount"] == 0
+    assert empty["data"]["total_minor_units"] == 0
     # Quantity limit
     assert_envelope(
         await client.post(

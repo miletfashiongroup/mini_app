@@ -2,19 +2,21 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { AddToCartForm } from '@/features/cart/add-to-cart/ui/AddToCartForm';
+import { formatPrice } from '@/shared/lib/money';
 import { Skeleton } from '@/shared/ui/Skeleton';
 import { useProductDetails } from '@/pages/product/useProductDetails';
 
 export const ProductPage = () => {
   const { productId } = useParams();
-  const { data: product, isLoading, isError } = useProductDetails(productId);
+  const { data: product, isLoading, isError, refetch } = useProductDetails(productId);
 
-  const price = useMemo(() => {
-    if (!product) {
-      return 0;
+  const variants = product?.variants ?? []; // PRINCIPAL-FIX: variants guard
+  const priceMinorUnits = useMemo(() => {
+    if (!variants.length) {
+      return null;
     }
-    return product.variants[0]?.price ?? 0;
-  }, [product]);
+    return variants[0]?.price_minor_units ?? null;
+  }, [variants]);
 
   if (isLoading) {
     return (
@@ -27,7 +29,14 @@ export const ProductPage = () => {
   }
 
   if (isError || !product) {
-    return <p className="text-red-300">Не удалось загрузить товар.</p>;
+    return (
+      <div className="space-y-3">
+        <p className="text-red-300">Не удалось загрузить товар.</p>
+        <button type="button" onClick={() => refetch()} className="text-sm text-white underline">
+          Повторить
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -39,7 +48,9 @@ export const ProductPage = () => {
       <div className="space-y-2">
         <h1 className="text-3xl font-semibold">{product.name}</h1>
         <p className="text-slate-300">{product.description}</p>
-        <p className="text-2xl font-semibold">{price} ₽</p>
+        <p className="text-2xl font-semibold">
+          {priceMinorUnits === null ? 'Нет в наличии' : formatPrice(priceMinorUnits)}
+        </p>
       </div>
 
       <AddToCartForm product={product} />

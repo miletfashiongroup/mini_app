@@ -21,7 +21,7 @@ def assert_envelope(response, *, status=200):
 async def _create_sample_products(ctx, count: int) -> None:
     """Bulk helper to seed a deterministic number of catalog items."""
     for idx in range(count):
-        await ctx["create_product"](name=f"Product {idx}", price=30 + idx)
+        await ctx["create_product"](name=f"Product {idx}", price_minor_units=(30 + idx) * 100)
 
 
 async def test_products_list_default(api_client):
@@ -66,7 +66,7 @@ async def test_products_detail(api_client):
 async def test_cart_add_remove(api_client):
     """Cart items should accumulate totals and drop back to zero after deletion."""
     client, ctx = api_client
-    product, variant = await ctx["create_product"](price=31.0)
+    product, variant = await ctx["create_product"](price_minor_units=3100)
 
     payload = assert_envelope(
         await client.post(
@@ -79,12 +79,12 @@ async def test_cart_add_remove(api_client):
     assert payload["data"]["quantity"] == 2
 
     cart_payload = assert_envelope(await client.get("/api/cart"))
-    assert cart_payload["data"]["total_amount"] == pytest.approx(62.0)
+    assert cart_payload["data"]["total_minor_units"] == 6200
     assert len(cart_payload["data"]["items"]) == 1
 
     assert_envelope(await client.delete(f"/api/cart/{item_id}"))
     final_payload = assert_envelope(await client.get("/api/cart"))
-    assert final_payload["data"]["total_amount"] == 0
+    assert final_payload["data"]["total_minor_units"] == 0
     assert final_payload["data"]["items"] == []
 
 
@@ -109,17 +109,30 @@ async def test_cart_quantity_limit(api_client):
     assert payload["error"]["type"] == "validation_error"
 
 
+async def test_cart_rejects_invalid_size_length(api_client):
+    """Cart payload validation must guard against oversize size codes before hitting the DB."""
+    client, ctx = api_client
+    product, _ = await ctx["create_product"]()
+
+    response = await client.post(
+        "/api/cart",
+        json={"product_id": str(product.id), "size": "X" * 32, "quantity": 1},
+    )
+    payload = assert_envelope(response, status=422)
+    assert payload["error"]["type"] == "validation_error"
+
+
 async def test_orders_create_and_list(api_client):
     """Creating an order should consume the cart and affect pagination totals."""
     client, ctx = api_client
-    product, variant = await ctx["create_product"](price=45.0)
+    product, variant = await ctx["create_product"](price_minor_units=4500)
 
     await client.post(
         "/api/cart",
         json={"product_id": str(product.id), "size": variant.size, "quantity": 2},
     )
     created = assert_envelope(await client.post("/api/orders", json={}), status=201)
-    assert created["data"]["total_amount"] == "90.00"
+    assert created["data"]["total_minor_units"] == 9000
 
     listed = assert_envelope(await client.get("/api/orders", params={"page": 1, "page_size": 5}))
     assert len(listed["data"]) == 1
@@ -127,7 +140,7 @@ async def test_orders_create_and_list(api_client):
     assert listed["pagination"]["pages"] == 1
 
     empty_cart = assert_envelope(await client.get("/api/cart"))
-    assert empty_cart["data"]["total_amount"] == 0
+    assert empty_cart["data"]["total_minor_units"] == 0
 
 
 async def test_orders_empty_cart_error(api_client):
@@ -153,6 +166,24 @@ async def test_orders_overstock_error(api_client):
         await session.commit()
 
     response = await client.post("/api/orders", json={})
+    payload = assert_envelope(response, status=422)
+    assert payload["error"]["type"] == "validation_error"
+
+
+async def test_orders_reject_long_shipping_address(api_client):
+    """Order creation enforces DB column limits via schema validation."""
+    client, ctx = api_client
+    product, variant = await ctx["create_product"]()
+
+    await client.post(
+        "/api/cart",
+        json={"product_id": str(product.id), "size": variant.size, "quantity": 1},
+    )
+
+    response = await client.post(
+        "/api/orders",
+        json={"shipping_address": "A" * 600},
+    )
     payload = assert_envelope(response, status=422)
     assert payload["error"]["type"] == "validation_error"
 

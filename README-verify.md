@@ -14,6 +14,7 @@ Step-by-step checklist for validating the monorepo on Windows, WSL, or Linux.
 cp .env.example .env
 # edit .env with your secrets (Telegram token, DB passwords, URLs)
 ```
+Backend tooling now finds `.env` from the repo root no matter which subdirectory commands run in; set `BRACE_ENV_FILE=/abs/path/.env` if you need to point to a different file.  # PRINCIPAL-FIX
 
 ## 3. Backend
 ```bash
@@ -45,14 +46,15 @@ docker compose -f infra/docker-compose.prod.yml up --build
 
 ## 6. Telegram Mini App Smoke Test
 1. In `.env`, ensure `VITE_BACKEND_URL` and `VITE_APP_URL` resolve from Telegram.
-2. Build frontend: `cd packages/frontend && npm run build`.
-3. Deploy following `DEPLOY.md` (Render + Vercel example).
-4. In @BotFather:
+2. Set `SMOKE_DATABASE_URL` to a dedicated `brace_smoke` database before running `make smoke`—the runner truncates tables on every execution and now enforces that naming convention.  # PRINCIPAL-FIX
+3. Build frontend: `cd packages/frontend && npm run build`.
+4. Deploy following `DEPLOY.md` (Render + Vercel example).
+5. In @BotFather:
    - `/setdomain` → `<FRONTEND_URL>`
    - `/newapp` → choose the bot, set platform = `webapp`, start parameter = `brace`
    - `/setmenubutton` → web_app pointing to `<FRONTEND_URL>`
-5. Open the bot, tap “Open Mini App”.
-6. Inspect browser devtools → Network → confirm `/api/verify-init` returns `{ status: 'verified' }`.
+6. Open the bot, tap “Open Mini App”.
+7. Inspect browser devtools → Network → confirm `/api/verify-init` returns `{ status: 'verified' }`.
 
 ## 7. Teardown
 ```bash

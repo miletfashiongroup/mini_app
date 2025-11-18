@@ -83,7 +83,7 @@ services:
     env_file:
       - ../.env
     environment:
-      SMOKE_DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/brace
+      SMOKE_DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/brace_smoke
       SMOKE_BACKEND_URL: http://backend:8000
       SMOKE_FRONTEND_URL: http://frontend
     depends_on:

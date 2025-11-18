@@ -26,8 +26,8 @@ const product: Product = {
   created_at: '',
   updated_at: '',
   variants: [
-    { id: 'v1', size: 'M', price: 100, stock: 10 },
-    { id: 'v2', size: 'L', price: 110, stock: 5 },
+    { id: 'v1', size: 'M', price_minor_units: 10000, stock: 10 },
+    { id: 'v2', size: 'L', price_minor_units: 11000, stock: 5 },
   ],
 };
 

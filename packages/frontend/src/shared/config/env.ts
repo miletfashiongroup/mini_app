@@ -1,6 +1,8 @@
-const fallback = typeof __BACKEND_URL__ !== 'undefined' ? __BACKEND_URL__ : 'http://localhost:8000';
+const runtimeBaseUrl =
+  typeof window !== 'undefined' ? window.__BRACE_ENV__?.API_BASE_URL : undefined;
 
 export const env = {
-  apiBaseUrl: fallback,
+  // PRINCIPAL-FIX: runtime api config
+  apiBaseUrl: runtimeBaseUrl || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000',
   devInitData: import.meta.env.VITE_DEV_INIT_DATA ?? '',
 };

@@ -146,7 +146,7 @@ async def api_client(
         *,
         size: str = "M",
         stock: int = 20,
-        price: float = 30.0,
+        price_minor_units: int = 3000,
         name: str | None = None,
         description: str | None = None,
     ):
@@ -159,7 +159,9 @@ async def api_client(
             overrides["description"] = description
 
         product = product_factory(**overrides)
-        variant = product_variant_factory(product=product, size=size, stock=stock, price=price)
+        variant = product_variant_factory(
+            product=product, size=size, stock=stock, price_minor_units=price_minor_units
+        )
         product.variants.append(variant)
         async with session_factory() as session:
             session.add(product)

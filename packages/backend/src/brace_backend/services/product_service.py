@@ -33,7 +33,7 @@ class ProductService:
                 {
                     "id": variant.id,
                     "size": variant.size,
-                    "price": float(variant.price),
+                    "price_minor_units": variant.price_minor_units,
                     "stock": variant.stock,
                 }
                 for variant in product.variants

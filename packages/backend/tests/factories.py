@@ -38,7 +38,7 @@ class ProductVariantFactory(factory.Factory):
     product = factory.SubFactory(ProductFactory)
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
     size = fuzzy.FuzzyChoice(["S", "M", "L", "XL"])
-    price = 39.99
+    price_minor_units = 3999
     stock = 100
 
 
@@ -53,7 +53,7 @@ class CartItemFactory(factory.Factory):
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
     size = fuzzy.FuzzyChoice(["M", "L"])
     quantity = 1
-    unit_price = 29.99
+    unit_price_minor_units = 2999
 
 
 class OrderFactory(factory.Factory):
@@ -64,7 +64,7 @@ class OrderFactory(factory.Factory):
     user = factory.SubFactory(UserFactory)
     user_id = factory.LazyAttribute(lambda obj: obj.user.id)
     status = "pending"
-    total_amount = 0
+    total_amount_minor_units = 0
 
 
 class OrderItemFactory(factory.Factory):
@@ -78,4 +78,4 @@ class OrderItemFactory(factory.Factory):
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
     size = fuzzy.FuzzyChoice(["S", "M", "L", "XL"])
     quantity = 1
-    unit_price = 29.99
+    unit_price_minor_units = 2999

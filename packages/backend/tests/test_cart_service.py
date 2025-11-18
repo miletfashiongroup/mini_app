@@ -26,7 +26,7 @@ async def test_add_item_merges_existing(uow, session, user_factory, product_fact
 
 
 async def test_get_cart_returns_total(uow, session, user_factory, product_factory, product_variant_factory):
-    """Cart summary should report the aggregated total_amount for all entries."""
+    """Cart summary should report the aggregated total_minor_units for all entries."""
     user = user_factory()
     product = product_factory()
     variant = product_variant_factory(product=product, size="L")
@@ -39,7 +39,7 @@ async def test_get_cart_returns_total(uow, session, user_factory, product_factor
 
     cart = await cart_service.get_cart(uow, user.id)
 
-    assert cart.total_amount == pytest.approx(variant.price * 3)
+    assert cart.total_minor_units == variant.price_minor_units * 3
     assert cart.items[0].product_name == product.name
     assert cart.items[0].quantity == 3
 
@@ -122,4 +122,28 @@ async def test_get_cart_empty_returns_zero(uow, user_factory):
     cart = await cart_service.get_cart(uow, user.id)
 
     assert cart.items == []
-    assert cart.total_amount == 0
+    assert cart.total_minor_units == 0
+
+
+async def test_cart_totals_multiple_variants(
+    uow, session, user_factory, product_factory, product_variant_factory
+):
+    """Mixing variants with different prices should keep the aggregated total precise."""
+    user = user_factory()
+    product = product_factory()
+    variant_a = product_variant_factory(product=product, size="S", price_minor_units=1234)
+    variant_b = product_variant_factory(product=product, size="M", price_minor_units=5678)
+    product.variants.extend([variant_a, variant_b])
+    session.add_all([user, product])
+    await session.flush()
+
+    await cart_service.add_item(
+        uow, user_id=user.id, payload=CartItemCreate(product_id=product.id, size="S", quantity=2)
+    )
+    await cart_service.add_item(
+        uow, user_id=user.id, payload=CartItemCreate(product_id=product.id, size="M", quantity=1)
+    )
+
+    cart = await cart_service.get_cart(uow, user.id)
+    expected_total = 2 * variant_a.price_minor_units + variant_b.price_minor_units
+    assert cart.total_minor_units == expected_total

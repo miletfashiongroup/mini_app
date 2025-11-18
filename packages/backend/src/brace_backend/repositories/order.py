@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -61,14 +60,14 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         product_id: UUID,
         size: str,
         quantity: int,
-        unit_price: Decimal,
+        unit_price_minor_units: int,
     ) -> OrderItem:
         item = OrderItem(
             order_id=order.id,
             product_id=product_id,
             size=size,
             quantity=quantity,
-            unit_price=unit_price,
+            unit_price_minor_units=unit_price_minor_units,
         )
         self.session.add(item)
         return item

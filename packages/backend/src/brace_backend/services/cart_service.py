@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from decimal import Decimal
 from uuid import UUID
 
 from brace_backend.core.exceptions import NotFoundError, ValidationError
@@ -11,16 +10,13 @@ from brace_backend.schemas.cart import CartCollection, CartItemCreate, CartItemR
 MAX_CART_ITEM_QUANTITY = 10
 
 
-def _to_money(value: Decimal | float | int) -> float:
-    return float(value)
-
-
 class CartService:
     async def get_cart(self, uow: UnitOfWork, user_id: UUID) -> CartCollection:
         items = await uow.carts.get_for_user(user_id)
         schema_items = [self._to_schema(item) for item in items]
-        total = sum(item.quantity * _to_money(item.unit_price) for item in items)
-        return CartCollection(items=schema_items, total_amount=round(total, 2))
+        total = sum(item.quantity * item.unit_price_minor_units for item in items)
+        # PRINCIPAL-NOTE: Totals stay in minor units end-to-end to avoid float drift.
+        return CartCollection(items=schema_items, total_minor_units=total)
 
     async def add_item(
         self,
@@ -54,7 +50,7 @@ class CartService:
                 product_id=product.id,
                 size=payload.size,
                 quantity=payload.quantity,
-                unit_price=variant.price,
+                unit_price_minor_units=variant.price_minor_units,
             )
             await uow.carts.add(cart_item)
             cart_item.product = product
@@ -76,7 +72,7 @@ class CartService:
             product_name=item.product.name if item.product else "",
             size=item.size,
             quantity=item.quantity,
-            unit_price=_to_money(item.unit_price),
+            unit_price_minor_units=item.unit_price_minor_units,
             hero_media_url=item.product.hero_media_url if item.product else None,
         )
 

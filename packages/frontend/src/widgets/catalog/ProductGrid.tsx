@@ -4,9 +4,15 @@ import { fetchProducts, productKeys } from '@/entities/product/api/productApi';
 import type { Product } from '@/entities/product/model/types';
 import { ProductCard } from '@/entities/product/ui/ProductCard';
 import { ProductCardSkeleton } from '@/entities/product/ui/ProductCardSkeleton';
+import { ErrorState } from '@/shared/ui/ErrorState';
 
 export const ProductGrid = () => {
-  const { data, isLoading } = useQuery({
+  const {
+    data,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: productKeys.list(),
     queryFn: () => fetchProducts(),
   });
@@ -18,6 +24,15 @@ export const ProductGrid = () => {
           <ProductCardSkeleton key={idx} />
         ))}
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <ErrorState
+        message="Не удалось загрузить каталог. Попробуйте обновить страницу."
+        onRetry={() => refetch()}
+      />
     );
   }
 

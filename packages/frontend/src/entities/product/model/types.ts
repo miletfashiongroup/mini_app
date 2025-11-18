@@ -1,16 +1,4 @@
-export type ProductVariant = {
-  id: string;
-  size: string;
-  price: number;
-  stock: number;
-};
+import type { components } from '@/shared/api/generated';
 
-export type Product = {
-  id: string;
-  name: string;
-  description?: string;
-  hero_media_url?: string;
-  created_at: string;
-  updated_at: string;
-  variants: ProductVariant[];
-};
+export type ProductVariant = components['schemas']['ProductVariant'];
+export type Product = components['schemas']['ProductRead'];

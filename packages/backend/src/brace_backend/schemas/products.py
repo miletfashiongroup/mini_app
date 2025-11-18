@@ -9,7 +9,7 @@ class ProductVariant(BaseModel):
 
     id: UUID
     size: str
-    price: float
+    price_minor_units: int
     stock: int
 
 

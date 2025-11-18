@@ -1,17 +1,4 @@
-export type OrderItem = {
-  id: string;
-  product_id: string;
-  size: string;
-  quantity: number;
-  unit_price: string;
-};
+import type { components } from '@/shared/api/generated';
 
-export type Order = {
-  id: string;
-  status: string;
-  total_amount: string;
-  shipping_address?: string | null;
-  note?: string | null;
-  created_at: string;
-  items: OrderItem[];
-};
+export type OrderItem = components['schemas']['OrderItemRead'];
+export type Order = components['schemas']['OrderRead'];

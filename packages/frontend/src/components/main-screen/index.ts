@@ -1,0 +1,1 @@
+export { MainScreenHero } from './MainScreenHero';

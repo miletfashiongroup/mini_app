@@ -32,16 +32,36 @@ async def test_create_order_consumes_cart(uow, session, user_factory, product_fa
     )
 
     created = await order_service.create_order(uow, user_id=user.id, payload=OrderCreate())
-    assert created.total_amount == f"{variant.price * 2:.2f}"
+    assert created.total_minor_units == variant.price_minor_units * 2
     assert len(created.items) == 1
-    assert created.items[0].unit_price == f"{variant.price:.2f}"
+    assert created.items[0].unit_price_minor_units == variant.price_minor_units
 
     orders, total = await order_service.list_orders(uow, user.id, page=1, page_size=10)
     assert len(orders) == 1
     assert total == 1
 
     cart = await cart_service.get_cart(uow, user.id)
-    assert cart.total_amount == 0
+    assert cart.total_minor_units == 0
+
+
+async def test_create_order_preserves_minor_unit_precision(
+    uow, session, user_factory, product_factory, product_variant_factory
+):
+    """Order totals must remain exact with repeating decimals converted to minor units."""
+    user, product, variant = await _prepare_product(
+        session, user_factory, product_factory, product_variant_factory, size="S"
+    )
+    variant.price_minor_units = 3333
+    await session.flush()
+
+    await cart_service.add_item(
+        uow,
+        user_id=user.id,
+        payload=CartItemCreate(product_id=product.id, size="S", quantity=3),
+    )
+
+    created = await order_service.create_order(uow, user_id=user.id, payload=OrderCreate())
+    assert created.total_minor_units == 9999
 
 
 async def test_create_order_requires_items(uow, user_factory):
@@ -72,7 +92,7 @@ async def test_create_order_persists_metadata(
     )
     assert created.shipping_address == "Test street 1"
     assert created.note == "Leave at door"
-    assert created.total_amount == f"{variant.price:.2f}"
+    assert created.total_minor_units == variant.price_minor_units
 
 
 async def test_create_order_deducts_stock(
@@ -126,7 +146,7 @@ async def test_create_order_fails_when_stock_changed(
     await uow.rollback()
 
     cart = await cart_service.get_cart(uow, user_id)
-    assert cart.total_amount > 0
+    assert cart.total_minor_units > 0
 
 
 async def test_list_orders_without_pagination_returns_all(

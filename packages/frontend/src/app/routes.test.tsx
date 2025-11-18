@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AppRoutes } from '@/app/routes';
 import { fetchProductById } from '@/entities/product/api/productApi';
+import { formatPrice } from '@/shared/lib/money';
 
 vi.mock('@/entities/product/api/productApi');
 
@@ -29,7 +30,7 @@ describe('Product detail routes', () => {
     hero_media_url: null,
     created_at: '',
     updated_at: '',
-    variants: [{ id: 'v1', size: 'M', price: 100, stock: 5 }],
+    variants: [{ id: 'v1', size: 'M', price_minor_units: 10000, stock: 5 }],
   };
 
   it('renders description page', async () => {
@@ -46,6 +47,9 @@ describe('Product detail routes', () => {
 
     expect(await screen.findByText(/Характеристики Test Product/i)).toBeInTheDocument();
     expect(screen.getByText('M')).toBeInTheDocument();
-    expect(screen.getByText('100 ₽')).toBeInTheDocument();
+    const priceCells = screen.getAllByText(
+      (_, element) => element?.textContent?.includes(formatPrice(10000)) ?? false,
+    );
+    expect(priceCells.length).toBeGreaterThan(0);
   });
 });

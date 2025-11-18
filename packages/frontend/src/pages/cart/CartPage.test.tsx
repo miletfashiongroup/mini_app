@@ -8,7 +8,7 @@ vi.mock('@/entities/cart/api/cartApi', () => ({
   cartKeys: { all: ['cart'] },
   fetchCart: vi.fn().mockResolvedValue({
     items: [],
-    total_amount: 0,
+    total_minor_units: 0,
   }),
 }));
 

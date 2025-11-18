@@ -25,12 +25,34 @@ vi.mock('@/entities/product/api/productApi', () => ({
   }),
 }));
 
+vi.mock('@/entities/banner/api/bannerApi', () => ({
+  bannerKeys: {
+    list: () => ['banners'],
+  },
+  fetchBanners: vi.fn().mockResolvedValue({
+    banners: [
+      {
+        id: 'banner-1',
+        image_url: 'https://cdn.test/banner-1.jpg',
+        video_url: null,
+        is_active: true,
+        sort_order: 1,
+      },
+    ],
+    active_index: 0,
+  }),
+}));
+
+vi.mock('@/features/size-calculator/api/sizeCalcApi', () => ({
+  calculateSize: vi.fn().mockResolvedValue({ size: 'M' }),
+}));
+
 describe('HomePage', () => {
   it('renders featured products', async () => {
     render(renderWithProviders(<HomePage />));
 
     await waitFor(() => {
-      expect(screen.getByText('Test Product')).toBeInTheDocument();
+      expect(screen.getAllByText('Test Product').length).toBeGreaterThan(0);
     });
   });
 });

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
 from brace_backend.core.exceptions import ValidationError
@@ -8,8 +7,6 @@ from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.order import Order
 from brace_backend.domain.product import ProductVariant
 from brace_backend.schemas.orders import OrderCreate, OrderRead
-
-MONEY_QUANT = Decimal("0.01")
 
 
 class OrderService:
@@ -33,7 +30,8 @@ class OrderService:
             raise ValidationError("Cannot create an order with an empty cart.")
 
         locked_variants: dict[tuple[UUID, str], ProductVariant] = {}
-        total_amount = Decimal("0.00")
+        total_amount_minor_units = 0
+        # PRINCIPAL-NOTE: Checkout math never leaves kopeks to guarantee deterministic sums.
 
         for item in cart_items:
             key = (item.product_id, item.size)
@@ -48,26 +46,24 @@ class OrderService:
                 raise ValidationError("Insufficient stock for the requested product.")
             variant.stock -= item.quantity
 
-            unit_price = Decimal(item.unit_price)
-            line_total = Decimal(item.quantity) * unit_price
-            total_amount += line_total
+            line_total = item.quantity * item.unit_price_minor_units
+            total_amount_minor_units += line_total
 
         order = await uow.orders.create(
             user_id=user_id, shipping_address=payload.shipping_address, note=payload.note
         )
 
         for item in cart_items:
-            unit_price = Decimal(item.unit_price)
             await uow.orders.add_item(
                 order,
                 product_id=item.product_id,
                 size=item.size,
                 quantity=item.quantity,
-                unit_price=unit_price,
+                unit_price_minor_units=item.unit_price_minor_units,
             )
             await uow.session.delete(item)
 
-        order.total_amount = total_amount.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
+        order.total_amount_minor_units = total_amount_minor_units
         await uow.commit()
         await uow.session.refresh(order, attribute_names=["items"])
         return self._to_schema(order)
@@ -76,7 +72,7 @@ class OrderService:
         return OrderRead(
             id=order.id,
             status=order.status,
-            total_amount=self._serialize_money(order.total_amount),
+            total_minor_units=order.total_amount_minor_units,
             shipping_address=order.shipping_address,
             note=order.note,
             created_at=order.created_at,
@@ -86,16 +82,11 @@ class OrderService:
                     "product_id": item.product_id,
                     "size": item.size,
                     "quantity": item.quantity,
-                    "unit_price": self._serialize_money(item.unit_price),
+                    "unit_price_minor_units": item.unit_price_minor_units,
                 }
                 for item in order.items
             ],
         )
-
-    def _serialize_money(self, value: Decimal | float | int) -> str:
-        decimal_value = value if isinstance(value, Decimal) else Decimal(str(value))
-        quantized = decimal_value.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
-        return format(quantized, "f")
 
 
 order_service = OrderService()

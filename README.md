@@ -35,7 +35,7 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
    ```bash
    cp .env.example .env
    ```
-   Populate `BRACE_TELEGRAM_BOT_TOKEN`, database credentials, and the `VITE_*` URLs that the frontend will embed.
+   Populate `BRACE_TELEGRAM_BOT_TOKEN`, database credentials, and the `VITE_*` URLs that the frontend will embed. The backend now auto-loads `.env` from the monorepo root even when commands are executed inside `packages/backend`; override the lookup via `BRACE_ENV_FILE=/path/to/.env` if you keep secrets elsewhere.  # PRINCIPAL-FIX
 2. **Install toolchains**
    ```bash
    make backend-install frontend-install
@@ -72,7 +72,7 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
    # or directly:
    docker compose -f infra/docker-compose.prod.yml --profile smoke up --build smoke-tests
    ```
-   The smoke runner resets PostgreSQL, seeds fixtures, hits all public APIs, checks the frontend, and exits non‑zero on any failure.
+   The smoke runner resets PostgreSQL, seeds fixtures, hits all public APIs, checks the frontend, and exits non‑zero on any failure. Set `SMOKE_DATABASE_URL` to a dedicated `brace_smoke` database; the runner now refuses to touch databases whose name does not end with `_smoke` to avoid truncating production data.  # PRINCIPAL-FIX
 
 ## Environment Variables
 `.env.example` contains sane defaults; override sensitive values per environment.
@@ -86,6 +86,7 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
 | `BRACE_CORS_ORIGINS` | Allowed origins array | `["http://localhost","http://localhost:4173"]` |
 | `VITE_BACKEND_URL` | API base URL compiled into the frontend bundle | `http://localhost:8000` |
 | `VITE_APP_URL` | Public frontend URL for Telegram `/setdomain` | `http://localhost` |
+| `SMOKE_DATABASE_URL` | Async DSN **dedicated** to smoke tests (must contain `brace_smoke`) | `postgresql+asyncpg://postgres:postgres@localhost:5432/brace_smoke` |
 | `POSTGRES_USER/PASSWORD/DB` | Docker Compose Postgres bootstrap | `postgres / postgres / brace` |
 
 ## API Surface

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class OrderItemRead(BaseModel):
@@ -11,7 +11,7 @@ class OrderItemRead(BaseModel):
     product_id: UUID
     size: str
     quantity: int
-    unit_price: str
+    unit_price_minor_units: int
 
 
 class OrderRead(BaseModel):
@@ -19,7 +19,7 @@ class OrderRead(BaseModel):
 
     id: UUID
     status: str
-    total_amount: str
+    total_minor_units: int
     shipping_address: str | None = None
     note: str | None = None
     created_at: datetime
@@ -27,5 +27,5 @@ class OrderRead(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    shipping_address: str | None = None
+    shipping_address: str | None = Field(default=None, max_length=512)  # PRINCIPAL-FIX
     note: str | None = None

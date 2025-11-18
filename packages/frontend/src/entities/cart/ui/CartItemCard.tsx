@@ -1,5 +1,7 @@
 import { memo } from 'react';
 
+import { formatPrice } from '@/shared/lib/money';
+
 import type { CartItem } from '../model/types';
 
 type Props = {
@@ -24,7 +26,9 @@ export const CartItemCard = memo(({ item, actions }: Props) => {
         <p className="text-sm text-slate-400">
           Размер {item.size} · {item.quantity} шт.
         </p>
-        <p className="text-lg font-semibold">{item.quantity * item.unit_price} ₽</p>
+        <p className="text-lg font-semibold">
+          {formatPrice(item.quantity * item.unit_price_minor_units)}
+        </p>
       </div>
       {actions}
     </div>
