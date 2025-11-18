@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { apiClient } from '@/shared/api/httpClient';
+
 import { fetchProductById, fetchProducts } from './productApi';
 
 vi.mock('@/shared/api/httpClient', () => ({

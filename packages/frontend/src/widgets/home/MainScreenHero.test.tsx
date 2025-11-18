@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { MainScreenHero } from '@/components/main-screen/MainScreenHero';
 import { renderWithProviders } from '@/tests/renderWithProviders';
-import { rest, server } from '@/tests/server';
+import { HttpResponse, http, server } from '@/tests/server';
+import { MainScreenHero } from '@/widgets/home/MainScreenHero';
 
 const products = [
   {
@@ -48,14 +48,13 @@ const banners = {
 
 const registerBannerHandler = () =>
   server.use(
-    rest.get('http://localhost/api/banners', (_req, res, ctx) =>
-      res(ctx.json({ data: banners, error: null })),
+    http.get('http://localhost/api/banners', () =>
+      HttpResponse.json({ data: banners, error: null }),
     ),
   );
 
 describe('MainScreenHero', () => {
   it('switches banners via controls', async () => {
-    // PRINCIPAL-FIX: MSW test
     registerBannerHandler();
     render(renderWithProviders(<MainScreenHero products={products} />));
 
@@ -70,10 +69,10 @@ describe('MainScreenHero', () => {
   it('submits size calculation form', async () => {
     registerBannerHandler();
     server.use(
-      rest.post('http://localhost/api/size/calc', async (req, res, ctx) => {
-        const body = await req.json();
+      http.post('http://localhost/api/size/calc', async ({ request }) => {
+        const body = await request.json();
         expect(body).toEqual({ waist: 90, hip: 100 });
-        return res(ctx.json({ data: { size: 'M' }, error: null }));
+        return HttpResponse.json({ data: { size: 'M' }, error: null });
       }),
     );
 
@@ -88,3 +87,4 @@ describe('MainScreenHero', () => {
     });
   });
 });
+

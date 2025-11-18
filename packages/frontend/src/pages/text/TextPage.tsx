@@ -1,6 +1,6 @@
+import DOMPurify from 'dompurify';
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import DOMPurify from 'dompurify';
 
 const contentMap: Record<string, { title: string; body: string }> = {
   privacy: {

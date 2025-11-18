@@ -5,9 +5,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        accent: '#111418',
-        primary: '#0f172a',
-        secondary: '#94a3b8',
+        'gray-light': '#D9D9D9',
+        'gray-dark': '#29292B',
+        'blue-dark': '#000043',
+        'blue-mid': '#1F1F4B',
+        sand: '#F3EEE2',
+        'sand-dark': '#E0D6C2',
+        'accent-peach': '#FF6B6B',
+        'accent-orange': '#FFB347',
+        'brand-black': '#05050A',
+      },
+      fontFamily: {
+        brand: ['"Inter"', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        '3xl': '1.75rem',
       },
     },
   },

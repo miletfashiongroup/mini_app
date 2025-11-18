@@ -1,28 +1,19 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 
-import { fetchCart, cartKeys } from '@/entities/cart/api/cartApi';
 import type { Order } from '@/entities/order/model/types';
+import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
+import { useCartQuery } from '@/shared/api/queries';
+import { useToast } from '@/shared/hooks/useToast';
+import { formatPrice } from '@/shared/lib/money';
+import { ErrorState } from '@/shared/ui/ErrorState';
+import { Skeleton } from '@/shared/ui/Skeleton';
 import { CartList } from '@/widgets/cart/CartList';
 import { CartSummary } from '@/widgets/cart/CartSummary';
-import { formatPrice } from '@/shared/lib/money';
-import { Skeleton } from '@/shared/ui/Skeleton';
-import { ErrorState } from '@/shared/ui/ErrorState';
-import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
-import { useToast } from '@/shared/hooks/useToast';
 
 export const CartPage = () => {
   const toast = useToast();
   const [lastOrder, setLastOrder] = useState<Order | null>(null);
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: cartKeys.all,
-    queryFn: fetchCart,
-  });
+  const { data, isLoading, isError, refetch } = useCartQuery();
   const createOrder = useCreateOrderMutation();
 
   useEffect(() => {

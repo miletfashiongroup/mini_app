@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import { AddToCartForm } from '@/features/cart/add-to-cart/ui/AddToCartForm';
+import { useProductDetails } from '@/pages/product/useProductDetails';
 import { formatPrice } from '@/shared/lib/money';
 import { Skeleton } from '@/shared/ui/Skeleton';
-import { useProductDetails } from '@/pages/product/useProductDetails';
 
 export const ProductPage = () => {
   const { productId } = useParams();

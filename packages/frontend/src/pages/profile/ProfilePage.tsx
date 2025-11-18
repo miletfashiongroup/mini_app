@@ -1,13 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-
-import { fetchProfile, userKeys } from '@/entities/user/api/userApi';
+import { useUserProfileQuery } from '@/shared/api/queries';
 import { Skeleton } from '@/shared/ui/Skeleton';
 
 export const ProfilePage = () => {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: userKeys.profile,
-    queryFn: fetchProfile,
-  });
+  const { data, isLoading, isError } = useUserProfileQuery();
 
   if (isLoading) {
     return <Skeleton className="h-32 rounded-2xl" />;

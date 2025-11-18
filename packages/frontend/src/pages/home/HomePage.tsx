@@ -1,23 +1,14 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 
-import { fetchProducts, productKeys } from '@/entities/product/api/productApi';
 import type { Product } from '@/entities/product/model/types';
-import { MainScreenHero } from '@/components/main-screen';
 import { ProductCard } from '@/entities/product/ui/ProductCard';
 import { ProductCardSkeleton } from '@/entities/product/ui/ProductCardSkeleton';
+import { useProductsQuery } from '@/shared/api/queries';
 import { ErrorState } from '@/shared/ui/ErrorState';
+import { MainScreenHero } from '@/widgets/home';
 
 export const HomePage = () => {
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: productKeys.list(),
-    queryFn: () => fetchProducts(),
-  });
+  const { data, isLoading, isError, refetch } = useProductsQuery();
 
   const featured: Product[] = (data?.items ?? []).slice(0, 4);
 

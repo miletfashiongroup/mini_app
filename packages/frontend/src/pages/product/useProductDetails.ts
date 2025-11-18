@@ -1,13 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-
-import { fetchProductById, productKeys } from '@/entities/product/api/productApi';
-import type { Product } from '@/entities/product/model/types';
+import { useProductQuery } from '@/shared/api/queries';
 
 export const useProductDetails = (productId?: string) => {
-  const queryKey = productId ? productKeys.detail(productId) : productKeys.detail('unknown');
-  return useQuery<Product>({
-    queryKey,
-    queryFn: () => fetchProductById(productId ?? ''),
+  return useProductQuery(productId ?? '', {
     enabled: Boolean(productId),
   });
 };

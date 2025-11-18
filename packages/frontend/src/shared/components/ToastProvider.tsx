@@ -1,6 +1,6 @@
-import { createPortal } from 'react-dom';
 import { nanoid } from 'nanoid';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 type ToastVariant = 'success' | 'error' | 'info';
 

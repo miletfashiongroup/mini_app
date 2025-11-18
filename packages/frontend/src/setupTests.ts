@@ -11,7 +11,7 @@ vi.mock('@twa-dev/sdk', () => ({
   default: webAppMock,
 }));
 
-window.__BRACE_ENV__ = { API_BASE_URL: 'http://localhost' };
+window.__BRACE_ENV__ = { API_BASE_URL: 'http://localhost', APP_URL: 'http://localhost/app' };
 
 beforeAll(() => server.listen());
 afterEach(() => server.resetHandlers());

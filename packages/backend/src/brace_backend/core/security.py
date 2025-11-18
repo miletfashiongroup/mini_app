@@ -41,7 +41,7 @@ class TelegramInitData:
         return str(self.data.get("nonce", ""))
 
 
-TELEGRAM_MAX_AGE_SECONDS = 60 * 5
+TELEGRAM_MAX_AGE_SECONDS = 60 * 60
 
 
 def parse_init_data(raw: str) -> dict[str, Any]:

@@ -1,21 +1,11 @@
-import { useQuery } from '@tanstack/react-query';
-
-import { fetchProducts, productKeys } from '@/entities/product/api/productApi';
 import type { Product } from '@/entities/product/model/types';
 import { ProductCard } from '@/entities/product/ui/ProductCard';
 import { ProductCardSkeleton } from '@/entities/product/ui/ProductCardSkeleton';
+import { useProductsQuery } from '@/shared/api/queries';
 import { ErrorState } from '@/shared/ui/ErrorState';
 
 export const ProductGrid = () => {
-  const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: productKeys.list(),
-    queryFn: () => fetchProducts(),
-  });
+  const { data, isLoading, isError, refetch } = useProductsQuery();
 
   if (isLoading) {
     return (
