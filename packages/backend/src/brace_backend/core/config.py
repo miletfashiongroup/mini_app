@@ -81,7 +81,12 @@ class Settings(BaseSettings):
 
         return ensure_sync_dsn(self.database_url)
 
-    cors_origins: list[str] = ["http://localhost", "http://localhost:4173"]
+    cors_origins: list[str] = [
+        "http://localhost", 
+        "http://localhost:4173",
+        "http://localhost:5173",
+        "https://brace-1-frontend.onrender.com"  # ← ДОБАВЬ ЭТО
+    ]
 
     rate_limit: str = "60/minute"
 
