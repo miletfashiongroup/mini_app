@@ -35,6 +35,13 @@ instance.interceptors.response.use(
     }
 
     const payload = error.response?.data;
+    if (status === 403 && payload?.error?.type === 'access_denied') {
+      throw new ApiError(
+        'Проблема с авторизацией в Telegram. Закройте и снова откройте мини-приложение из Telegram.',
+        'access_denied',
+        status,
+      );
+    }
     if (payload?.error) {
       throw new ApiError(payload.error.message, payload.error.type, status);
     }

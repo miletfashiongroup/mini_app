@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import logging
 import threading
 import time
 from json import JSONDecodeError
@@ -12,6 +11,7 @@ from urllib.parse import parse_qsl
 
 from brace_backend.core.config import settings
 from brace_backend.core.exceptions import AccessDeniedError
+from brace_backend.core.logging import logger
 
 try:  # pragma: no cover - import guard for optional redis dependency
     from redis import Redis
@@ -20,15 +20,12 @@ except Exception:  # pragma: no cover
     Redis = None  # type: ignore[assignment]
     RedisError = Exception  # type: ignore[assignment]
 
-logger = logging.getLogger(__name__)
-
 
 def _log_auth_debug(message: str, **extra: Any) -> None:
-    """Emit structured Telegram auth debug logs when explicitly enabled."""
-    if not getattr(settings, "telegram_debug_logging", False):
-        return
+    """Emit structured Telegram auth debug logs (emergency mode)."""
     safe_extra = {key: value for key, value in extra.items() if value is not None}
-    logger.info("TELEGRAM AUTH DEBUG | %s | %s", message, safe_extra)
+    # loguru style: дополнительные поля через kwargs
+    logger.bind(auth="telegram", **safe_extra).info(f"TELEGRAM AUTH DEBUG: {message}")
 
 
 class TelegramInitData:
@@ -116,9 +113,6 @@ def validate_payload_schema(payload: dict[str, Any]) -> None:
         raise AccessDeniedError("Telegram init data user payload is missing.")
     if "id" not in user:
         raise AccessDeniedError("Telegram init data user payload is invalid.")
-    nonce = payload.get("nonce")
-    if not isinstance(nonce, str) or not nonce:
-        raise AccessDeniedError("Telegram init data nonce is required.")
 
 
 class NonceReplayProtector:
@@ -257,15 +251,22 @@ def verify_init_data(init_data: str) -> TelegramInitData:
         _log_auth_debug("timestamp_in_future", auth_date=auth_date, now=int(now))
         raise AccessDeniedError("Telegram init data timestamp is in the future.")
 
-    nonce = str(parsed.get("nonce", ""))
-    _replay_protector.ensure_unique(nonce)
-    _log_auth_debug("nonce_ok", nonce=nonce)
+    nonce = str(parsed.get("nonce") or parsed.get("query_id") or "")
+    if nonce:
+        _replay_protector.ensure_unique(nonce)
+        _log_auth_debug("nonce_ok", nonce=nonce)
+    else:
+        _log_auth_debug(
+            "nonce_missing_replay_skipped",
+            has_nonce=bool(parsed.get("nonce")),
+            has_query_id=bool(parsed.get("query_id")),
+        )
 
     return TelegramInitData(parsed)
 
 
 async def validate_request(init_data_header: str | None) -> TelegramInitData:
-    """Verify Telegram init data header or raise a structured error."""
+    """Verify Telegram init data header or use a controlled emergency bypass."""
     if settings.telegram_dev_mode_enabled:
         mock_payload = {
             "user": settings.telegram_dev_user,
@@ -274,9 +275,34 @@ async def validate_request(init_data_header: str | None) -> TelegramInitData:
         }
         # PRINCIPAL-NOTE: Dev shortcuts only run when both env + explicit flags allow so prod is safe.
         return TelegramInitData(mock_payload)
-    if not init_data_header:
-        raise AccessDeniedError("X-Telegram-Init-Data header is required.")
-    return verify_init_data(init_data_header)
+    try:
+        if not init_data_header:
+            raise AccessDeniedError("X-Telegram-Init-Data header is required.")
+        return verify_init_data(init_data_header)
+    except AccessDeniedError as exc:
+        _log_auth_debug(
+            "validate_request_failed",
+            reason=str(exc),
+            has_header=bool(init_data_header),
+            emergency_bypass=settings.telegram_emergency_bypass,
+        )
+        if settings.telegram_emergency_bypass:
+            now = int(time.time())
+            mock_payload = {
+                "user": {
+                    "id": 999_999_999,
+                    "first_name": "Emergency",
+                    "username": "emergency_user",
+                },
+                "auth_date": now,
+                "nonce": f"emergency-{now}",
+            }
+            _log_auth_debug(
+                "validate_request_emergency_bypass",
+                mock_user_id=mock_payload["user"]["id"],
+            )
+            return TelegramInitData(mock_payload)
+        raise
 
 
 __all__ = [

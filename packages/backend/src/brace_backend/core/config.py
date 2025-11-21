@@ -66,6 +66,7 @@ class Settings(BaseSettings):
         "language_code": "en",
     }
     telegram_debug_logging: bool = False
+    telegram_emergency_bypass: bool = False
 
     @property
     def telegram_dev_mode_enabled(self) -> bool:
