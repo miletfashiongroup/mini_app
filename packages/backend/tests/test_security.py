@@ -12,7 +12,7 @@ from brace_backend.core.security import (
     TELEGRAM_MAX_AGE_SECONDS,
     NonceReplayProtector,
     TelegramInitData,
-    build_data_check_string,
+    build_signature,
     parse_init_data,
     validate_request,
     verify_init_data,
@@ -60,13 +60,7 @@ def build_init_header(
 ) -> str:
     """Construct raw init data string trusted by verify_init_data."""
     payload = {"auth_date": auth_date, "user": user, "nonce": nonce or secrets.token_hex(8)}
-    check_string = build_data_check_string(payload.copy())
-
-    import hashlib
-    import hmac
-
-    secret_key = hashlib.sha256(secret.encode()).digest()
-    digest = hmac.new(secret_key, msg=check_string.encode(), digestmod=hashlib.sha256).hexdigest()
+    digest = build_signature(payload.copy(), secret_token=secret)
     encoded_user = quote(json.dumps(user))
     return f"auth_date={auth_date}&nonce={payload['nonce']}&user={encoded_user}&hash={digest}"
 
@@ -120,12 +114,7 @@ def test_verify_init_data_future_timestamp():
 def test_verify_init_data_requires_nonce():
     """Missing nonces make replay protection impossible."""
     payload = {"auth_date": int(time.time()), "user": {"id": 1}}
-    check_string = build_data_check_string(payload.copy())
-    import hashlib
-    import hmac
-
-    secret_key = hashlib.sha256(b"unit-test-secret").digest()
-    digest = hmac.new(secret_key, msg=check_string.encode(), digestmod=hashlib.sha256).hexdigest()
+    digest = build_signature(payload.copy(), secret_token="unit-test-secret")
     raw = f"auth_date={payload['auth_date']}&user={quote(json.dumps(payload['user']))}&hash={digest}"
     with pytest.raises(AccessDeniedError):
         verify_init_data(raw)
