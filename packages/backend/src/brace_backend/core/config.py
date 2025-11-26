@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from pydantic import AliasChoices, Field, ValidationError, model_validator
+from pydantic import AliasChoices, Field, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _MONOREPO_ROOT = Path(__file__).resolve().parents[4]
@@ -30,25 +31,58 @@ class Settings(BaseSettings):
     """Strongly-typed application settings that are shared across ASGI, workers, and tooling."""
 
     app_name: str = "BRACE Backend"
-    environment: str = "development"
-    log_level: str = "INFO"
-    log_json: bool = True
-    log_format: str = (
-        "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | trace_id={extra[trace_id]} | {message}"
+    environment: str = Field(
+        default="development",
+        description="Application environment: development, staging, production",
     )
-    trace_header: str = "X-Trace-Id"
-    allow_dev_mode: bool = False  # PRINCIPAL-NOTE: Dev-only shortcuts require explicit opt-in.
+    log_level: str = Field(
+        default="INFO",
+        description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL",
+    )
+    log_json: bool = Field(
+        default=True,
+        description="Use JSON format for logs (recommended for production)",
+    )
+    log_format: str = Field(
+        default="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level} | trace_id={extra[trace_id]} | {message}",
+        description="Log format string (used when log_json=False)",
+    )
+    trace_header: str = Field(
+        default="X-Trace-Id",
+        description="HTTP header name for trace ID",
+    )
+    allow_dev_mode: bool = Field(
+        default=False,
+        description="Allow dev mode shortcuts (NEVER enable in production!)",
+    )
 
     # Psycopg's async driver ships pre-built wheels, so it stays compatible with Python 3.14+
     # without requiring users to compile asyncpg locally.
     database_url: str = Field(
         default="postgresql+psycopg_async://postgres:postgres@db:5432/brace",
         validation_alias=AliasChoices("BRACE_DATABASE_URL", "DATABASE_URL"),
+        description="PostgreSQL connection string (async driver)",
     )
-    database_echo: bool = False
-    database_pool_size: int = 5
-    database_max_overflow: int = 5
-    redis_url: str = "memory://"
+    database_echo: bool = Field(
+        default=False,
+        description="Echo SQL queries to logs (NEVER enable in production!)",
+    )
+    database_pool_size: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Database connection pool size",
+    )
+    database_max_overflow: int = Field(
+        default=5,
+        ge=0,
+        le=50,
+        description="Maximum overflow connections in pool",
+    )
+    redis_url: str = Field(
+        default="memory://",
+        description="Redis URL for rate limiting (use 'memory://' for in-memory fallback)",
+    )
 
     # ### IMPORTANT — Place BRACE_TELEGRAM_BOT_TOKEN in production environments:
     # # .env
@@ -69,10 +103,22 @@ class Settings(BaseSettings):
     telegram_emergency_bypass: bool = False
 
     @property
+    def is_production(self) -> bool:
+        """Check if running in production environment."""
+        return self.environment.lower() == "production"
+
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development environment."""
+        return self.environment.lower() == "development"
+
+    @property
     def telegram_dev_mode_enabled(self) -> bool:
         """Only allow Telegram WebApp dev payloads in trusted developer environments."""
+        if self.is_production:
+            return False  # Never allow dev mode in production
         return (
-            self.environment.lower() == "development"
+            self.is_development
             and self.allow_dev_mode
             and self.telegram_dev_mode
         )
@@ -83,19 +129,48 @@ class Settings(BaseSettings):
 
         return ensure_sync_dsn(self.database_url)
 
-    cors_origins: list[str] = [
-        "http://localhost", 
-        "http://localhost:4173",
-        "http://localhost:5173",
-        "https://brace-1-frontend.onrender.com"  # ← ДОБАВЬ ЭТО
-    ]
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost",
+            "http://localhost:4173",
+            "http://localhost:5173",
+            "https://brace-1-frontend.onrender.com",
+        ],
+        description="Allowed CORS origins (JSON array string or comma-separated)",
+    )
 
-    rate_limit: str = "60/minute"
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v: Any) -> list[str]:
+        """Parse CORS origins from JSON array string or comma-separated string."""
+        if isinstance(v, str):
+            # Try to parse as JSON array first
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return [str(origin) for origin in parsed]
+            except (json.JSONDecodeError, TypeError):
+                pass
+            # Fallback to comma-separated string
+            if "," in v:
+                return [origin.strip() for origin in v.split(",") if origin.strip()]
+            # Single value
+            return [v.strip()] if v.strip() else []
+        if isinstance(v, list):
+            return [str(origin) for origin in v]
+        return v if v else []
+
+    rate_limit: str = Field(
+        default="60/minute",
+        description="Rate limit string (e.g., '60/minute', '100/hour')",
+    )
 
     model_config = SettingsConfigDict(
         env_file=_resolve_env_files(),  # PRINCIPAL-FIX: load monorepo-root .env consistently
         env_prefix="BRACE_",
         extra="ignore",
+        case_sensitive=False,  # Allow case-insensitive env vars
+        validate_assignment=True,  # Validate on assignment
     )
 
     @model_validator(mode="after")
