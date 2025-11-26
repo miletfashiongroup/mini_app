@@ -182,12 +182,16 @@ class Settings(BaseSettings):
                 "Telegram bot token is required. "
                 "Set BRACE_TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN."
             )
-        self.telegram_bot_token = bot_token
+        # Use object.__setattr__ to bypass validate_assignment and avoid recursion
+        if self.telegram_bot_token != bot_token:
+            object.__setattr__(self, "telegram_bot_token", bot_token)
 
         webapp_secret = (
             self.telegram_webapp_secret or os.getenv("TELEGRAM_WEBAPP_SECRET") or ""
         ).strip()
-        self.telegram_webapp_secret = webapp_secret or None
+        # Use object.__setattr__ to bypass validate_assignment and avoid recursion
+        if self.telegram_webapp_secret != webapp_secret:
+            object.__setattr__(self, "telegram_webapp_secret", webapp_secret or None)
         return self
 
 
