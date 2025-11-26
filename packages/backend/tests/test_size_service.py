@@ -1,5 +1,4 @@
 import pytest
-
 from brace_backend.schemas.main_screen import SizeCalculationRequest
 from brace_backend.services.size_service import size_service
 

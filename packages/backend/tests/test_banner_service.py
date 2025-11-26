@@ -1,5 +1,4 @@
 import pytest
-
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.banner import Banner
 from brace_backend.services.banner_service import banner_service

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
+import { vi } from 'vitest';
 
 import type { Product } from '@/entities/product/model/types';
 import { useProductSelectionStore } from '@/shared/state/productSelectionStore';

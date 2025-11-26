@@ -1,9 +1,9 @@
 import asyncio
 import uuid
 
+from brace_backend.core.money import to_minor_units
 from brace_backend.db.session import session_manager
 from brace_backend.domain import Product, ProductVariant
-from brace_backend.core.money import to_minor_units
 from sqlalchemy import select
 
 SEED_NAMESPACE = uuid.UUID("ac4d53b1-d996-4d06-9c90-25f6a16aaf7f")  # PRINCIPAL-FIX: deterministic ids

@@ -23,10 +23,12 @@ export type ApiSuccess<T> = {
 
 export class ApiError extends Error {
   type: string;
+  status?: number;
 
-  constructor(message: string, type: string) {
+  constructor(message: string, type: string, status?: number) {
     super(message);
     this.name = 'ApiError';
     this.type = type;
+    this.status = status;
   }
 }

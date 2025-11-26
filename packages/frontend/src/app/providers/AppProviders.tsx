@@ -1,12 +1,12 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { BrowserRouter } from 'react-router-dom';
 import { useEffect } from 'react';
+import { BrowserRouter } from 'react-router-dom';
 
 import { ToastProvider } from '@/shared/components/ToastProvider';
 import { useToast } from '@/shared/hooks/useToast';
-import { registerQueryErrorHandler, unregisterQueryErrorHandler } from '@/shared/lib/queryError';
 import { queryClient } from '@/shared/lib/queryClient';
+import { registerQueryErrorHandler, unregisterQueryErrorHandler } from '@/shared/lib/queryError';
 
 type Props = {
   children: React.ReactNode;

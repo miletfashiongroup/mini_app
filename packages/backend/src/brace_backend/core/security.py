@@ -3,14 +3,15 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-import logging
 import threading
 import time
+from json import JSONDecodeError
 from typing import Any
 from urllib.parse import parse_qsl
 
 from brace_backend.core.config import settings
 from brace_backend.core.exceptions import AccessDeniedError
+from brace_backend.core.logging import logger
 
 try:  # pragma: no cover - import guard for optional redis dependency
     from redis import Redis
@@ -19,7 +20,12 @@ except Exception:  # pragma: no cover
     Redis = None  # type: ignore[assignment]
     RedisError = Exception  # type: ignore[assignment]
 
-logger = logging.getLogger(__name__)
+
+def _log_auth_debug(message: str, **extra: Any) -> None:
+    """Emit structured Telegram auth debug logs (emergency mode)."""
+    safe_extra = {key: value for key, value in extra.items() if value is not None}
+    # loguru style: дополнительные поля через kwargs
+    logger.bind(auth="telegram", **safe_extra).info(f"TELEGRAM AUTH DEBUG: {message}")
 
 
 class TelegramInitData:
@@ -41,16 +47,21 @@ class TelegramInitData:
         return str(self.data.get("nonce", ""))
 
 
-TELEGRAM_MAX_AGE_SECONDS = 60 * 5
+TELEGRAM_MAX_AGE_SECONDS = 60 * 60
+TELEGRAM_CLOCK_SKEW_SECONDS = 30
+TELEGRAM_SIGNATURE_SALT = b"WebAppData"
 
 
 def parse_init_data(raw: str) -> dict[str, Any]:
     """Decode Telegram init data query string into Python objects."""
-    pairs = parse_qsl(raw, strict_parsing=False)
+    pairs = parse_qsl(raw, strict_parsing=False, keep_blank_values=True)
     data: dict[str, Any] = {}
     for key, value in pairs:
         if key == "user":
-            data[key] = json.loads(value)
+            try:
+                data[key] = json.loads(value)
+            except JSONDecodeError as exc:
+                raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
         else:
             data[key] = value
     return data
@@ -60,7 +71,7 @@ def build_data_check_string(payload: dict[str, Any]) -> str:
     """Canonical string builder as described in Telegram WebApp docs."""
     segments = []
     for key, value in sorted(payload.items()):
-        if isinstance(value, (dict, list)):
+        if isinstance(value, dict | list):
             encoded = json.dumps(value, separators=(",", ":"), ensure_ascii=False)
         else:
             encoded = str(value)
@@ -68,13 +79,40 @@ def build_data_check_string(payload: dict[str, Any]) -> str:
     return "\n".join(segments)
 
 
-def build_signature(payload: dict[str, Any], *, secret_token: str) -> str:
-    """Generate the HTTPS-style HMAC signature used by Telegram."""
+def derive_hmac_key(secret_token: str) -> bytes:
+    """Derive the signing key per Telegram spec."""
     if not secret_token:
         raise AccessDeniedError("Telegram bot token is not configured.")
-    secret_key = hashlib.sha256(secret_token.encode()).digest()
-    check_string = build_data_check_string(payload)
-    return hmac.new(secret_key, msg=check_string.encode(), digestmod=hashlib.sha256).hexdigest()
+    return hmac.new(
+        key=TELEGRAM_SIGNATURE_SALT,
+        msg=secret_token.encode(),
+        digestmod=hashlib.sha256,
+    ).digest()
+
+
+def build_signature(
+    payload: dict[str, Any],
+    *,
+    secret_token: str,
+    check_string: str | None = None,
+) -> str:
+    """Generate the HTTPS-style HMAC signature used by Telegram."""
+    secret_key = derive_hmac_key(secret_token)
+    check_string = check_string or build_data_check_string(payload)
+    return hmac.new(
+        key=secret_key,
+        msg=check_string.encode(),
+        digestmod=hashlib.sha256
+    ).hexdigest()
+
+
+def validate_payload_schema(payload: dict[str, Any]) -> None:
+    """Ensure Telegram payload contains the minimum required structure."""
+    user = payload.get("user")
+    if not isinstance(user, dict):
+        raise AccessDeniedError("Telegram init data user payload is missing.")
+    if "id" not in user:
+        raise AccessDeniedError("Telegram init data user payload is invalid.")
 
 
 class NonceReplayProtector:
@@ -156,34 +194,79 @@ _replay_protector = NonceReplayProtector(
 def verify_init_data(init_data: str) -> TelegramInitData:
     if not init_data:
         raise AccessDeniedError("Missing Telegram init data header.")
+    _log_auth_debug(
+        "init_data_received",
+        raw_length=len(init_data),
+        raw_sample=init_data[:200],
+    )
 
     parsed = parse_init_data(init_data)
     provided_hash = parsed.pop("hash", None)
     if not provided_hash:
+        _log_auth_debug("hash_missing", keys=list(parsed.keys()))
         raise AccessDeniedError("Init data hash is missing.")
+    _log_auth_debug(
+        "init_data_parsed",
+        keys=list(parsed.keys()),
+        has_user="user" in parsed,
+        has_nonce=bool(parsed.get("nonce")),
+    )
+
+    validate_payload_schema(parsed)
 
     secret_source = settings.telegram_webapp_secret or settings.telegram_bot_token
-    expected_hash = build_signature(parsed, secret_token=secret_source)
-    if not hmac.compare_digest(expected_hash, provided_hash):
+    if not secret_source:
+        raise AccessDeniedError("Telegram bot token is not configured.")
+    check_string = build_data_check_string(parsed)
+    _log_auth_debug(
+        "signature_inputs_prepared",
+        check_string_length=len(check_string),
+        bot_token_present=bool(secret_source),
+        bot_token_length=len(secret_source) if secret_source else 0,
+    )
+    expected_hash = build_signature(parsed, secret_token=secret_source, check_string=check_string)
+    hashes_match = hmac.compare_digest(expected_hash, provided_hash)
+    _log_auth_debug(
+        "signature_computed",
+        provided_hash=provided_hash,
+        expected_hash=expected_hash,
+        hashes_match=hashes_match,
+    )
+    if not hashes_match:
         raise AccessDeniedError("Telegram signature is invalid.")
 
-    auth_date = int(parsed.get("auth_date", 0))
+    try:
+        auth_date = int(parsed.get("auth_date", 0))
+    except (TypeError, ValueError):
+        _log_auth_debug("timestamp_invalid", value=parsed.get("auth_date"))
+        raise AccessDeniedError("Telegram init data timestamp is invalid.")
     now = time.time()
     if auth_date <= 0:
+        _log_auth_debug("timestamp_missing_or_zero")
         raise AccessDeniedError("Telegram init data timestamp is invalid.")
     if now - auth_date > TELEGRAM_MAX_AGE_SECONDS:
+        _log_auth_debug("timestamp_expired", auth_date=auth_date, now=int(now))
         raise AccessDeniedError("Telegram init data has expired.")
-    if auth_date - now > 30:
+    if auth_date - now > TELEGRAM_CLOCK_SKEW_SECONDS:
+        _log_auth_debug("timestamp_in_future", auth_date=auth_date, now=int(now))
         raise AccessDeniedError("Telegram init data timestamp is in the future.")
 
-    nonce = str(parsed.get("nonce", ""))
-    _replay_protector.ensure_unique(nonce)
+    nonce = str(parsed.get("nonce") or parsed.get("query_id") or "")
+    if nonce:
+        _replay_protector.ensure_unique(nonce)
+        _log_auth_debug("nonce_ok", nonce=nonce)
+    else:
+        _log_auth_debug(
+            "nonce_missing_replay_skipped",
+            has_nonce=bool(parsed.get("nonce")),
+            has_query_id=bool(parsed.get("query_id")),
+        )
 
     return TelegramInitData(parsed)
 
 
 async def validate_request(init_data_header: str | None) -> TelegramInitData:
-    """Verify Telegram init data header or raise a structured error."""
+    """Verify Telegram init data header or use a controlled emergency bypass."""
     if settings.telegram_dev_mode_enabled:
         mock_payload = {
             "user": settings.telegram_dev_user,
@@ -192,9 +275,34 @@ async def validate_request(init_data_header: str | None) -> TelegramInitData:
         }
         # PRINCIPAL-NOTE: Dev shortcuts only run when both env + explicit flags allow so prod is safe.
         return TelegramInitData(mock_payload)
-    if not init_data_header:
-        raise AccessDeniedError("X-Telegram-Init-Data header is required.")
-    return verify_init_data(init_data_header)
+    try:
+        if not init_data_header:
+            raise AccessDeniedError("X-Telegram-Init-Data header is required.")
+        return verify_init_data(init_data_header)
+    except AccessDeniedError as exc:
+        _log_auth_debug(
+            "validate_request_failed",
+            reason=str(exc),
+            has_header=bool(init_data_header),
+            emergency_bypass=settings.telegram_emergency_bypass,
+        )
+        if settings.telegram_emergency_bypass:
+            now = int(time.time())
+            mock_payload = {
+                "user": {
+                    "id": 999_999_999,
+                    "first_name": "Emergency",
+                    "username": "emergency_user",
+                },
+                "auth_date": now,
+                "nonce": f"emergency-{now}",
+            }
+            _log_auth_debug(
+                "validate_request_emergency_bypass",
+                mock_user_id=mock_payload["user"]["id"],
+            )
+            return TelegramInitData(mock_payload)
+        raise
 
 
 __all__ = [

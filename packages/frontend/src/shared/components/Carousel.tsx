@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, PlayCircleIcon } from '@heroicons/react/24/outline';
+import { useMemo, useState } from 'react';
 
 export const Carousel = () => {
   const slides = useMemo(

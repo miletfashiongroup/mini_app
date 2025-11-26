@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { ProductGrid } from '@/widgets/catalog/ProductGrid';
-import { rest, server } from '@/tests/server';
 import { renderWithProviders } from '@/tests/renderWithProviders';
+import { HttpResponse, http, server } from '@/tests/server';
+import { ProductGrid } from '@/widgets/catalog/ProductGrid';
 
 const productResponse = {
   items: [
@@ -26,8 +26,8 @@ describe('ProductGrid', () => {
   it('renders products from the API', async () => {
     // PRINCIPAL-FIX: MSW test
     server.use(
-      rest.get('http://localhost/api/products', (_req, res, ctx) =>
-        res(ctx.json({ data: productResponse, error: null })),
+      http.get('http://localhost/api/products', () =>
+        HttpResponse.json({ data: productResponse, error: null }),
       ),
     );
 
@@ -37,8 +37,11 @@ describe('ProductGrid', () => {
 
   it('shows error state when request fails', async () => {
     server.use(
-      rest.get('http://localhost/api/products', (_req, res, ctx) =>
-        res(ctx.status(500), ctx.json({ data: null, error: { type: 'internal', message: 'boom' } })),
+      http.get('http://localhost/api/products', () =>
+        HttpResponse.json(
+          { data: null, error: { type: 'internal', message: 'boom' } },
+          { status: 500 },
+        ),
       ),
     );
 

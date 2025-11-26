@@ -106,6 +106,25 @@ Refer to `packages/backend/tests` for usage examples.
 - **Frontend lint/unit**: `cd packages/frontend && npm run lint && npm run test`.
 - **Smoke/e2e**: `make smoke` (wraps `infra/docker-compose.smoke.yml`) or `docker compose -f infra/docker-compose.prod.yml --profile smoke up --abort-on-container-exit smoke-tests`.
 
+## Quality Checks & Hooks
+- Install Git hooks once with `cd packages/frontend && npm run prepare`; Husky wires `.husky/pre-commit` in the repo root.
+- Every commit now runs `lint-staged` (ESLint + Prettier for staged TS/TSX, Prettier for other frontend assets, Ruff with `--fix` for staged Python), a full `poetry run ruff check . --fix`, and `npm run typecheck -- --pretty false`. Hooks abort commits on the first error so you can fix issues before CI.
+- Manual commands mirror CI:
+  - Backend lint: `cd packages/backend && poetry run ruff check . --output-format=github`
+  - Frontend typecheck: `cd packages/frontend && npm run typecheck -- --pretty false`
+- `lint-staged` configuration lives in `lint-staged.config.js` so you can add more patterns if new packages appear.
+
+## Troubleshooting Quality Failures
+- **Ruff auto-fix applied but lint still fails**  
+  Run `cd packages/backend && poetry run ruff check . --fix --exit-non-zero-on-fix` to apply remaining fixes, then re-run the command without `--fix` to ensure no diagnostics remain. If Ruff reports an import that should be ignored, extend `tool.ruff.lint.ignore` in `pyproject.toml`.
+- **TypeScript compilation errors**  
+  1. Execute `cd packages/frontend && npm run typecheck -- --pretty false` to get deterministic output (the CI command).  
+  2. Jump to the file referenced by `tsc` and fix the type annotations; use the `components['schemas'][...]` helpers from `src/shared/api/generated.ts` whenever possible.  
+  3. If the issue is module resolution, confirm the `@/*` alias inside `packages/frontend/tsconfig.json` covers your path.  
+  4. Re-run `npm run typecheck` before committing.  
+- **Pre-commit fails without actionable logs**  
+  Re-run `npx --prefix packages/frontend lint-staged --config lint-staged.config.js --cwd . --debug` to see how files are batched.
+
 ## Security & Compliance
 - initData is required on all protected routes via the `X-Telegram-Init-Data` header.
 - FastAPI dependency verifies signature + freshness (5 minute TTL) via HMAC-SHA256.
@@ -117,8 +136,8 @@ Refer to `packages/backend/tests` for usage examples.
 
 ## CI/CD Overview
 GitHub Actions pipeline (`.github/workflows/ci.yml`):
-1. **lint** — Ruff for backend, ESLint for frontend
-2. **typecheck** — mypy-ready toolchain & TypeScript
+1. **quality-gate** — Ruff (Python) + `npm run typecheck` with cached deps to fail fast
+2. **lint** — ESLint for frontend
 3. **test** — pytest (backend) and React Testing Library placeholders (extend as needed)
 4. **build** — Docker build for backend & frontend images
 5. **deploy** — shell stage ready for integration with Render/Railway (uses protected secret gates)

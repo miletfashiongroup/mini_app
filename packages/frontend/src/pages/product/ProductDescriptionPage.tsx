@@ -1,7 +1,7 @@
 import { Link, useParams } from 'react-router-dom';
 
-import { Skeleton } from '@/shared/ui/Skeleton';
 import { useProductDetails } from '@/pages/product/useProductDetails';
+import { Skeleton } from '@/shared/ui/Skeleton';
 
 export const ProductDescriptionPage = () => {
   const { productId } = useParams();

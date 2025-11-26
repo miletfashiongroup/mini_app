@@ -2,6 +2,8 @@ from collections.abc import AsyncIterator
 
 from fastapi import Depends, Header
 
+from brace_backend.core.exceptions import AccessDeniedError
+from brace_backend.core.logging import logger
 from brace_backend.core.security import TelegramInitData, validate_request
 from brace_backend.db.session import session_manager
 from brace_backend.db.uow import UnitOfWork
@@ -12,7 +14,15 @@ from brace_backend.services.user_service import user_service
 async def get_current_init_data(
     init_data: str | None = Header(default=None, alias="X-Telegram-Init-Data")
 ) -> TelegramInitData:
-    return await validate_request(init_data)
+    try:
+        return await validate_request(init_data)
+    except AccessDeniedError as exc:
+        logger.warning(
+            "Rejected Telegram init data.",
+            reason=str(exc),
+            has_init_data=bool(init_data),
+        )
+        raise
 
 
 async def get_uow() -> AsyncIterator[UnitOfWork]:

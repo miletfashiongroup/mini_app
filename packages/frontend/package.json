@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npx vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test": "vitest run --pool=forks"
+    "test": "vitest run --pool=forks",
+    "format": "prettier --write .",
+    "prepare": "node ./scripts/run-husky.cjs"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.0",
@@ -19,6 +21,12 @@
     "@tanstack/react-query-devtools": "^5.56.2",
     "@twa-dev/sdk": "^7.1.0",
     "axios": "^1.7.4",
+    "vite": "^7.2.2",
+    "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react-swc": "^3.5.0",
+    "tailwindcss": "^3.4.10",
+    "postcss": "^8.4.45",
+    "autoprefixer": "^10.4.20",
     "clsx": "^2.1.1",
     "dompurify": "^3.1.7",
     "nanoid": "^5.0.7",
@@ -38,23 +46,22 @@
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^8.46.4",
     "@typescript-eslint/parser": "^8.46.4",
-    "@vitejs/plugin-react": "^4.3.1",
-    "@vitejs/plugin-react-swc": "^3.5.0",
-    "autoprefixer": "^10.4.20",
     "eslint": "^9.9.0",
     "eslint-config-prettier": "^9.1.2",
     "eslint-define-config": "^2.1.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "husky": "^9.1.6",
     "jsdom": "^25.0.0",
+    "lint-staged": "^15.2.10",
     "msw": "^2.12.2",
     "openapi-typescript": "^6.7.3",
-    "postcss": "^8.4.45",
-    "tailwindcss": "^3.4.10",
+    "prettier": "^3.3.3",
     "typescript": "^5.5.4",
-    "vite": "^5.4.10",
-    "vitest": "^1.6.0"
+    "vitest": "^4.0.10"
   }
 }

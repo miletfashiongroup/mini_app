@@ -1,11 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
-import type { Order } from '@/entities/order/model/types';
 import { cartKeys } from '@/entities/cart/api/cartApi';
-import { rest, server } from '@/tests/server';
+import type { Order } from '@/entities/order/model/types';
+import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
 import { createQueryClientWrapper } from '@/tests/queryClient';
+import { HttpResponse, http, server } from '@/tests/server';
 
 const mockOrder: Order = {
   id: 'order-1',
@@ -21,8 +21,8 @@ describe('useCreateOrderMutation', () => {
   it('invalidates cart queries on success', async () => {
     // PRINCIPAL-FIX: MSW test
     server.use(
-      rest.post('http://localhost/api/orders', (_req, res, ctx) =>
-        res(ctx.json({ data: mockOrder, error: null })),
+      http.post('http://localhost/api/orders', () =>
+        HttpResponse.json({ data: mockOrder, error: null }),
       ),
     );
     const { client, Wrapper } = createQueryClientWrapper();
@@ -39,8 +39,11 @@ describe('useCreateOrderMutation', () => {
 
   it('propagates API errors', async () => {
     server.use(
-      rest.post('http://localhost/api/orders', (_req, res, ctx) =>
-        res(ctx.status(500), ctx.json({ data: null, error: { type: 'internal', message: 'boom' } })),
+      http.post('http://localhost/api/orders', () =>
+        HttpResponse.json(
+          { data: null, error: { type: 'internal', message: 'boom' } },
+          { status: 500 },
+        ),
       ),
     );
     const { Wrapper } = createQueryClientWrapper();

@@ -1,6 +1,6 @@
-import axios, { type AxiosRequestConfig } from 'axios';
-import WebApp from '@twa-dev/sdk';
+import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 
+import { withTelegramInitData } from '@/shared/api/telegram';
 import { env } from '@/shared/config/env';
 
 import type { ApiEnvelope, ApiSuccess } from './types';
@@ -12,21 +12,40 @@ const instance = axios.create({
 });
 
 instance.interceptors.request.use((config) => {
-  const nextConfig = { ...config };
-  nextConfig.headers = nextConfig.headers ?? {};
-  const initData = WebApp.initData || env.devInitData || '';
-  nextConfig.headers['X-Telegram-Init-Data'] = initData;
-  return nextConfig;
+  return withTelegramInitData(config);
 });
 
 instance.interceptors.response.use(
   (response) => response,
-  (error) => {
-    const payload = error.response?.data as ApiEnvelope<unknown> | undefined;
-    if (payload?.error) {
-      throw new ApiError(payload.error.message, payload.error.type);
+  (error: AxiosError<ApiEnvelope<unknown>>) => {
+    const status = error.response?.status;
+    if (error.code === AxiosError.ETIMEDOUT || error.code === 'ECONNABORTED') {
+      throw new ApiError('Сервер не ответил вовремя. Попробуйте ещё раз.', 'timeout', status);
     }
-    throw new ApiError(error.message || 'Unexpected error', 'network_error');
+    if (status === 401) {
+      redirectToAppRoot();
+      throw new ApiError(
+        'Сессия Telegram истекла. Откройте мини-приложение заново.',
+        'unauthorized',
+        status,
+      );
+    }
+    if (status && status >= 500) {
+      throw new ApiError('Произошла ошибка сервера. Повторите попытку позже.', 'server_error', status);
+    }
+
+    const payload = error.response?.data;
+    if (status === 403 && payload?.error?.type === 'access_denied') {
+      throw new ApiError(
+        'Проблема с авторизацией в Telegram. Закройте и снова откройте мини-приложение из Telegram.',
+        'access_denied',
+        status,
+      );
+    }
+    if (payload?.error) {
+      throw new ApiError(payload.error.message, payload.error.type, status);
+    }
+    throw new ApiError(error.message || 'Unexpected error', 'network_error', status);
   },
 );
 
@@ -56,4 +75,26 @@ export const apiClient = {
     request<T>({ method: 'POST', url, data, ...config }),
   delete: <T>(url: string, config?: AxiosRequestConfig) =>
     request<T>({ method: 'DELETE', url, ...config }),
+};
+
+const isTestEnv = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
+
+const redirectToAppRoot = () => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  const target = env.appBaseUrl || window.location.origin;
+  if (isTestEnv) {
+    window.__braceRedirectTarget__ = target;
+    return;
+  }
+  if (typeof window.location.replace === 'function') {
+    try {
+      window.location.replace(target);
+      return;
+    } catch {
+      // jsdom and headless environments can throw for navigation helpers.
+    }
+  }
+  window.location.href = target;
 };

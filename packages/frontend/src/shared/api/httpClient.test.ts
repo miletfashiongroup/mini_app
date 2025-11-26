@@ -1,10 +1,10 @@
-import { describe, expect, it } from 'vitest';
-
 import WebApp from '@twa-dev/sdk';
+import { describe, expect, it } from 'vitest';
 
 import { apiClient, parseApiEnvelope } from '@/shared/api/httpClient';
 import { ApiError, type ApiEnvelope } from '@/shared/api/types';
-import { rest, server } from '@/tests/server';
+import { env } from '@/shared/config/env';
+import { HttpResponse, http, server } from '@/tests/server';
 
 describe('httpClient parseApiEnvelope', () => {
   it('returns payload when data exists', () => {
@@ -51,9 +51,9 @@ describe('httpClient interceptors', () => {
     WebApp.initData = 'telegram-init';
     let header: string | null = null;
     server.use(
-      rest.get('http://localhost/api/ping', (req, res, ctx) => {
-        header = req.headers.get('x-telegram-init-data');
-        return res(ctx.json({ data: { status: 'ok' }, error: null }));
+      http.get('http://localhost/api/ping', ({ request }) => {
+        header = request.headers.get('x-telegram-init-data');
+        return HttpResponse.json({ data: { status: 'ok' }, error: null });
       }),
     );
 
@@ -61,5 +61,34 @@ describe('httpClient interceptors', () => {
 
     expect(response.data.status).toBe('ok');
     expect(header).toBe('telegram-init');
+  });
+
+  it('redirects and throws friendly error on 401', async () => {
+    window.location.href = 'http://localhost/original';
+    server.use(
+      http.get('http://localhost/api/ping', () =>
+        HttpResponse.json(
+          { data: null, error: { type: 'unauthorized', message: 'invalid session' } },
+          { status: 401 },
+        ),
+      ),
+    );
+
+    await expect(apiClient.get<{ status: string }>('/ping')).rejects.toThrow(
+      'Сессия Telegram истекла. Откройте мини-приложение заново.',
+    );
+    expect(window.__braceRedirectTarget__).toBe(env.appBaseUrl);
+  });
+
+  it('throws server friendly error on 5xx', async () => {
+    server.use(
+      http.get('http://localhost/api/ping', () =>
+        HttpResponse.json({ data: null, error: null }, { status: 500 }),
+      ),
+    );
+
+    await expect(apiClient.get<{ status: string }>('/ping')).rejects.toThrow(
+      'Произошла ошибка сервера. Повторите попытку позже.',
+    );
   });
 });

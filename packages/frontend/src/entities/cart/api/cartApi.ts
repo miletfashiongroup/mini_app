@@ -2,6 +2,8 @@ import { apiClient } from '@/shared/api/httpClient';
 
 import type { CartCollection, CartItem, CartItemPayload } from '../model/types';
 
+export type { CartCollection, CartItem, CartItemPayload } from '../model/types';
+
 export const cartKeys = {
   all: ['cart'] as const,
 };

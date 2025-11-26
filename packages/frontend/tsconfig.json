@@ -20,5 +20,5 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx", "src/tests", "src/setupTests.ts", "vitest.config.ts", "**/*.spec.ts"]
 }

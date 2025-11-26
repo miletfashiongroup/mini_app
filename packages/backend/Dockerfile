@@ -8,9 +8,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_RETRIES=5 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VERSION=1.8.3 \
-    PATH="/opt/poetry/bin:$PATH"
+    POETRY_VERSION=1.8.3 
 WORKDIR /app
 
 RUN apt-get update \
@@ -18,6 +16,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
+# FIX poetry
+ENV PATH="/root/.local/bin:$PATH" 
 
 COPY packages/backend/pyproject.toml packages/backend/poetry.lock* ./ 
 RUN poetry config virtualenvs.create false \

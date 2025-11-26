@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 import uuid
 
-from sqlalchemy import func, select
-from sqlalchemy.engine import Engine, create_engine
+from sqlalchemy import func, select, text
+from sqlalchemy.engine import Engine, create_engine, make_url
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from brace_backend.core.config import settings
@@ -16,10 +18,49 @@ from brace_backend.domain.product import Product, ProductVariant
 LOG = logging.getLogger("brace_backend.db.seed")
 
 
+def _resolve_seed_url() -> str:
+    override = os.getenv("SEED_DATABASE_URL")
+    if override:
+        return ensure_sync_dsn(override)
+    return settings.sync_database_url
+
+
+def _validate_seed_url(url: str) -> str:
+    parsed = make_url(url)
+    if not parsed.host:
+        raise ValueError(
+            f"Seed database URL is missing host information: {url}. "
+            "Set BRACE_DATABASE_URL/DATABASE_URL to your Render Postgres DSN."
+        )
+    return url
+
+
 def _engine() -> Engine:
     """Return a synchronous engine suitable for seeding."""
-    seed_url = os.getenv("SEED_DATABASE_URL", settings.database_url)
-    return create_engine(ensure_sync_dsn(seed_url))
+    retries = int(os.getenv("SEED_DB_MAX_RETRIES", "10"))
+    interval = int(os.getenv("SEED_DB_RETRY_INTERVAL", "3"))
+    attempt = 1
+    seed_url = _validate_seed_url(_resolve_seed_url())
+    LOG.info("Seed using database URL: %s", seed_url)
+
+    while True:
+        try:
+            engine = create_engine(seed_url, future=True)
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+        except SQLAlchemyError as exc:
+            LOG.warning(
+                "Seed database connection failed; retrying (attempt %d/%d): %s",
+                attempt,
+                retries,
+                exc,
+            )
+            if attempt >= retries:
+                raise
+            attempt += 1
+            time.sleep(interval)
+        else:
+            return engine
 
 
 def _needs_seeding(session: Session) -> bool:

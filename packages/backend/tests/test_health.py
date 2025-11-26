@@ -12,4 +12,5 @@ async def test_healthcheck():
     payload = response.json()
     assert response.status_code == 200
     assert payload["data"]["status"] == "ok"
+    assert payload["data"]["database"] == "connected"
     assert payload["error"] is None

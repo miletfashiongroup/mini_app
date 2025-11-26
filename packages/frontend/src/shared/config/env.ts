@@ -1,8 +1,9 @@
-const runtimeBaseUrl =
-  typeof window !== 'undefined' ? window.__BRACE_ENV__?.API_BASE_URL : undefined;
-
 export const env = {
-  // PRINCIPAL-FIX: runtime api config
-  apiBaseUrl: runtimeBaseUrl || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000',
+  apiBaseUrl: 'https://brace-1-backend.onrender.com',
+  appBaseUrl: 'https://brace-1-frontend.onrender.com',
   devInitData: import.meta.env.VITE_DEV_INIT_DATA ?? '',
-};
+} as const;
+
+console.log('🎯 PRODUCTION CONFIG LOADED:');
+console.log('API:', env.apiBaseUrl);
+console.log('APP:', env.appBaseUrl);

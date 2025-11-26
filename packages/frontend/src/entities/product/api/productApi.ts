@@ -1,6 +1,9 @@
 import { apiClient } from '@/shared/api/httpClient';
 import type { Pagination } from '@/shared/api/types';
-import type { Product } from '../model/types';
+
+import type { Product, ProductVariant } from '../model/types';
+
+export type { Product, ProductVariant } from '../model/types';
 
 export const productKeys = {
   all: ['products'] as const,

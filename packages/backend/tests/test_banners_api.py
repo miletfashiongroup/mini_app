@@ -1,5 +1,4 @@
 import pytest
-
 from brace_backend.domain.banner import Banner
 
 pytestmark = pytest.mark.asyncio
