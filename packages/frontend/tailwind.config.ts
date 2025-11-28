@@ -1,71 +1,46 @@
-import { type Config } from "tailwindcss";
+import { type Config } from 'tailwindcss';
 
 const config: Config = {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        primary: "#FFFFFF",
-        accent: "#000043",
-        bg: {
-          light: "#FFFFFF",
-          muted: "#D9D9D9",
+        white: '#FFFFFF',
+        gray: {
+          50: '#F5F5F5',
+          100: '#D9D9D9',
+          200: '#A0A0A0',
         },
         text: {
-          base: "#29292B",
-          muted: "#BABABA",
+          primary: '#29292B',
+          secondary: '#A0A0A0',
         },
-        "gray-light": "#D9D9D9",
-        "gray-dark": "#29292B",
-        "blue-dark": "#000043",
-        "blue-mid": "#1F1F4B",
-        sand: "#F3EEE2",
-        "sand-dark": "#E0D6C2",
-        "accent-peach": "#FF6B6B",
-        "accent-orange": "#FFB347",
-        "brand-black": "#05050A",
-        brace: {
-          black: "#000000",
-          slate: "#000043",
-          zinc: "#28282A",
-          lime: "#52913D",
-          neutral: "#A2A2A2",
-          surface: "#D9D9D9",
-          white: "#FFFFFF",
-          red300: "#ED9595",
-          red600: "#FF0000",
-        },
+        accent: '#000043',
+        success: '#53923D',
       },
       fontFamily: {
-        sans: ["Montserrat", "sans-serif"],
-        brand: ['"Inter"', "system-ui", "sans-serif"],
-        montserrat: ['"Montserrat"', "system-ui", "sans-serif"],
+        sans: ['"Montserrat"', 'sans-serif'],
+        montserrat: ['"Montserrat"', 'sans-serif'],
       },
       borderRadius: {
-        card: "0.5rem",
-        button: "9999px",
-        input: "0.375rem",
-        "3xl": "1.75rem",
-        brace: "24px",
-      },
-      maxWidth: {
-        "brace-container": "1080px",
+        xl: '25px',
+        'label-sm': '6.03px',
       },
       spacing: {
-        "brace-section": "34px",
+        'section-y': '2rem',
+        51: '51px',
+        37: '37px',
+        143: '143px',
       },
       fontSize: {
-        h1: "45pt",
-        h2: "35pt",
-        h3: "20pt",
-        display: ["96px", { lineHeight: "1", letterSpacing: "-0.03em" }],
-        heading: ["48px", { lineHeight: "1.1", letterSpacing: "-0.02em" }],
-        subheading: ["36px", { lineHeight: "1.1" }],
-        body: ["30px", { lineHeight: "1.25" }],
-        caption: ["20px", { lineHeight: "1.4" }],
+        h2: ['45pt', { lineHeight: '1.1', fontWeight: '700' }],
+      },
+      boxShadow: {
+        subtle: '0 4px 12px rgba(0, 0, 0, 0.08)',
       },
     },
   },
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  plugins: [],
 };
 
 export default config;

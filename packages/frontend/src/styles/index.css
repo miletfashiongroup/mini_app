@@ -1,24 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-primary: #FFFFFF;
-  --color-accent: #000043;
-  --color-bg-light: #FFFFFF;
-  --color-bg-muted: #D9D9D9;
-  --color-text-base: #29292B;
-  --color-text-muted: #BABABA;
+  color: #29292b;
+  background-color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+}
 
-  --font-family-sans: 'Montserrat', sans-serif;
+body {
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  background-color: #ffffff;
+  color: #29292b;
+}
 
-  --radius-card: 0.5rem;
-  --radius-button: 9999px;
-  --radius-input: 0.375rem;
-
-  /* Legacy aliases for existing layout containers */
-  --color-background: var(--color-bg-light);
-  --color-text: var(--color-text-base);
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #000043;
+  outline-offset: 2px;
 }
