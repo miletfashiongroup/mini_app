@@ -41,7 +41,7 @@ export const CartPage = () => {
   return (
     <section className="space-y-6">
       <div className="space-y-2">
-        <Badge variant="light">Корзина</Badge>
+        <Badge color="bg-accent">Корзина</Badge>
         <h1 className="text-heading font-bold text-brace-zinc">Ваш заказ</h1>
         <p className="text-lg text-brace-neutral">Проверьте содержимое и оформите в мини приложении.</p>
       </div>

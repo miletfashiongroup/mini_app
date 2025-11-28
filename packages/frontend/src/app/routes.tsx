@@ -3,7 +3,7 @@ import { RouteObject, useRoutes } from 'react-router-dom';
 
 import { CartPage } from '@/pages/cart/CartPage';
 import { CatalogPage } from '@/pages/catalog/CatalogPage';
-import { HomePage } from '@/pages/home/HomePage';
+import { Homepage } from '@/pages/Homepage';
 import { PlaceholderPage } from '@/pages/placeholder/PlaceholderPage';
 import { ProductDescriptionPage } from '@/pages/product/ProductDescriptionPage';
 import { ProductPage } from '@/pages/product/ProductPage';
@@ -14,7 +14,7 @@ import { TextPage } from '@/pages/text/TextPage';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 
 const routes: RouteObject[] = [
-  { path: '/', element: <HomePage /> },
+  { path: '/', element: <Homepage /> },
   { path: '/catalog', element: <CatalogPage /> },
   { path: '/product/:productId', element: <ProductPage /> },
   { path: '/product/:productId/description', element: <ProductDescriptionPage /> },

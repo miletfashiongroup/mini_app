@@ -45,7 +45,7 @@ export const SizeCalculator = ({ variant = 'default' }: Props) => {
   return (
     <section className={containerClasses}>
       <div className="space-y-2">
-        <Badge variant="light">ваш размер</Badge>
+        <Badge color="bg-accent">ваш размер</Badge>
         <h3 className="text-heading font-bold text-brace-zinc">Калькулятор размеров</h3>
         <p className="text-lg text-brace-neutral">Введите мерки талии и бедер, чтобы получить рекомендацию BRACE.</p>
       </div>

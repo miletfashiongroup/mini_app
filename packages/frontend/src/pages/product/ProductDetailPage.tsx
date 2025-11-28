@@ -57,7 +57,7 @@ export const ProductDetailPage = () => {
 
       <div className="grid gap-10 lg:grid-cols-[1.5fr,1fr]">
         <div className="space-y-6">
-          <Badge variant="light">коллекция</Badge>
+          <Badge color="bg-accent">коллекция</Badge>
           <div className="space-y-3">
             <h1 className="text-heading font-bold text-brace-zinc">{product.name}</h1>
             <p className="text-lg text-brace-neutral">{product.description}</p>
