@@ -4,6 +4,7 @@ import clsx from "clsx";
 import type { Product } from "@/entities/product/model/types";
 import { Button } from "./Button";
 import { Badge } from "./Badge";
+import newIcon from "@/assets/images/icon-new.svg";
 
 type ProductCardProps = {
   product?: Product;
@@ -31,7 +32,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, isNew = false
       </div>
       <div className="flex flex-col justify-between w-full">
         <div>
-          <Badge text={badgeText} color="bg-green-600" />
+          {isNew ? <img src={newIcon} alt="Новинка" className="h-5 w-auto" /> : <Badge text={badgeText} color="bg-green-600" />}
           <h2 className="text-h2 font-bold text-text-base mt-2">{name}</h2>
           <p className="text-text-muted text-sm mt-1">{description}</p>
         </div>

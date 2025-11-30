@@ -1,84 +1,284 @@
-import logoBrace from '@/assets/images/logo-brace.svg';
+﻿import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import type { TouchEvent as ReactTouchEvent } from 'react';
+
 import arrowLeft from '@/assets/images/icon-arrow-left.svg';
 import arrowRight from '@/assets/images/icon-arrow-right.svg';
-import playIcon from '@/assets/images/icon-play.svg';
+import bagIcon from '@/assets/images/icon-bag.svg';
 import cartIcon from '@/assets/images/icon-cart.svg';
 import checkIcon from '@/assets/images/icon-check.svg';
 import figureBody from '@/assets/images/figure-body.svg';
 import homeIcon from '@/assets/images/icon-home.svg';
-import bagIcon from '@/assets/images/icon-bag.svg';
+import newIcon from '@/assets/images/icon-new.svg';
+import playIcon from '@/assets/images/icon-play.svg';
+import logoBrace from '@/assets/images/logo-brace.svg';
 import profileIcon from '@/assets/images/icon-profile.svg';
 
-type ProductCardProps = {
-  isNew?: boolean;
-  title: string;
+type BannerIndicatorsProps = {
+  count?: number;
+  activeIndex?: number;
+  onSelect?: (index: number) => void;
+  className?: string;
 };
 
-const SliderDots = () => (
-  <div className="mt-4 flex items-center justify-center gap-3">
-    {[0, 1, 2].map((index) => (
-      <span
-        key={index}
-        className={`h-2 w-2 rounded-full ${index === 0 ? 'bg-white' : 'bg-white/50'}`}
-        aria-hidden
-      />
-    ))}
+type VideoSectionProps = {
+  onPlay?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+};
+
+type CarouselCardProps = {
+  isNew?: boolean;
+  ariaLabel: string;
+};
+
+type CarouselItem = {
+  id: string;
+  isNew?: boolean;
+};
+
+const CARD_WIDTH = 232;
+const CARD_HEIGHT = 309;
+const GAP_PX = 24;
+
+const TopStatusBar = () => <div className="h-12 w-full bg-[#D9D9D9]" aria-hidden />;
+
+const HeaderHome = () => (
+  <header className="px-4 py-6">
+    <img src={logoBrace} alt="Логотип BRACE" className="h-10 w-auto" />
+  </header>
+);
+
+const BannerPlaceholder = ({ children }: { children?: React.ReactNode }) => (
+  <div
+    className="relative flex w-full items-center justify-center rounded-[16px] bg-[#D9D9D9]"
+    style={{ aspectRatio: '1.7 / 1', minHeight: '210px' }}
+  >
+    <span className="text-[16px] font-semibold text-[#BABABA]">Баннер</span>
+    {children ? <div className="absolute bottom-3 left-0 right-0">{children}</div> : null}
   </div>
 );
 
-const ProductCard = ({ isNew, title }: ProductCardProps) => (
-  <div className="relative h-48 rounded-[25px] bg-gray-100 shadow-subtle">
-    {isNew && (
-      <span className="absolute left-3 top-3 rounded-[6.03px] bg-black px-2 py-0.5 text-xs font-medium text-white">
-        new
-      </span>
-    )}
-    <img
-      src={cartIcon}
-      alt="Добавить в корзину"
-      className="absolute right-3 top-3 h-6 w-6"
-    />
-    <div className="flex h-full items-center justify-center text-text-secondary text-sm">{title}</div>
+const BannerIndicators = ({ count = 3, activeIndex = 0, onSelect, className }: BannerIndicatorsProps) => (
+  <div className={`flex items-center justify-center gap-1 ${className ?? 'mt-4'}`}>
+    {Array.from({ length: count }).map((_, index) => {
+      const isActive = index === activeIndex;
+
+      return (
+        <button
+          key={index}
+          type="button"
+          aria-label={`Слайд ${index + 1}`}
+          onClick={() => onSelect?.(index)}
+          className={`h-2 w-2 rounded-full transition-all duration-200 ${
+            isActive ? 'bg-[#FFFFFF] shadow-[0_0_0_1px_#BABABA]' : 'bg-[#BABABA]'
+          } ${onSelect ? 'cursor-pointer active:scale-95' : 'cursor-default'}`}
+        />
+      );
+    })}
   </div>
 );
 
-const SizeInput = ({ label }: { label: string }) => (
-  <div className="flex items-center gap-4">
-    <label className="text-base font-bold text-text-primary">{label}</label>
-    <div className="relative inline-flex items-center">
-      <input
-        type="text"
-        className="h-10 w-24 rounded-[25px] bg-white px-3 text-sm text-text-primary shadow-subtle"
-        placeholder="см"
-      />
-      <img
-        src={checkIcon}
-        alt="Подтверждено"
-        className="absolute right-[-33px] top-1/2 h-5 w-5 -translate-y-1/2"
-      />
+const TitleBannerSection = () => (
+  <section className="px-4 mt-2">
+    <h2 className="text-[21px] font-bold text-[#29292B]">Заголовок 1.1</h2>
+    <div className="mt-4">
+      <BannerPlaceholder>
+        <BannerIndicators className="mt-0" />
+      </BannerPlaceholder>
     </div>
-  </div>
+  </section>
 );
 
-const BottomNav = () => {
+const VideoSection = ({ onPlay, onPrev, onNext }: VideoSectionProps) => (
+  <section className="px-4">
+    <div className="grid grid-cols-[48px_minmax(0,1fr)_48px] items-center justify-items-center gap-2">
+      <button
+        type="button"
+        aria-label="Предыдущее видео"
+        onClick={onPrev}
+        className="flex h-12 w-12 items-center justify-center rounded-full transition duration-150 ease-out hover:brightness-110 active:scale-[0.96]"
+      >
+        <img src={arrowLeft} alt="" className="h-12 w-12" />
+      </button>
+
+      <button
+        type="button"
+        aria-label="Воспроизвести видео"
+        onClick={onPlay}
+        className="relative flex aspect-square w-full max-w-[350px] items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98]"
+      >
+        <img src={playIcon} alt="" className="h-14 w-14" />
+      </button>
+
+      <button
+        type="button"
+        aria-label="Следующее видео"
+        onClick={onNext}
+        className="flex h-12 w-12 items-center justify-center rounded-full transition duration-150 ease-out hover:brightness-110 active:scale-[0.96]"
+      >
+        <img src={arrowRight} alt="" className="h-12 w-12" />
+      </button>
+    </div>
+  </section>
+);
+
+const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, ariaLabel }, ref) => (
+  <button
+    ref={ref}
+    type="button"
+    aria-label={ariaLabel}
+    className="relative flex shrink-0 items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98]"
+    style={{ width: `${CARD_WIDTH}px`, height: `${CARD_HEIGHT}px` }}
+  >
+    {isNew && (
+      <img src={newIcon} alt="Новинка" className="absolute left-3 top-3 h-5 w-auto" />
+    )}
+    <img src={cartIcon} alt="Иконка корзины" className="absolute right-3 top-3 h-4 w-4" />
+  </button>
+));
+
+CarouselCard.displayName = 'CarouselCard';
+
+const ProductCardsCarousel = () => {
+  const items: CarouselItem[] = useMemo(
+    () => [
+      { id: 'card-1', isNew: true },
+      { id: 'card-2', isNew: true },
+      { id: 'card-3', isNew: true },
+    ],
+    [],
+  );
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(Math.min(1, items.length - 1));
+  const touchStartX = useRef<number | null>(null);
+
+  useEffect(() => {
+    const measure = () => setContainerWidth(containerRef.current?.clientWidth ?? 0);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  const translateX = useMemo(() => {
+    if (!containerWidth) return 0;
+    const base = (containerWidth - CARD_WIDTH) / 2;
+    return base - currentIndex * (CARD_WIDTH + GAP_PX);
+  }, [containerWidth, currentIndex]);
+
+  const handlePrev = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
+  const handleNext = () => setCurrentIndex((prev) => Math.min(prev + 1, items.length - 1));
+
+  const handleTouchStart = (event: ReactTouchEvent) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const handleTouchEnd = (event: ReactTouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = event.changedTouches[0]?.clientX - touchStartX.current;
+    if (deltaX > 30) handlePrev();
+    else if (deltaX < -30) handleNext();
+    touchStartX.current = null;
+  };
+
+  return (
+    <section className="px-4">
+      <h2 className="mb-4 text-[21px] font-bold text-[#29292B]">Заголовок 1.2</h2>
+      <div className="overflow-hidden w-full" ref={containerRef}>
+        <div
+          className="flex items-stretch gap-6 transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${translateX}px)` }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {items.map((item) => (
+            <CarouselCard key={item.id} isNew={item.isNew} ariaLabel={`Карточка ${item.id}`} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const SizeCalculatorSection = () => (
+  <section className="w-full bg-[#D9D9D9] px-4 py-4">
+    <p className="mb-3 text-[17px] leading-[1.3] text-[#29292B]">Введите ваши данные, а мы подберем размер</p>
+
+    <div className="flex flex-row items-start">
+      <div className="basis-[60%] pr-2 flex flex-col">
+        <div className="mt-4">
+          <p className="mb-3 text-[22px] font-semibold text-[#29292B]">Обхват талии</p>
+          <div className="mb-1 flex flex-row items-center gap-2">
+            <input
+              type="text"
+              placeholder=""
+              className="h-9 w-[30%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
+            />
+            <img src={checkIcon} alt="" className="w-6 h-6" />
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-3 text-[22px] font-semibold text-[#29292B]">Обхват талии</p>
+          <div className="mb-4 flex flex-row items-center gap-2">
+            <input
+              type="text"
+              placeholder=""
+              className="h-9 w-[30%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
+            />
+            <img src={checkIcon} alt="" className="w-6 h-6" />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="mt-1 h-11 w-[70%] rounded-[12px] bg-[#000043] text-[17px] text-white flex items-center justify-center"
+        >
+          → рассчитать
+        </button>
+      </div>
+
+      <div className="basis-[40%] flex justify-center">
+        <img src={figureBody} alt="" className="w-[120px] h-auto" />
+      </div>
+    </div>
+
+    <div className="mt-0 flex flex-row items-center gap-3">
+      <div className="flex flex-col text-[21px] font-bold leading-[1.1] text-[#29292B]">
+        <span>Ваш размер</span>
+        <span>BRACE</span>
+      </div>
+      <div className="h-11 w-14 rounded-[12px] bg-white" />
+      <button
+        type="button"
+        className="flex-1 h-11 rounded-[12px] bg-[#000043] text-[17px] text-white flex items-center justify-center"
+      >
+        → перейти в каталог
+      </button>
+    </div>
+  </section>
+);
+
+const BottomNavigation = () => {
   const items = [
-    { icon: homeIcon, label: 'Домой' },
+    { icon: homeIcon, label: 'Главная' },
     { icon: bagIcon, label: 'Сумка' },
     { icon: cartIcon, label: 'Корзина' },
     { icon: profileIcon, label: 'Профиль' },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-gray-100 border-t-[115px] border-white px-4 py-2">
-      <div className="flex justify-between">
+    <nav className="w-full bg-[#D9D9D9] px-4 py-3">
+      <div className="flex items-center justify-between">
         {items.map((item) => (
           <button
             key={item.label}
             type="button"
-            className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-50 transition hover:shadow-subtle active:scale-[0.98]"
             aria-label={item.label}
+            className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-white transition duration-150 ease-out active:scale-[0.97]"
           >
-            <img src={item.icon} alt={item.label} className="h-6 w-6" />
+            <img src={item.icon} alt="" className="h-6 w-6" />
           </button>
         ))}
       </div>
@@ -86,114 +286,18 @@ const BottomNav = () => {
   );
 };
 
-export const Homepage = () => {
-  const cards: ProductCardProps[] = [
-    { title: 'Карточка 1', isNew: true },
-    { title: 'Карточка 2', isNew: true },
-    { title: 'Карточка 3' },
-  ];
-
-  return (
-    <div className="min-h-screen bg-white text-text-primary font-montserrat">
-      <div className="h-[143px] bg-gray-100" aria-hidden="true" />
-
-      <div className="pl-[37px] pt-[51px] pb-4">
-        <img src={logoBrace} alt="Логотип BRACE" className="h-9 w-auto" />
-      </div>
-
-      <main className="flex flex-col gap-section-y px-4 pb-[200px]">
-        <section>
-          <h2 className="mb-4 text-h2 font-bold text-text-primary">Заголовок 1.1</h2>
-          <div className="flex h-52 items-center justify-center rounded-[25px] bg-gray-100">
-            <span className="text-base font-semibold text-text-secondary">Баннер</span>
-          </div>
-          <SliderDots />
-        </section>
-
-        <section className="relative flex items-center justify-center">
-          <button
-            type="button"
-            aria-label="Предыдущий"
-            className="absolute -left-4 flex h-8 w-8 items-center justify-center rounded-full transition active:scale-95"
-          >
-            <img src={arrowLeft} alt="" className="h-8 w-8" />
-          </button>
-
-          <div className="flex aspect-square w-full max-w-[320px] items-center justify-center rounded-[25px] bg-gray-100">
-            <button
-              type="button"
-              aria-label="Воспроизвести видео"
-              className="flex h-12 w-12 items-center justify-center"
-            >
-              <img src={playIcon} alt="" className="h-12 w-12" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Следующий"
-            className="absolute -right-4 flex h-8 w-8 items-center justify-center rounded-full transition active:scale-95"
-          >
-            <img src={arrowRight} alt="" className="h-8 w-8" />
-          </button>
-        </section>
-
-        <section className="flex flex-col gap-4">
-          <h2 className="text-h2 font-bold text-text-primary">Заголовок 1.2</h2>
-          <div className="overflow-hidden">
-            <div className="grid min-w-[120%] -translate-x-[10%] grid-cols-3 gap-[26px]">
-              {cards.map((card) => (
-                <ProductCard key={card.title} {...card} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[25px] bg-gray-100 p-4">
-          <p className="mb-4 text-sm text-text-primary">
-            Введите ваши данные, а мы подберем размер.
-          </p>
-
-          <div className="flex flex-col">
-            <SizeInput label="Обхват талии" />
-            <div className="mt-[48px]">
-              <SizeInput label="Обхват бедер" />
-            </div>
-
-            <button
-              type="button"
-              className="mt-4 inline-flex w-fit items-center justify-center rounded-full bg-accent px-5 py-2 text-sm font-medium text-white transition hover:opacity-90 active:opacity-80"
-            >
-              рассчитать
-            </button>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
-            <img src={figureBody} alt="Схема измерений" className="w-full max-w-[220px]" />
-            <div className="flex flex-1 flex-col gap-3">
-              <div className="text-[45px] font-bold leading-[1.1]">
-                <span className="block">Ваш размер</span>
-                <span className="block">BRACE</span>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex h-10 w-24 items-center justify-center rounded-[25px] bg-white px-3 text-base text-text-secondary shadow-subtle">
-                  M
-                </div>
-                <button
-                  type="button"
-                  className="rounded-[25px] bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 active:opacity-80"
-                >
-                  перейти в каталог
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <BottomNav />
-    </div>
-  );
-};
+export const Homepage = () => (
+  <div className="min-h-screen bg-[#FFFFFF] text-[#29292B] font-montserrat">
+    <TopStatusBar />
+    <HeaderHome />
+    <main className="flex flex-col gap-10 pb-10">
+      <TitleBannerSection />
+      <VideoSection />
+      <ProductCardsCarousel />
+      <SizeCalculatorSection />
+      <BottomNavigation />
+    </main>
+  </div>
+);
 
 export default Homepage;
