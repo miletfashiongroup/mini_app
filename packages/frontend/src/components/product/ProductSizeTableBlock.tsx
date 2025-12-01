@@ -14,8 +14,8 @@ const ProductSizeTableBlock = ({ onOpenSizeTable, onAddToCart }: ProductSizeTabl
         className="flex flex-col items-start text-left transition duration-150 ease-out hover:text-[#1f1f21] active:scale-[0.98]"
       >
         <div className="flex items-center gap-1">
-          <span className="text-[14px] font-semibold text-[#29292B]">Таблица размеров</span>
-          <span className="align-middle text-[#BABABA] text-[12px] font-medium">›</span>
+          <span className="text-[22px] font-semibold text-[#29292B]">Таблица размеров</span>
+          <span className="align-middle text-[#BABABA] text-[27px] font-medium">›</span>
         </div>
         <span className="text-[12px] font-medium text-[#BABABA]">подробнее</span>
       </button>
