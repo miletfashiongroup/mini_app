@@ -7,35 +7,39 @@ import { renderWithProviders } from '@/tests/renderWithProviders';
 vi.mock('@/entities/cart/api/cartApi', () => ({
   cartKeys: { all: ['cart'] },
   fetchCart: vi.fn().mockResolvedValue({
-    items: [],
-    total_minor_units: 0,
+    items: [
+      {
+        id: '1',
+        product_name: 'Худи BRACE',
+        size: '42-44',
+        quantity: 1,
+        unit_price_minor_units: 159100,
+      },
+      {
+        id: '2',
+        product_name: 'Футболка',
+        size: '42-44',
+        quantity: 1,
+        unit_price_minor_units: 150000,
+      },
+    ],
+    total_minor_units: 309100,
   }),
-}));
-
-vi.mock('@/features/order/create-order/model/useCreateOrderMutation', () => ({
-  useCreateOrderMutation: () => ({
-    mutate: vi.fn(),
-    isPending: false,
-    isSuccess: false,
-    isError: false,
-    data: null,
-    error: null,
-  }),
-}));
-
-vi.mock('@/shared/hooks/useToast', () => ({
-  useToast: () => ({
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-  }),
-}));
+})));
 
 describe('CartPage', () => {
-  it('renders empty cart state', async () => {
+  it('renders new cart layout', async () => {
     render(renderWithProviders(<CartPage />));
 
     expect(await screen.findByText('Корзина')).toBeInTheDocument();
-    expect(screen.getByText('Корзина пуста.')).toBeInTheDocument();
+    expect(screen.getByText('2 товара')).toBeInTheDocument();
+    expect(screen.getByLabelText('Назад')).toBeInTheDocument();
+    expect(screen.getByText('Итого')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'оформить заказ' })).toBeInTheDocument();
+
+    expect(screen.getByLabelText('Домой')).toBeInTheDocument();
+    expect(screen.getByLabelText('Сумка')).toBeInTheDocument();
+    expect(screen.getByLabelText('Корзина')).toBeInTheDocument();
+    expect(screen.getByLabelText('Профиль')).toBeInTheDocument();
   });
 });

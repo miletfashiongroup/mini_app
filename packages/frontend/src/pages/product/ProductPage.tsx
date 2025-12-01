@@ -7,6 +7,7 @@ import ProductMediaCarousel from '@/components/product/ProductMediaCarousel';
 import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSizeSection';
 import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
+import ProductSizeTableModal from '@/components/product/ProductSizeTableModal';
 import ProductStatusBar from '@/components/product/ProductStatusBar';
 import { ProductTabId } from '@/components/product/ProductTabs';
 import ProductTags from '@/components/product/ProductTags';
@@ -27,6 +28,7 @@ export const ProductPage = () => {
     { id: 'brace9', label: 'Brace 9', subLabel: '60' },
   ];
   const [activeTab, setActiveTab] = useState<ProductTabId>('description');
+  const [isSizeTableOpen, setIsSizeTableOpen] = useState(false);
   const reviews: ProductReview[] = [
     {
       id: 'rev1',
@@ -80,12 +82,14 @@ export const ProductPage = () => {
         initialSizeId="brace2"
         activeTab={activeTab}
         onChangeTab={setActiveTab}
+        onOpenSizeTable={() => setIsSizeTableOpen(true)}
       />
       <ProductReviewsSection reviews={reviews} />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
       <ProductBottomBar />
       {/* Остальные блоки будут добавлены по новому дизайну */}
+      <ProductSizeTableModal isOpen={isSizeTableOpen} onClose={() => setIsSizeTableOpen(false)} />
     </div>
   );
 };

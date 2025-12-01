@@ -37,7 +37,7 @@ export const CatalogPage = () => {
   const [activeTab, setActiveTab] = useState<string>('');
 
   return (
-    <div className="min-h-screen bg-white text-[#29292B] font-montserrat pb-24">
+    <div className="min-h-screen bg-white pb-28 font-montserrat text-[#29292B]">
       <CatalogTopStatusBar />
       <CatalogHeader logoSrc={logoBrace} />
       <CatalogSectionTitle title="Заголовок 2.1" />

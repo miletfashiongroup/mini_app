@@ -3,15 +3,13 @@ import type { TouchEvent as ReactTouchEvent } from 'react';
 
 import arrowLeft from '@/assets/images/icon-arrow-left.svg';
 import arrowRight from '@/assets/images/icon-arrow-right.svg';
-import bagIcon from '@/assets/images/icon-bag.svg';
-import cartIcon from '@/assets/images/icon-cart.svg';
 import checkIcon from '@/assets/images/icon-check.svg';
+import cartIcon from '@/assets/images/icon-cart.svg';
 import figureBody from '@/assets/images/figure-body.svg';
-import homeIcon from '@/assets/images/icon-home.svg';
 import newIcon from '@/assets/images/icon-new.svg';
 import playIcon from '@/assets/images/icon-play.svg';
 import logoBrace from '@/assets/images/logo-brace.svg';
-import profileIcon from '@/assets/images/icon-profile.svg';
+import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
 
 type BannerIndicatorsProps = {
   count?: number;
@@ -260,34 +258,8 @@ const SizeCalculatorSection = () => (
   </section>
 );
 
-const BottomNavigation = () => {
-  const items = [
-    { icon: homeIcon, label: 'Главная' },
-    { icon: bagIcon, label: 'Сумка' },
-    { icon: cartIcon, label: 'Корзина' },
-    { icon: profileIcon, label: 'Профиль' },
-  ];
-
-  return (
-    <nav className="w-full bg-[#D9D9D9] px-4 py-3">
-      <div className="flex items-center justify-between">
-        {items.map((item) => (
-          <button
-            key={item.label}
-            type="button"
-            aria-label={item.label}
-            className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-white transition duration-150 ease-out active:scale-[0.97]"
-          >
-            <img src={item.icon} alt="" className="h-6 w-6" />
-          </button>
-        ))}
-      </div>
-    </nav>
-  );
-};
-
 export const Homepage = () => (
-  <div className="min-h-screen bg-[#FFFFFF] text-[#29292B] font-montserrat">
+  <div className="min-h-screen bg-[#FFFFFF] pb-28 text-[#29292B] font-montserrat">
     <TopStatusBar />
     <HeaderHome />
     <main className="flex flex-col gap-10 pb-10">
@@ -295,7 +267,7 @@ export const Homepage = () => (
       <VideoSection />
       <ProductCardsCarousel />
       <SizeCalculatorSection />
-      <BottomNavigation />
+      <CatalogBottomNavigation activeId="home" />
     </main>
   </div>
 );
