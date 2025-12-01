@@ -7,6 +7,7 @@ import ProductMediaCarousel from '@/components/product/ProductMediaCarousel';
 import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSizeSection';
 import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
+import { ProductCharacteristicsModal, ProductDescriptionModal } from '@/components/product/ProductInfoModal';
 import ProductSizeTableModal from '@/components/product/ProductSizeTableModal';
 import ProductStatusBar from '@/components/product/ProductStatusBar';
 import { ProductTabId } from '@/components/product/ProductTabs';
@@ -29,6 +30,8 @@ export const ProductPage = () => {
   ];
   const [activeTab, setActiveTab] = useState<ProductTabId>('description');
   const [isSizeTableOpen, setIsSizeTableOpen] = useState(false);
+  const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
+  const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false);
   const reviews: ProductReview[] = [
     {
       id: 'rev1',
@@ -83,12 +86,47 @@ export const ProductPage = () => {
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         onOpenSizeTable={() => setIsSizeTableOpen(true)}
+        onOpenDescription={() => setIsDescriptionModalOpen(true)}
+        onOpenSpecs={() => setIsCharacteristicsModalOpen(true)}
       />
       <ProductReviewsSection reviews={reviews} />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
       <ProductBottomBar />
       {/* Остальные блоки будут добавлены по новому дизайну */}
+      <ProductDescriptionModal
+        isOpen={isDescriptionModalOpen}
+        onClose={() => setIsDescriptionModalOpen(false)}
+        content={
+          <div className="space-y-3">
+            <h3 className="text-[16px] font-semibold text-[#29292B]">О продукте</h3>
+            <p className="text-[14px] leading-relaxed text-[#29292B]">
+              Мягкая ткань, аккуратные швы и комфортная посадка для повседневной носки. Материал дышит и сохраняет форму после стирок.
+            </p>
+            <p className="text-[14px] leading-relaxed text-[#29292B]">
+              Подходит для активного дня и отдыха. Продуманная конструкция по меркам BRACE.
+            </p>
+          </div>
+        }
+      />
+      <ProductCharacteristicsModal
+        isOpen={isCharacteristicsModalOpen}
+        onClose={() => setIsCharacteristicsModalOpen(false)}
+        content={
+          <div className="space-y-3">
+            <h3 className="text-[16px] font-semibold text-[#29292B]">Состав и уход</h3>
+            <ul className="list-disc space-y-2 pl-5 text-[14px] leading-relaxed text-[#29292B]">
+              <li>100% хлопок, плотность средняя.</li>
+              <li>Машинная стирка при 30°C, без отбеливания.</li>
+              <li>Не сушить в стиральной машине, гладить на средней температуре.</li>
+            </ul>
+            <h3 className="text-[16px] font-semibold text-[#29292B]">Особенности</h3>
+            <p className="text-[14px] leading-relaxed text-[#29292B]">
+              Эластичный пояс, плоские швы, комфортная посадка по меркам BRACE.
+            </p>
+          </div>
+        }
+      />
       <ProductSizeTableModal isOpen={isSizeTableOpen} onClose={() => setIsSizeTableOpen(false)} />
     </div>
   );

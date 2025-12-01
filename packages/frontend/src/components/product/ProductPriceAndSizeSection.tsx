@@ -16,6 +16,8 @@ type ProductPriceAndSizeSectionProps = {
   onChangeTab: (tab: ProductTabId) => void;
   onOpenSizeTable?: () => void;
   onAddToCart?: () => void;
+  onOpenDescription?: () => void;
+  onOpenSpecs?: () => void;
 };
 
 const ProductPriceAndSizeSection = ({
@@ -29,6 +31,8 @@ const ProductPriceAndSizeSection = ({
   onChangeTab,
   onOpenSizeTable,
   onAddToCart,
+  onOpenDescription,
+  onOpenSpecs,
 }: ProductPriceAndSizeSectionProps) => {
   const [selectedSize, setSelectedSize] = useState<string>(initialSizeId ?? sizeOptions[0]?.id ?? '');
 
@@ -42,7 +46,12 @@ const ProductPriceAndSizeSection = ({
       <ProductPriceAndRating price={price} ratingCount={ratingCount} ratingValue={ratingValue} />
       <ProductSizeTableBlock onOpenSizeTable={onOpenSizeTable} onAddToCart={onAddToCart} />
       <ProductSizeSelector options={sizeOptions} activeId={selectedSize} onSelect={handleSelectSize} />
-      <ProductTabs activeTab={activeTab} onChange={onChangeTab} />
+      <ProductTabs
+        activeTab={activeTab}
+        onChange={onChangeTab}
+        onOpenDescription={onOpenDescription}
+        onOpenSpecs={onOpenSpecs}
+      />
     </section>
   );
 };

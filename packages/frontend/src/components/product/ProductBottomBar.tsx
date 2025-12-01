@@ -7,8 +7,8 @@ type ProductBottomBarProps = {
 
 const ProductBottomBar = ({ onAddToCart, onBuyNow }: ProductBottomBarProps) => {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 h-20 bg-[#D9D9D9] px-4 py-3">
-      <div className="flex h-full items-center gap-2">
+    <div className="fixed bottom-4 left-4 right-4 z-40 h-20 rounded-2xl bg-[#D9D9D9] px-4 py-3 shadow-md">
+      <div className="flex h-full items-center gap-3">
         <button
           type="button"
           onClick={onAddToCart}

@@ -14,7 +14,7 @@ type SizeChartVariant = 'classic' | 'expanded';
 
 const SizeChartModalOverlay = ({ onClose }: { onClose: () => void }) => (
   <div
-    className="fixed inset-0 z-30 bg-black/50"
+    className="fixed inset-0 z-20 bg-black/50"
     onClick={onClose}
     aria-label="Закрыть таблицу размеров"
     role="presentation"
@@ -23,7 +23,7 @@ const SizeChartModalOverlay = ({ onClose }: { onClose: () => void }) => (
 
 const SizeChartModalContent = ({ children, onClick }: { children: React.ReactNode; onClick: (e: React.MouseEvent) => void }) => (
   <div
-    className="fixed inset-0 z-40 flex items-start justify-center pt-8"
+    className="fixed inset-0 z-30 flex items-start justify-center pt-8"
     role="dialog"
     aria-modal="true"
     onClick={onClick}

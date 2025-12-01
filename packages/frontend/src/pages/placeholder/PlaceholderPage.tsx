@@ -1,20 +1,76 @@
 import { useNavigate } from 'react-router-dom';
 
-export const PlaceholderPage = () => {
+import arrowLeftIcon from '@/assets/images/icon-arrow-left.svg';
+import logoBrace from '@/assets/images/logo-brace.svg';
+import shutterstock from '@/assets/images/shutterstock.svg';
+import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+
+const PlaceholderStatusBar = () => <div className="h-14 w-full bg-[#D9D9D9]" aria-hidden />;
+
+const PlaceholderBackButton = () => (
+  <button
+    type="button"
+    aria-label="Назад"
+    onClick={() => window.history.back()}
+  >
+    <img src={arrowLeftIcon} alt="" className="h-[50px] w-[50px]" />
+  </button>
+);
+
+const PlaceholderLogo = () => <img src={logoBrace} alt="BRACE logo" className="h-10 w-auto" />;
+
+const PlaceholderHeader = () => (
+  <header className="flex items-center justify-between bg-white px-4 py-4">
+    <PlaceholderBackButton />
+    <PlaceholderLogo />
+  </header>
+);
+
+const PlaceholderTitle = () => (
+  <div className="bg-white px-4 pt-3 pb-4">
+    <h1 className="text-[20px] font-bold leading-[29px] text-[#29292B]">Заголовок</h1>
+  </div>
+);
+
+const PlaceholderCard = () => (
+  <div className="px-4">
+    <div className="mt-4 rounded-[16px] bg-white px-6 pb-8 pt-4">
+      <div className="flex flex-col items-center text-center">
+        <img src={shutterstock} alt="Шестерёнки" className="mx-auto w-[330px] max-w-full h-auto" />
+        <h2 className="mt-0 text-[16px] font-bold leading-[22px] text-[#29292B]">Страница находится в разработке.</h2>
+        <p className="mt-1 text-[14px] font-medium leading-relaxed text-[#29292B]">Совсем скоро она заработает.</p>
+        <PlaceholderPrimaryButton />
+      </div>
+    </div>
+  </div>
+);
+
+const PlaceholderPrimaryButton = () => {
   const navigate = useNavigate();
   return (
-    <section className="space-y-4 text-center">
-      <h1 className="text-2xl font-semibold">Страница в разработке</h1>
-      <p className="text-slate-300">
-        Мы запускаем новый опыт. Совсем скоро вы сможете управлять заказами, бонусами и рефералами.
-      </p>
+    <div className="mt-7 flex w-full items-center justify-center">
       <button
-        onClick={() => navigate('/')}
-        className="bg-white text-black rounded-2xl py-3 px-6 font-semibold"
         type="button"
+        onClick={() => navigate('/')}
+        className="flex h-10 w-full max-w-[220px] items-center justify-center rounded-[13px] bg-[#000043] text-[16px] font-semibold text-white transition duration-150 ease-out hover:bg-[#00005A] active:scale-[0.97]"
       >
-        Вернуться в главное меню
+        В главное меню
       </button>
-    </section>
+    </div>
+  );
+};
+
+export const PlaceholderPage = () => {
+  return (
+    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-[#29292B]">
+      <PlaceholderStatusBar />
+      <PlaceholderHeader />
+      <PlaceholderTitle />
+      <section className="bg-[#D9D9D9] border-t border-[#D9D9D9] pb-[15px]">
+        <PlaceholderCard />
+      </section>
+      <div className="mt-auto" />
+      <CatalogBottomNavigation activeId="home" />
+    </div>
   );
 };
