@@ -1,5 +1,7 @@
 ﻿import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import type { TouchEvent as ReactTouchEvent } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 import figureBody from '@/assets/images/figure-body.svg';
 import arrowLeft from '@/assets/images/icon-arrow-left.svg';
@@ -10,6 +12,7 @@ import newIcon from '@/assets/images/icon-new.svg';
 import playIcon from '@/assets/images/icon-play.svg';
 import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { calculateSize } from '@/features/size-calculator/api/sizeCalcApi';
 import { useBannersQuery } from '@/shared/api/queries';
 
 type BannerIndicatorsProps = {
@@ -241,64 +244,96 @@ const ProductCardsCarousel = () => {
   );
 };
 
-const SizeCalculatorSection = () => (
-  <section className="w-full bg-[#D9D9D9] px-4 py-4">
-    <p className="mb-3 text-[17px] leading-[1.3] text-[#29292B]">Введите ваши данные, а мы подберем размер</p>
+const SizeCalculatorSection = () => {
+  const [waist, setWaist] = useState<string>('');
+  const [hip, setHip] = useState<string>('');
+  const [result, setResult] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-    <div className="flex flex-row items-start">
-      <div className="basis-[60%] pr-2 flex flex-col">
-        <div className="mt-4">
-          <p className="mb-3 text-[22px] font-semibold text-[#29292B]">Обхват талии</p>
-          <div className="mb-1 flex flex-row items-center gap-2">
-            <input
-              type="text"
-              placeholder=""
-              className="h-9 w-[30%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
-            />
-            <img src={checkIcon} alt="" className="w-6 h-6" />
+  const { mutate, isPending } = useMutation({
+    mutationFn: calculateSize,
+    onSuccess: (data) => setResult(data.size),
+    onError: () => setResult(null),
+  });
+
+  const handleCalculate = () => {
+    const waistNum = Number(waist);
+    const hipNum = Number(hip);
+    if (!waistNum || !hipNum) {
+      setResult(null);
+      return;
+    }
+    mutate({ waist: waistNum, hip: hipNum });
+  };
+
+  return (
+    <section className="w-full bg-[#D9D9D9] px-4 py-4">
+      <p className="mb-3 text-[17px] leading-[1.3] text-[#29292B]">Введите ваши данные, а мы подберем размер</p>
+
+      <div className="flex flex-row items-start">
+        <div className="basis-[60%] pr-2 flex flex-col">
+          <div className="mt-4">
+            <p className="mb-3 text-[22px] font-semibold text-[#29292B]">Обхват талии</p>
+            <div className="mb-1 flex flex-row items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={waist}
+                onChange={(e) => setWaist(e.target.value)}
+                className="h-9 w-[50%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
+              />
+              <img src={checkIcon} alt="" className="w-6 h-6" />
+            </div>
           </div>
+
+          <div className="mt-4">
+            <p className="mb-3 text-[22px] font-semibold text-[#29292B]">Обхват бедер</p>
+            <div className="mb-4 flex flex-row items-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={hip}
+                onChange={(e) => setHip(e.target.value)}
+                className="h-9 w-[50%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
+              />
+              <img src={checkIcon} alt="" className="w-6 h-6" />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="mt-1 h-11 w-[70%] rounded-[12px] bg-[#000043] text-[17px] text-white flex items-center justify-center disabled:opacity-50"
+            onClick={handleCalculate}
+            disabled={isPending}
+          >
+            {isPending ? 'Считаем...' : '→ рассчитать'}
+          </button>
         </div>
 
-        <div className="mt-4">
-          <p className="mb-3 text-[22px] font-semibold text-[#29292B]">Обхват талии</p>
-          <div className="mb-4 flex flex-row items-center gap-2">
-            <input
-              type="text"
-              placeholder=""
-              className="h-9 w-[30%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
-            />
-            <img src={checkIcon} alt="" className="w-6 h-6" />
-          </div>
+        <div className="basis-[40%] flex justify-center">
+          <img src={figureBody} alt="" className="w-[120px] h-auto" />
         </div>
+      </div>
 
+      <div className="mt-0 flex flex-row items-center gap-3">
+        <div className="flex flex-col text-[21px] font-bold leading-[1.1] text-[#29292B]">
+          <span>Ваш размер</span>
+          <span>BRACE</span>
+        </div>
+        <div className="h-11 w-14 rounded-[12px] bg-white flex items-center justify-center text-lg font-semibold text-[#29292B]">
+          {result ?? '—'}
+        </div>
         <button
           type="button"
-          className="mt-1 h-11 w-[70%] rounded-[12px] bg-[#000043] text-[17px] text-white flex items-center justify-center"
+          className="flex-1 h-11 rounded-[12px] bg-[#000043] text-[17px] text-white flex items-center justify-center"
+          onClick={() => navigate('/catalog')}
         >
-          → рассчитать
+          → перейти в каталог
         </button>
       </div>
-
-      <div className="basis-[40%] flex justify-center">
-        <img src={figureBody} alt="" className="w-[120px] h-auto" />
-      </div>
-    </div>
-
-    <div className="mt-0 flex flex-row items-center gap-3">
-      <div className="flex flex-col text-[21px] font-bold leading-[1.1] text-[#29292B]">
-        <span>Ваш размер</span>
-        <span>BRACE</span>
-      </div>
-      <div className="h-11 w-14 rounded-[12px] bg-white" />
-      <button
-        type="button"
-        className="flex-1 h-11 rounded-[12px] bg-[#000043] text-[17px] text-white flex items-center justify-center"
-      >
-        → перейти в каталог
-      </button>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 export const Homepage = () => (
   <div className="min-h-screen bg-white pb-28 text-text-primary font-montserrat">
