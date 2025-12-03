@@ -3,9 +3,10 @@
     "target": "ESNext",
     "module": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"],
+      "@brace/shared-api": ["../shared-api/src/index.ts"]
     },
     "allowJs": true,
     "skipLibCheck": true,

@@ -1,37 +1,40 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 import ProductBottomBar from '@/components/product/ProductBottomBar';
 import ProductComplementSection from '@/components/product/ProductComplementSection';
 import ProductHeader from '@/components/product/ProductHeader';
+import { ProductCharacteristicsModal, ProductDescriptionModal } from '@/components/product/ProductInfoModal';
 import ProductMediaCarousel from '@/components/product/ProductMediaCarousel';
 import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSizeSection';
 import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
-import { ProductCharacteristicsModal, ProductDescriptionModal } from '@/components/product/ProductInfoModal';
 import ProductSizeTableModal from '@/components/product/ProductSizeTableModal';
 import ProductStatusBar from '@/components/product/ProductStatusBar';
 import { ProductTabId } from '@/components/product/ProductTabs';
 import ProductTags from '@/components/product/ProductTags';
 import ProductThumbnailsStrip from '@/components/product/ProductThumbnailsStrip';
 import ProductTitle from '@/components/product/ProductTitle';
+import { useProductDetails } from '@/pages/product/useProductDetails';
+import { useRelatedProductsQuery } from '@/shared/api/queries';
 
 export const ProductPage = () => {
-  const tags = ['семейные', '4_шт.', '100%_хлопок'];
-  const sizeOptions = [
-    { id: 'brace1', label: 'Brace 1', subLabel: '44' },
-    { id: 'brace2', label: 'Brace 2', subLabel: '46' },
-    { id: 'brace3', label: 'Brace 3', subLabel: '48' },
-    { id: 'brace4', label: 'Brace 4', subLabel: '50' },
-    { id: 'brace5', label: 'Brace 5', subLabel: '52' },
-    { id: 'brace6', label: 'Brace 6', subLabel: '54' },
-    { id: 'brace7', label: 'Brace 7', subLabel: '56' },
-    { id: 'brace8', label: 'Brace 8', subLabel: '58' },
-    { id: 'brace9', label: 'Brace 9', subLabel: '60' },
-  ];
+  const { productId } = useParams();
+  const { data: product, isLoading, isError } = useProductDetails(productId);
+  const { data: related } = useRelatedProductsQuery(productId ?? '', { enabled: Boolean(productId) });
+  const tags: string[] = product?.tags?.length ? product.tags : ['семейные', '4_шт.', '100%_хлопок'];
   const [activeTab, setActiveTab] = useState<ProductTabId>('description');
   const [isSizeTableOpen, setIsSizeTableOpen] = useState(false);
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false);
+  const rubleFormatter = new Intl.NumberFormat('ru-RU', {
+    style: 'currency',
+    currency: 'RUB',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  const formatPrice = (minorUnits?: number) =>
+    typeof minorUnits === 'number' ? rubleFormatter.format(minorUnits / 100) : '—';
   const reviews: ProductReview[] = [
     {
       id: 'rev1',
@@ -39,7 +42,6 @@ export const ProductPage = () => {
       status: 'статус',
       sizeLabel: 'Brace 2 (46)',
       purchaseDate: '12.10.2023',
-      ratingValue: '5,0',
       text:
         'Отличное качество и посадка. Ткань приятная, швы аккуратные. Размер подошел идеально, буду заказывать еще.',
       helpfulCount: 3,
@@ -51,38 +53,56 @@ export const ProductPage = () => {
     },
   ];
   const complementProducts = [
-    {
-      id: 'comp-1',
-      isNew: true,
-      tags,
-      price: '1 591 ₽',
-      ratingCount: '11 794',
-      ratingValue: '4,9',
-    },
-    {
-      id: 'comp-2',
-      isNew: true,
-      tags,
-      price: '1 591 ₽',
-      ratingCount: '11 794',
-      ratingValue: '4,9',
-    },
+    ...(related?.items ?? []).map((item) => {
+      const variant = item.variants?.[0];
+      return {
+        id: item.id,
+        isNew: Boolean(item.is_new),
+        tags: (item.tags ?? []).map((tag: string) => `#${tag}`),
+        price: formatPrice(variant?.price_minor_units),
+        ratingCount: typeof item.rating_count === 'number' ? item.rating_count.toString() : '—',
+        ratingValue: typeof item.rating_value === 'number' ? item.rating_value.toFixed(1) : '—',
+      };
+    }),
   ];
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-white pb-24 font-montserrat text-text-primary">Загружаем товар...</div>;
+  }
+
+  if (isError || !product) {
+    return (
+      <div className="min-h-screen bg-white pb-24 font-montserrat text-text-primary">
+        Не удалось загрузить товар.
+      </div>
+    );
+  }
+  // Guard until data is present
+  const safeProduct = product;
+
+  const sizeOptions =
+    product.variants?.map((variant): { id: string; label: string; subLabel: string } => ({
+      id: variant.id,
+      label: variant.size,
+      subLabel: variant.size,
+    })) ?? [];
+  const primaryVariant = product.variants?.[0];
+  const priceLabel = formatPrice(primaryVariant?.price_minor_units);
 
   return (
     <div className="min-h-screen bg-white text-[#29292B] font-montserrat pb-24">
       <ProductStatusBar />
       <ProductHeader />
-      <ProductTitle title="Название" />
+      <ProductTitle title={product.name} />
       <ProductMediaCarousel />
       <ProductThumbnailsStrip />
       <ProductTags tags={tags} />
       <ProductPriceAndSizeSection
-        price="1 591 ₽"
+        price={priceLabel}
         ratingCount="11 794"
         ratingValue="4,9"
         sizeOptions={sizeOptions}
-        initialSizeId="brace2"
+        initialSizeId={sizeOptions[0]?.id ?? ''}
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         onOpenSizeTable={() => setIsSizeTableOpen(true)}
@@ -101,10 +121,8 @@ export const ProductPage = () => {
           <div className="space-y-3">
             <h3 className="text-[16px] font-semibold text-[#29292B]">О продукте</h3>
             <p className="text-[14px] leading-relaxed text-[#29292B]">
-              Мягкая ткань, аккуратные швы и комфортная посадка для повседневной носки. Материал дышит и сохраняет форму после стирок.
-            </p>
-            <p className="text-[14px] leading-relaxed text-[#29292B]">
-              Подходит для активного дня и отдыха. Продуманная конструкция по меркам BRACE.
+              {safeProduct.description ??
+                'Описания для этого товара ещё нет. Мы обновим страницу, как только появится больше информации.'}
             </p>
           </div>
         }
@@ -114,16 +132,14 @@ export const ProductPage = () => {
         onClose={() => setIsCharacteristicsModalOpen(false)}
         content={
           <div className="space-y-3">
-            <h3 className="text-[16px] font-semibold text-[#29292B]">Состав и уход</h3>
+            <h3 className="text-[16px] font-semibold text-[#29292B]">Характеристики</h3>
             <ul className="list-disc space-y-2 pl-5 text-[14px] leading-relaxed text-[#29292B]">
-              <li>100% хлопок, плотность средняя.</li>
-              <li>Машинная стирка при 30°C, без отбеливания.</li>
-              <li>Не сушить в стиральной машине, гладить на средней температуре.</li>
+              {(safeProduct.specs ?? ['Характеристики пока не заполнены.']).map(
+                (spec: string, idx: number) => (
+                  <li key={idx}>{spec}</li>
+                ),
+              )}
             </ul>
-            <h3 className="text-[16px] font-semibold text-[#29292B]">Особенности</h3>
-            <p className="text-[14px] leading-relaxed text-[#29292B]">
-              Эластичный пояс, плоские швы, комфортная посадка по меркам BRACE.
-            </p>
           </div>
         }
       />

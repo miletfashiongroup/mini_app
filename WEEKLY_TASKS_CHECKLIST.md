@@ -61,7 +61,7 @@
   - [x] `BRACE_RATE_LIMIT` (если отличается от default)
 
 - [x] **Настроить env vars в Render (Frontend)**
-  - [x] `VITE_BACKEND_URL` (production backend URL)
+  - [x] `VITE_API_BASE_URL` (production backend URL)
   - [x] `VITE_APP_URL` (production frontend URL)
 
 - [x] **Протестировать production окружение**
@@ -448,4 +448,3 @@
 ---
 
 **Удачи! 🚀**
-

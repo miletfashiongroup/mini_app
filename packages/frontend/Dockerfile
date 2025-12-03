@@ -1,12 +1,12 @@
 
 
 FROM node:20-alpine AS build
-ARG VITE_BACKEND_URL=http://localhost:8000
-ARG VITE_APP_URL=http://localhost
+ARG VITE_API_BASE_URL=http://localhost:8000
+ARG VITE_APP_BASE_URL=http://localhost
 WORKDIR /app
 ENV CI=1 \
-    VITE_BACKEND_URL=${VITE_BACKEND_URL} \
-    VITE_APP_URL=${VITE_APP_URL}
+    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_APP_BASE_URL=${VITE_APP_BASE_URL}
 
 # Install dependencies with a pristine node_modules tree
 COPY packages/frontend/package.json packages/frontend/package-lock.json ./

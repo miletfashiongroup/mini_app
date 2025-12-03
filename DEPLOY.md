@@ -42,8 +42,9 @@ Reference deployment to free/low-cost services: Render (backend), Railway (Postg
    - Publish Directory: `dist`
 
 3. **Environment Variables:**
-   - `VITE_BACKEND_URL` — URL вашего backend service
-   - `VITE_APP_URL` — URL вашего frontend service
+   - `VITE_API_BASE_URL` — URL вашего backend service
+   - `VITE_APP_BASE_URL` — URL вашего frontend service
+   - `VITE_ENV` — `production`
 
 **Альтернатива:** Можно использовать Vercel для frontend (см. оригинальную инструкцию выше).
 
@@ -74,8 +75,9 @@ Reference deployment to free/low-cost services: Render (backend), Railway (Postg
 #### 🔴 Required (Обязательные)
 | Key | Description | Example |
 | --- | --- | --- |
-| `VITE_BACKEND_URL` | Backend API URL | `https://your-backend.onrender.com` |
-| `VITE_APP_URL` | Frontend App URL | `https://your-frontend.onrender.com` |
+| `VITE_API_BASE_URL` | Backend API URL | `https://your-backend.onrender.com` |
+| `VITE_APP_BASE_URL` | Frontend App URL | `https://your-frontend.onrender.com` |
+| `VITE_ENV` | Build-time env | `production` |
 
 **Примечание:** Все переменные должны начинаться с `VITE_` для Vite build process.
 

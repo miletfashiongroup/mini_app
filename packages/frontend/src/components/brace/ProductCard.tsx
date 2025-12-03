@@ -1,10 +1,12 @@
 // packages/frontend/src/components/brace/ProductCard.tsx
-import React from "react";
 import clsx from "clsx";
-import type { Product } from "@/entities/product/model/types";
-import { Button } from "./Button";
-import { Badge } from "./Badge";
+import React from "react";
+
 import newIcon from "@/assets/images/icon-new.svg";
+import type { Product } from "@/entities/product/model/types";
+
+import { Badge } from "./Badge";
+import { Button } from "./Button";
 
 type ProductCardProps = {
   product?: Product;

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from brace_backend.api.deps import get_uow
 from brace_backend.api.params import PaginationParams
@@ -16,7 +16,8 @@ def _build_pagination_metadata(
     *, total: int, page: int, page_size: int, unpaged: bool
 ) -> Pagination:
     if unpaged:
-        return Pagination(page=1, page_size=total, total=total, pages=1 if total else 1)
+        safe_page_size = max(1, total)
+        return Pagination(page=1, page_size=safe_page_size, total=total, pages=1)
     pages = max(1, (total + page_size - 1) // page_size)
     return Pagination(page=page, page_size=page_size, total=total, pages=pages)
 
@@ -24,6 +25,7 @@ def _build_pagination_metadata(
 @router.get("", response_model=SuccessResponse[list[ProductRead]])
 async def list_products(
     pagination: PaginationParams = Depends(),
+    category: str | None = Query(default=None),
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[list[ProductRead]]:
     total_items = 0
@@ -32,6 +34,7 @@ async def list_products(
         uow,
         page=None if unpaged else page,
         page_size=None if unpaged else page_size,
+        category=category,
     )
     pagination_meta = _build_pagination_metadata(
         total=len(products) if unpaged else total,
@@ -49,3 +52,12 @@ async def get_product(
 ) -> SuccessResponse[ProductRead]:
     product = await product_service.get_product(uow, product_id)
     return SuccessResponse[ProductRead](data=product)
+
+
+@router.get("/{product_id}/related", response_model=SuccessResponse[list[ProductRead]])
+async def related_products(
+    product_id: UUID,
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[list[ProductRead]]:
+    items = await product_service.list_related(uow, product_id=product_id)
+    return SuccessResponse[list[ProductRead]](data=items)

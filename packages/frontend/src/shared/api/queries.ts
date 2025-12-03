@@ -12,6 +12,7 @@ import {
   fetchProductById,
   fetchProducts,
   productKeys,
+  fetchRelatedProducts,
 } from '@/entities/product/api/productApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
 import { ApiError } from '@/shared/api/types';
@@ -42,6 +43,17 @@ export const useProductQuery = (
     ...options,
   });
 
+export const useRelatedProductsQuery = (
+  productId: string,
+  options?: QueryOptions<ProductListResult>,
+) =>
+  useQuery<ProductListResult, ApiError>({
+    queryKey: [...productKeys.detail(productId), 'related'],
+    queryFn: () => fetchRelatedProducts(productId),
+    enabled: Boolean(productId),
+    ...options,
+  });
+
 export const useBannersQuery = (options?: QueryOptions<BannerCarouselResponse>) =>
   useQuery<BannerCarouselResponse, ApiError>({
     queryKey: bannerKeys.list(),
@@ -63,4 +75,3 @@ export const useUserProfileQuery = (options?: QueryOptions<UserProfile>) =>
     queryFn: fetchProfile,
     ...options,
   });
-

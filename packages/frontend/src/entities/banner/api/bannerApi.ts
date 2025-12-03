@@ -1,12 +1,9 @@
+import type { components } from '@brace/shared-api';
+
 import { apiClient } from '@/shared/api/httpClient';
 
-export type Banner = {
-  id: string;
-  image_url: string;
-  video_url: string | null;
-  is_active: boolean;
-  sort_order: number;
-};
+
+export type Banner = components['schemas']['BannerRead'];
 
 export type BannerCarouselResponse = {
   banners: Banner[];

@@ -1,6 +1,6 @@
 // packages/frontend/src/components/brace/Button.tsx
-import React from "react";
 import clsx from "clsx";
+import React from "react";
 
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "outline";

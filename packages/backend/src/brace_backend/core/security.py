@@ -5,6 +5,7 @@ import hmac
 import json
 import threading
 import time
+import re
 from json import JSONDecodeError
 from typing import Any
 from urllib.parse import parse_qsl
@@ -23,8 +24,11 @@ except Exception:  # pragma: no cover
 
 def _log_auth_debug(message: str, **extra: Any) -> None:
     """Emit structured Telegram auth debug logs (emergency mode)."""
-    safe_extra = {key: value for key, value in extra.items() if value is not None}
-    # loguru style: дополнительные поля через kwargs
+    if settings.is_production:
+        logger.bind(auth="telegram").info("TELEGRAM AUTH DEBUG: <REDACTED>")
+        return
+
+    safe_extra = {key: _redact_value(value) for key, value in extra.items() if value is not None}
     logger.bind(auth="telegram", **safe_extra).info(f"TELEGRAM AUTH DEBUG: {message}")
 
 
@@ -50,6 +54,27 @@ class TelegramInitData:
 TELEGRAM_MAX_AGE_SECONDS = 60 * 60
 TELEGRAM_CLOCK_SKEW_SECONDS = 30
 TELEGRAM_SIGNATURE_SALT = b"WebAppData"
+EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def _redact_value(value: Any) -> Any:
+    """Best-effort PII redaction for debug logs."""
+    if value is None:
+        return value
+    if isinstance(value, str):
+        trimmed = value.strip()
+        if EMAIL_PATTERN.fullmatch(trimmed):
+            return "<REDACTED_EMAIL>"
+        if len(trimmed) > 80:
+            return "<REDACTED>"
+        if "token" in trimmed.lower() or len(trimmed) >= 32:
+            return "<REDACTED_TOKEN>"
+        return trimmed
+    if isinstance(value, dict):
+        return {k: _redact_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return type(value)(_redact_value(v) for v in value)
+    return value
 
 
 def parse_init_data(raw: str) -> dict[str, Any]:
@@ -118,21 +143,28 @@ def validate_payload_schema(payload: dict[str, Any]) -> None:
 class NonceReplayProtector:
     """Best-effort replay protection that prefers Redis but falls back to in-memory storage."""
 
-    def __init__(self, *, redis_url: str, ttl: int):
+    def __init__(self, *, redis_url: str, ttl: int, require_redis: bool = False):
         self.ttl = ttl
         self._redis_url = redis_url
+        self._require_redis = require_redis
         self._lock = threading.Lock()
         self._memory_store: dict[str, float] = {}
         self._redis_client = self._bootstrap_client()
 
     def _bootstrap_client(self) -> Redis | None:
         if not redis_url_supports_dedupe(self._redis_url):
+            if self._require_redis:
+                raise RuntimeError("Redis is required for nonce replay protection in production.")
             return None
         if Redis is None:
+            if self._require_redis:
+                raise RuntimeError("redis package is required for production replay protection.")
             return None
         try:
             return Redis.from_url(self._redis_url, decode_responses=True)
         except Exception as exc:  # pragma: no cover - best-effort logging path
+            if self._require_redis:
+                raise RuntimeError("Redis replay store unavailable") from exc
             logger.warning(
                 "Redis replay store unavailable, falling back to in-memory nonce tracking.",
                 error=str(exc),
@@ -188,6 +220,7 @@ def redis_url_supports_dedupe(url: str) -> bool:
 _replay_protector = NonceReplayProtector(
     redis_url=settings.redis_url,
     ttl=TELEGRAM_MAX_AGE_SECONDS,
+    require_redis=settings.is_production,
 )  # PRINCIPAL-NOTE: Shared nonce tracking defends against replay even under burst traffic.
 
 
@@ -237,9 +270,9 @@ def verify_init_data(init_data: str) -> TelegramInitData:
 
     try:
         auth_date = int(parsed.get("auth_date", 0))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as exc:
         _log_auth_debug("timestamp_invalid", value=parsed.get("auth_date"))
-        raise AccessDeniedError("Telegram init data timestamp is invalid.")
+        raise AccessDeniedError("Telegram init data timestamp is invalid.") from exc
     now = time.time()
     if auth_date <= 0:
         _log_auth_debug("timestamp_missing_or_zero")
@@ -252,22 +285,26 @@ def verify_init_data(init_data: str) -> TelegramInitData:
         raise AccessDeniedError("Telegram init data timestamp is in the future.")
 
     nonce = str(parsed.get("nonce") or parsed.get("query_id") or "")
-    if nonce:
-        _replay_protector.ensure_unique(nonce)
-        _log_auth_debug("nonce_ok", nonce=nonce)
-    else:
+    if not nonce:
         _log_auth_debug(
-            "nonce_missing_replay_skipped",
+            "nonce_missing",
             has_nonce=bool(parsed.get("nonce")),
             has_query_id=bool(parsed.get("query_id")),
         )
+        raise AccessDeniedError("Telegram init data nonce is required.")
+    _replay_protector.ensure_unique(nonce)
+    _log_auth_debug("nonce_ok", nonce=nonce)
 
     return TelegramInitData(parsed)
 
 
 async def validate_request(init_data_header: str | None) -> TelegramInitData:
     """Verify Telegram init data header or use a controlled emergency bypass."""
-    if settings.telegram_dev_mode_enabled:
+    if getattr(settings, "is_production", False) and getattr(
+        settings, "telegram_emergency_bypass", False
+    ):
+        raise AccessDeniedError("Emergency bypass must be disabled in production.")
+    if getattr(settings, "telegram_dev_mode_enabled", False):
         mock_payload = {
             "user": settings.telegram_dev_user,
             "auth_date": int(time.time()),
@@ -284,9 +321,9 @@ async def validate_request(init_data_header: str | None) -> TelegramInitData:
             "validate_request_failed",
             reason=str(exc),
             has_header=bool(init_data_header),
-            emergency_bypass=settings.telegram_emergency_bypass,
+            emergency_bypass=getattr(settings, "telegram_emergency_bypass", False),
         )
-        if settings.telegram_emergency_bypass:
+        if getattr(settings, "telegram_emergency_bypass", False):
             now = int(time.time())
             mock_payload = {
                 "user": {

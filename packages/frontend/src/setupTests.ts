@@ -17,8 +17,8 @@ const webAppMock = {
 };
 
 const TEST_RUNTIME_ENV = Object.freeze({
-  API_BASE_URL: 'http://localhost',
-  APP_URL: 'http://localhost/app',
+  API_BASE_URL: 'http://localhost:8000',
+  APP_URL: 'http://localhost:4173',
 });
 
 const allowOverride = (value?: string) => {

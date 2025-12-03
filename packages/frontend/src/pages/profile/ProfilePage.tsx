@@ -3,9 +3,9 @@ import boxIcon from '@/assets/images/icon-box.svg';
 import docsIcon from '@/assets/images/icon-docs.svg';
 import giftIcon from '@/assets/images/icon-gift.svg';
 import handsIcon from '@/assets/images/icon-hands.svg';
-import logoBrace from '@/assets/images/logo-brace.svg';
 import profileAccountIcon from '@/assets/images/icon-profile_white.svg';
 import supportIcon from '@/assets/images/icon-support.svg';
+import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
 import { useUserProfileQuery } from '@/shared/api/queries';
 
@@ -123,18 +123,24 @@ const ProfileSectionsSection = () => (
 );
 
 export const ProfilePage = () => {
-  const { data } = useUserProfileQuery();
+  const { data, isLoading, isError } = useUserProfileQuery();
 
-  const profileId = data?.telegram_id?.toString() ?? data?.id ?? '1234567890';
-  const profileName = [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim() || 'Имя';
-  const profileUsername = data?.username ? `@${data.username}` : '@Name';
+  const profileId = (data as any)?.telegram_id?.toString?.() ?? data?.id ?? '—';
+  const profileName = [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim() || '—';
+  const profileUsername = data?.username ? `@${data.username}` : '—';
 
   return (
-    <div className="min-h-screen bg-white pb-28 font-montserrat text-[#29292B]">
+    <div className="min-h-screen bg-white pb-28 font-montserrat text-text-primary">
       <ProfileStatusBar />
       <ProfileHeader />
       <ProfileTitle />
-      <ProfileUserDataSection id={profileId} name={profileName} username={profileUsername} />
+      {isLoading ? (
+        <div className="px-4 py-6 text-[14px]">Загружаем профиль...</div>
+      ) : isError ? (
+        <div className="px-4 py-6 text-[14px]">Не удалось загрузить профиль.</div>
+      ) : (
+        <ProfileUserDataSection id={profileId} name={profileName} username={profileUsername} />
+      )}
       <ProfileSectionsSection />
       <CatalogBottomNavigation activeId="profile" />
     </div>

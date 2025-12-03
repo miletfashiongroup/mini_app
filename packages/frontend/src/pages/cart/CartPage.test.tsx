@@ -2,7 +2,16 @@ import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import { CartPage } from '@/pages/cart/CartPage';
+import * as queries from '@/shared/api/queries';
 import { renderWithProviders } from '@/tests/renderWithProviders';
+
+vi.mock('@/shared/api/queries', async (importOriginal) => {
+  const mod = (await importOriginal()) as typeof queries;
+  return {
+    ...mod,
+    useCartQuery: vi.fn(),
+  };
+});
 
 vi.mock('@/entities/cart/api/cartApi', () => ({
   cartKeys: { all: ['cart'] },
@@ -25,10 +34,35 @@ vi.mock('@/entities/cart/api/cartApi', () => ({
     ],
     total_minor_units: 309100,
   }),
-})));
+}));
 
 describe('CartPage', () => {
   it('renders new cart layout', async () => {
+    vi.mocked(queries.useCartQuery).mockReturnValue({
+      data: {
+        items: [
+          {
+            id: '1',
+            product_name: 'Худи BRACE',
+            size: '42-44',
+            quantity: 1,
+            unit_price_minor_units: 159100,
+          },
+          {
+            id: '2',
+            product_name: 'Футболка',
+            size: '42-44',
+            quantity: 1,
+            unit_price_minor_units: 150000,
+          },
+        ],
+        total_minor_units: 309100,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+
     render(renderWithProviders(<CartPage />));
 
     expect(await screen.findByText('Корзина')).toBeInTheDocument();

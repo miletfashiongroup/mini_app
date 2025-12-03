@@ -29,9 +29,12 @@ def override_settings(monkeypatch):
         telegram_bot_token = "unit-test-secret"
         telegram_webapp_secret = None
         telegram_dev_mode = False
+        telegram_emergency_bypass = False
         telegram_dev_user: ClassVar[dict] = {"id": 999, "username": "dev"}
         redis_url = "memory://"
         telegram_debug_logging = False
+        disable_rate_limit = False
+        telegram_dev_fallback_token = ""
 
         @property
         def telegram_dev_mode_enabled(self) -> bool:
@@ -40,6 +43,10 @@ def override_settings(monkeypatch):
                 and self.allow_dev_mode
                 and self.telegram_dev_mode
             )
+
+        @property
+        def is_production(self) -> bool:
+            return self.environment.lower() == "production"
 
     monkeypatch.setattr("brace_backend.core.security.settings", DummySettings())
     return DummySettings
@@ -145,6 +152,17 @@ async def test_validate_request_requires_header(monkeypatch, override_settings):
         await validate_request(None)
 
 
+def test_log_redaction_removes_sensitive_data(monkeypatch, caplog):
+    """Redaction should hide emails, tokens and long strings."""
+    from brace_backend.core.security import _redact_value  # type: ignore[import-private-name]
+
+    assert _redact_value("user@example.com") == "<REDACTED_EMAIL>"
+    assert _redact_value("Bearer token=abcdef1234567890") == "<REDACTED_TOKEN>"
+    assert _redact_value("x" * 100) == "<REDACTED>"
+    nested = {"email": "user@example.com", "token": "a" * 40}
+    assert nested["email"] != _redact_value(nested)["email"]
+
+
 @pytest.mark.asyncio
 async def test_validate_request_dev_mode(monkeypatch, override_settings):
     """Dev mode bypass should return the configured fake user."""
@@ -162,3 +180,39 @@ async def test_validate_request_dev_mode_locked_outside_dev_env(monkeypatch, ove
     override_settings.allow_dev_mode = False
     with pytest.raises(AccessDeniedError):
         await validate_request(None)
+
+
+def test_replay_protector_rejects_duplicate_nonce(fresh_replay_protector):
+    """Replay protector must reject the same nonce within TTL."""
+    fresh_replay_protector.ensure_unique("repeatable-nonce")
+    with pytest.raises(AccessDeniedError):
+        fresh_replay_protector.ensure_unique("repeatable-nonce")
+
+
+def test_log_auth_debug_redacts_in_production(monkeypatch):
+    """Production logs must redact init data entirely."""
+    from types import SimpleNamespace
+    import brace_backend.core.security as security
+
+    prod_settings = SimpleNamespace(
+        is_production=True,
+        telegram_dev_mode=False,
+        allow_dev_mode=False,
+        telegram_dev_fallback_token="",
+        redis_url="redis://localhost:6379/0",
+    )
+    monkeypatch.setattr(security, "settings", prod_settings)
+
+    captured: dict[str, str] = {}
+
+    class DummyLogger:
+        def bind(self, **kwargs):
+            return self
+
+        def info(self, message):
+            captured["message"] = message
+
+    monkeypatch.setattr(security, "logger", DummyLogger())
+
+    security._log_auth_debug("init_data_received", raw_sample="secret")  # type: ignore[arg-type]
+    assert captured["message"] == "TELEGRAM AUTH DEBUG: <REDACTED>"

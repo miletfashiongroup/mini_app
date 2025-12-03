@@ -35,7 +35,7 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
    ```bash
    cp .env.example .env
    ```
-   Populate `BRACE_TELEGRAM_BOT_TOKEN`, database credentials, and the `VITE_*` URLs that the frontend will embed. The backend now auto-loads `.env` from the monorepo root even when commands are executed inside `packages/backend`; override the lookup via `BRACE_ENV_FILE=/path/to/.env` if you keep secrets elsewhere.  # PRINCIPAL-FIX
+   Populate `BRACE_TELEGRAM_BOT_TOKEN`, database credentials, and the `VITE_*` URLs that the frontend will embed (`VITE_API_BASE_URL`, `VITE_APP_BASE_URL`, `VITE_ENV`). The backend now auto-loads `.env` from the monorepo root even when commands are executed inside `packages/backend`; override the lookup via `BRACE_ENV_FILE=/path/to/.env` if you keep secrets elsewhere.  # PRINCIPAL-FIX
 2. **Install toolchains**
    ```bash
    make backend-install frontend-install
@@ -59,6 +59,10 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
    npm run dev -- --host
    ```
    Visit `http://localhost:4173`; Vite proxies API calls to the backend URL from `.env`.
+   Regenerate shared API types if backend schema changed:
+   ```bash
+   pnpm generate:api
+   ```
 6. **Full stack via Docker Compose**
    ```bash
    make docker-up          # build + run backend, frontend, postgres, redis
@@ -83,9 +87,12 @@ README.md, README-verify.md, DEPLOY.md, CHANGELOG.md, POSTMORTEM.md
 | `ALEMBIC_DATABASE_URL` | Sync DSN used by Alembic/entrypoint migrations | `postgresql+psycopg://postgres:postgres@db:5432/brace` |
 | `BRACE_REDIS_URL` | SlowAPI limiter storage | `memory://` locally, overridden to `redis://redis:6379/0` inside Docker |
 | `BRACE_TELEGRAM_BOT_TOKEN` | Required for initData validation | _(set per BotFather)_ |
+| `BRACE_TELEGRAM_DEV_TOKEN` | Dev-only fallback token when `BRACE_ALLOW_DEV_MODE=true` | `dev-telegram-token` |
 | `BRACE_CORS_ORIGINS` | Allowed origins array | `["http://localhost","http://localhost:4173"]` |
-| `VITE_BACKEND_URL` | API base URL compiled into the frontend bundle | `http://localhost:8000` |
-| `VITE_APP_URL` | Public frontend URL for Telegram `/setdomain` | `http://localhost` |
+| `VITE_API_BASE_URL` | API base URL compiled into the frontend bundle | `http://localhost:8000` |
+| `VITE_APP_BASE_URL` | Public frontend URL for Telegram `/setdomain` | `http://localhost:4173` |
+| `VITE_ENV` | Build-time env flag (`dev/stage/prod`) | `dev` |
+| `pnpm generate:api` | Generate `packages/shared-api` types from FastAPI OpenAPI | _none_ |
 | `SMOKE_DATABASE_URL` | Async DSN **dedicated** to smoke tests (must contain `brace_smoke`) | `postgresql+asyncpg://postgres:postgres@localhost:5432/brace_smoke` |
 | `POSTGRES_USER/PASSWORD/DB` | Docker Compose Postgres bootstrap | `postgres / postgres / brace` |
 
@@ -128,6 +135,7 @@ Refer to `packages/backend/tests` for usage examples.
 ## Security & Compliance
 - initData is required on all protected routes via the `X-Telegram-Init-Data` header.
 - FastAPI dependency verifies signature + freshness (5 minute TTL) via HMAC-SHA256.
+- Production boot fails if `BRACE_TELEGRAM_BOT_TOKEN` is missing; dev-only fallback token works only when both `BRACE_ALLOW_DEV_MODE=true` and `BRACE_TELEGRAM_DEV_MODE=true`.
 - nginx only exposes port 80; backend stays inside Docker network.
 - DOMPurify sanitizes dynamic text pages client-side.
 - SlowAPI enforces `60/minute` rate limit per IP; adjust via `BRACE_RATE_LIMIT`.
@@ -150,9 +158,31 @@ GitHub Actions pipeline (`.github/workflows/ci.yml`):
    ```env
    BRACE_TELEGRAM_BOT_TOKEN=<BOT_TOKEN>
    BRACE_CORS_ORIGINS=["https://your-frontend-host", "http://localhost"]
-   VITE_BACKEND_URL=https://your-backend-host
-   VITE_APP_URL=https://your-frontend-host
+   VITE_API_BASE_URL=https://your-backend-host
+   VITE_APP_BASE_URL=https://your-frontend-host
+   VITE_ENV=production
    ```
 5. Validate connectivity by opening the Mini App inside Telegram; the client automatically calls `/api/verify-init` to ensure signatures match.
 
 For a detailed walk-through (screenshots, manual QA), see `README-verify.md` and `DEPLOY.md`.
+
+## Architecture (Backend layers)
+- **domain/** — business entities (ORM models) grouped by bounded contexts (catalog, cart, orders, users, content).
+- **application/** — use-cases/services per context (catalog, cart, orders, users) exposing DTOs and business logic.
+- **infrastructure/** — repositories (SQLAlchemy) and external integrations; transport-agnostic.
+- **transport/api/** — FastAPI routers that only map HTTP ↔ application layer and return Pydantic DTOs in the common envelope.
+
+Example flow — GET /products/{id}:
+1) transport/api → products router
+2) application/catalog → product_service.get_product
+3) infrastructure/repositories/catalog → ProductRepository.get_with_variants
+4) domain/catalog → Product/ProductVariant mapped to ProductRead DTO
+5) transport returns envelope `{ data, error, pagination }`
+
+Example flow — PATCH /cart/{item_id}:
+1) transport/api → cart router (validates CartItemUpdate)
+2) application/cart → cart_service.update_item (business rules: stock, quantity)
+3) infrastructure/repositories/cart → CartRepository (SQLAlchemy)
+4) domain/cart → CartItem mapped to CartItemRead DTO
+5) transport returns envelope with updated item
+

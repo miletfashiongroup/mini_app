@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from brace_backend.api.deps import get_current_user, get_uow
 from brace_backend.api.params import PaginationParams
+from brace_backend.core.limiter import limiter
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.user import User
 from brace_backend.schemas.common import Pagination, SuccessResponse
@@ -12,7 +13,9 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
 @router.get("", response_model=SuccessResponse[list[OrderRead]])
+@limiter.limit("20/minute")
 async def list_orders(
+    request: Request,
     pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
@@ -34,7 +37,9 @@ async def list_orders(
 
 
 @router.post("", response_model=SuccessResponse[OrderRead], status_code=201)
+@limiter.limit("10/minute")
 async def create_order(
+    request: Request,
     payload: OrderCreate,
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),

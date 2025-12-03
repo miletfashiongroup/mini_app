@@ -1,0 +1,7 @@
+{
+  "name": "brace-backend-tooling",
+  "private": true,
+  "scripts": {
+    "openapi": "poetry run python - <<'PY'\nfrom brace_backend.main import app\nfrom fastapi.openapi.utils import get_openapi\nimport json\nprint(json.dumps(get_openapi(title=app.title, version=app.version, routes=app.routes)))\nPY"
+  }
+}

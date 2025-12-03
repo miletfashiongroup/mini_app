@@ -94,6 +94,11 @@
 - **Default:** `false`
 - **Production:** ❌ НИКОГДА не устанавливать в `true` в production!
 
+#### `BRACE_TELEGRAM_DEV_TOKEN`
+- **Описание:** Dev-only токен, используемый только если одновременно `BRACE_ALLOW_DEV_MODE=true` и `BRACE_TELEGRAM_DEV_MODE=true`
+- **Default:** `dev-telegram-token`
+- **Production:** ❌ НИКОГДА не использовать в production
+
 #### `BRACE_LOG_LEVEL`
 - **Описание:** Уровень логирования
 - **Возможные значения:** `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
@@ -253,21 +258,25 @@
 
 ### 🔴 Required (Обязательные)
 
-#### `VITE_BACKEND_URL`
+#### `VITE_API_BASE_URL`
 - **Описание:** URL backend API
 - **Формат:** Полный URL (с протоколом)
 - **Пример:** `https://brace-1-backend.onrender.com`
 - **Production:** ✅ Обязательно настроить в Render
-- **Примечание:** 
+- **Примечание:**
   - Используется Vite, поэтому переменная должна начинаться с `VITE_`
   - Значение компилируется в bundle при сборке
 
-#### `VITE_APP_URL`
+#### `VITE_APP_BASE_URL`
 - **Описание:** URL frontend приложения
 - **Формат:** Полный URL (с протоколом)
 - **Пример:** `https://brace-1-frontend.onrender.com`
 - **Production:** ✅ Обязательно настроить в Render
 - **Примечание:** Используется для Telegram WebApp конфигурации
+
+#### `VITE_ENV`
+- **Описание:** build-time флаг окружения (`dev`, `stage`, `production`)
+- **Default:** `dev`
 
 ---
 
@@ -310,7 +319,7 @@
 
 ```bash
 # Required
-BRACE_TELEGRAM_BOT_TOKEN=your_bot_token
+BRACE_TELEGRAM_BOT_TOKEN=your_bot_token  # dev fallback не разрешён в prod
 BRACE_DATABASE_URL=postgresql+psycopg_async://...
 BRACE_CORS_ORIGINS=["https://your-frontend.onrender.com"]
 BRACE_ENVIRONMENT=production
@@ -328,8 +337,9 @@ BRACE_LOG_JSON=true
 
 ```bash
 # Required
-VITE_BACKEND_URL=https://your-backend.onrender.com
-VITE_APP_URL=https://your-frontend.onrender.com
+VITE_API_BASE_URL=https://your-backend.onrender.com
+VITE_APP_BASE_URL=https://your-frontend.onrender.com
+VITE_ENV=production
 ```
 
 ### Render PostgreSQL
@@ -362,8 +372,9 @@ VITE_APP_URL=https://your-frontend.onrender.com
 
 1. Создайте `.env.local` в корне проекта (или используйте `.env`):
    ```bash
-   VITE_BACKEND_URL=http://localhost:8000
-   VITE_APP_URL=http://localhost:4173
+   VITE_API_BASE_URL=http://localhost:8000
+   VITE_APP_BASE_URL=http://localhost:4173
+   VITE_ENV=dev
    ```
 
 2. Vite автоматически загрузит переменные из `.env.local` или `.env`.
@@ -392,7 +403,7 @@ VITE_APP_URL=https://your-frontend.onrender.com
 
 ### Frontend не может подключиться к Backend
 
-1. Проверьте `VITE_BACKEND_URL` (должен быть полный URL с `https://`)
+1. Проверьте `VITE_API_BASE_URL` (должен быть полный URL с `https://`)
 2. Проверьте CORS настройки: `BRACE_CORS_ORIGINS` должен содержать frontend URL
 3. Проверьте, что backend запущен и доступен
 
@@ -408,4 +419,3 @@ VITE_APP_URL=https://your-frontend.onrender.com
 - [DEPLOY.md](./DEPLOY.md) — Инструкции по деплою
 - [README.md](./README.md) — Общая документация проекта
 - [.env.example](./.env.example) — Шаблон .env файла
-

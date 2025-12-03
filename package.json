@@ -1,0 +1,15 @@
+{
+  "name": "brace__1",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "generate:api": "pnpm --filter @brace/shared-api generate",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "e2e": "pnpm -r e2e"
+  },
+  "devDependencies": {
+    "pnpm": "^9.12.0"
+  }
+}

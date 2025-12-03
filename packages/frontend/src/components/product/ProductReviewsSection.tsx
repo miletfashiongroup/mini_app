@@ -1,4 +1,5 @@
 import starIcon from '@/assets/images/StarIcon.svg';
+
 import ProductMainCTA from './ProductMainCTA';
 
 export type ProductReview = {

@@ -83,6 +83,10 @@ class Settings(BaseSettings):
         default="memory://",
         description="Redis URL for rate limiting (use 'memory://' for in-memory fallback)",
     )
+    disable_rate_limit: bool = Field(
+        default=False,
+        description="Disable SlowAPI rate limiting (set true in tests/local when Redis is unavailable).",
+    )
 
     # ### IMPORTANT — Place BRACE_TELEGRAM_BOT_TOKEN in production environments:
     # # .env
@@ -92,6 +96,10 @@ class Settings(BaseSettings):
 
     telegram_webapp_secret: str | None = None
     telegram_dev_mode: bool = False
+    telegram_dev_fallback_token: str = Field(
+        default="dev-telegram-token",
+        description="Used ONLY in dev mode when no real bot token is configured.",
+    )
     telegram_dev_user: dict[str, Any] = {
         "id": 999_000,
         "first_name": "Dev",
@@ -134,7 +142,6 @@ class Settings(BaseSettings):
             "http://localhost",
             "http://localhost:4173",
             "http://localhost:5173",
-            "https://brace-1-frontend.onrender.com",
         ],
         description="Allowed CORS origins (JSON array string or comma-separated)",
     )
@@ -174,14 +181,26 @@ class Settings(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def ensure_telegram_credentials(self) -> "Settings":
+    def ensure_telegram_credentials(self) -> Settings:
         """Allow both BRACE_* and bare Telegram env vars while enforcing presence."""
-        bot_token = (self.telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+        prod_token = (self.telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+        dev_token = (
+            os.getenv("BRACE_TELEGRAM_DEV_TOKEN", "").strip() or self.telegram_dev_fallback_token
+        )
+        bot_token = prod_token
+        using_dev_token = False
+
+        if not bot_token and self.is_development and self.allow_dev_mode and self.telegram_dev_mode:
+            bot_token = dev_token
+            using_dev_token = True
+
         if not bot_token:
             raise ValueError(
                 "Telegram bot token is required. "
                 "Set BRACE_TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN."
             )
+        if self.is_production and using_dev_token:
+            raise ValueError("Dev Telegram token is not allowed in production.")
         # Use object.__setattr__ to bypass validate_assignment and avoid recursion
         if self.telegram_bot_token != bot_token:
             object.__setattr__(self, "telegram_bot_token", bot_token)
@@ -192,6 +211,21 @@ class Settings(BaseSettings):
         # Use object.__setattr__ to bypass validate_assignment and avoid recursion
         if self.telegram_webapp_secret != webapp_secret:
             object.__setattr__(self, "telegram_webapp_secret", webapp_secret or None)
+        return self
+
+    @model_validator(mode="after")
+    def ensure_production_safety(self) -> Settings:
+        """Fail fast when production safety rails are violated."""
+        if not self.is_production:
+            return self
+
+        redis_url = (self.redis_url or "").strip()
+        if not redis_url or redis_url == "memory://":
+            raise RuntimeError("Redis is required in production; configure a redis:// URL.")
+
+        if self.allow_dev_mode or self.telegram_dev_mode or bool(self.telegram_dev_fallback_token):
+            raise RuntimeError("Dev mode is not allowed in production")
+
         return self
 
 

@@ -1,6 +1,6 @@
 // packages/frontend/src/components/brace/Badge.tsx
-import React from "react";
 import clsx from "clsx";
+import React from "react";
 
 type BadgeProps = {
   text?: string;

@@ -5,7 +5,7 @@ import { cartKeys } from '@/entities/cart/api/cartApi';
 import type { Order } from '@/entities/order/model/types';
 import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
 import { createQueryClientWrapper } from '@/tests/queryClient';
-import { HttpResponse, http, server } from '@/tests/server';
+import { API_BASE_URL, HttpResponse, http, server } from '@/tests/server';
 
 const mockOrder: Order = {
   id: 'order-1',
@@ -21,7 +21,7 @@ describe('useCreateOrderMutation', () => {
   it('invalidates cart queries on success', async () => {
     // PRINCIPAL-FIX: MSW test
     server.use(
-      http.post('http://localhost/api/orders', () =>
+      http.post(`${API_BASE_URL}/orders`, () =>
         HttpResponse.json({ data: mockOrder, error: null }),
       ),
     );
@@ -29,17 +29,18 @@ describe('useCreateOrderMutation', () => {
     const spy = vi.spyOn(client, 'invalidateQueries');
     const { result } = renderHook(() => useCreateOrderMutation(), { wrapper: Wrapper });
 
+    let returned: Order | undefined;
     await act(async () => {
-      await result.current.mutateAsync();
+      returned = await result.current.mutateAsync();
     });
 
     expect(spy).toHaveBeenCalledWith({ queryKey: cartKeys.all });
-    expect(result.current.data).toEqual(mockOrder);
+    expect(returned).toEqual(mockOrder);
   });
 
   it('propagates API errors', async () => {
     server.use(
-      http.post('http://localhost/api/orders', () =>
+      http.post(`${API_BASE_URL}/orders`, () =>
         HttpResponse.json(
           { data: null, error: { type: 'internal', message: 'boom' } },
           { status: 500 },

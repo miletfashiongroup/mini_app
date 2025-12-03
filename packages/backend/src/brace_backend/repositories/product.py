@@ -14,12 +14,17 @@ class ProductRepository(SQLAlchemyRepository[Product]):
     model = Product
 
     def _base_stmt(self) -> Select[tuple[Product]]:
-        return select(Product).options(selectinload(Product.variants))
+        return select(Product).options(
+            selectinload(Product.variants),
+            selectinload(Product.gallery),
+        )
 
     async def list_products(
-        self, *, page: int | None = None, page_size: int | None = None
+        self, *, page: int | None = None, page_size: int | None = None, category: str | None = None
     ) -> tuple[Sequence[Product], int]:
         base_stmt = self._base_stmt().order_by(Product.created_at.desc())
+        if category:
+            base_stmt = base_stmt.where(Product.category == category)
         if page is None or page_size is None:
             result = await self.session.scalars(base_stmt)
             products = result.unique().all()
@@ -31,6 +36,8 @@ class ProductRepository(SQLAlchemyRepository[Product]):
         products = result.unique().all()
 
         total_stmt = select(func.count()).select_from(Product)
+        if category:
+            total_stmt = total_stmt.where(Product.category == category)
         total = await self.session.scalar(total_stmt)
         return products, int(total or 0)
 
@@ -46,3 +53,13 @@ class ProductRepository(SQLAlchemyRepository[Product]):
             .with_for_update()
         )
         return await self.session.scalar(stmt)
+
+    async def list_related(self, *, product_id: UUID, limit: int = 4) -> Sequence[Product]:
+        stmt = (
+            self._base_stmt()
+            .where(Product.id != product_id)
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.scalars(stmt)
+        return result.unique().all()

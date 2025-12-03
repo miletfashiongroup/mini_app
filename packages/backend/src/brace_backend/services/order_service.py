@@ -3,6 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from brace_backend.core.exceptions import ValidationError
+from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.order import Order
 from brace_backend.domain.product import ProductVariant
@@ -66,6 +67,13 @@ class OrderService:
         order.total_amount_minor_units = total_amount_minor_units
         await uow.commit()
         await uow.session.refresh(order, attribute_names=["items"])
+        logger.info(
+            "order_created",
+            user_id=str(user_id),
+            order_id=str(order.id),
+            items_count=len(order.items),
+            total_minor_units=total_amount_minor_units,
+        )
         return self._to_schema(order)
 
     def _to_schema(self, order: Order) -> OrderRead:

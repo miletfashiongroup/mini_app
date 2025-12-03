@@ -20,9 +20,7 @@ const TestComponent = () => {
 };
 
 describe('ToastProvider', () => {
-  it(
-    'shows and hides toast messages',
-    async () => {
+  it('shows and hides toast messages', async () => {
       const user = userEvent.setup();
 
       render(
@@ -44,12 +42,10 @@ describe('ToastProvider', () => {
         { timeout: 6000 },
       );
     },
-    { timeout: 10000 },
+    10000,
   );
 
-  it(
-    'renders error toast on click',
-    async () => {
+  it('renders error toast on click', async () => {
       const user = userEvent.setup();
 
       render(
@@ -64,6 +60,6 @@ describe('ToastProvider', () => {
 
       expect(await screen.findByText('Error occurred')).toBeInTheDocument();
     },
-    { timeout: 10000 },
+    10000,
   );
 });

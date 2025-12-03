@@ -1,15 +1,16 @@
 ﻿import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import type { TouchEvent as ReactTouchEvent } from 'react';
 
+import figureBody from '@/assets/images/figure-body.svg';
 import arrowLeft from '@/assets/images/icon-arrow-left.svg';
 import arrowRight from '@/assets/images/icon-arrow-right.svg';
-import checkIcon from '@/assets/images/icon-check.svg';
 import cartIcon from '@/assets/images/icon-cart.svg';
-import figureBody from '@/assets/images/figure-body.svg';
+import checkIcon from '@/assets/images/icon-check.svg';
 import newIcon from '@/assets/images/icon-new.svg';
 import playIcon from '@/assets/images/icon-play.svg';
 import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { useBannersQuery } from '@/shared/api/queries';
 
 type BannerIndicatorsProps = {
   count?: number;
@@ -38,7 +39,7 @@ const CARD_WIDTH = 232;
 const CARD_HEIGHT = 309;
 const GAP_PX = 24;
 
-const TopStatusBar = () => <div className="h-12 w-full bg-[#D9D9D9]" aria-hidden />;
+const TopStatusBar = () => <div className="h-12 w-full bg-gray-100" aria-hidden />;
 
 const HeaderHome = () => (
   <header className="px-4 py-6">
@@ -55,6 +56,49 @@ const BannerPlaceholder = ({ children }: { children?: React.ReactNode }) => (
     {children ? <div className="absolute bottom-3 left-0 right-0">{children}</div> : null}
   </div>
 );
+
+const BannerCarousel = () => {
+  const { data, isLoading, isError } = useBannersQuery();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const banners = data?.banners ?? [];
+
+  useEffect(() => {
+    setActiveIndex(data?.active_index ?? 0);
+  }, [data?.active_index]);
+
+  if (isLoading) {
+    return <p className="text-[14px] font-medium text-[#BABABA]">Загружаем баннеры...</p>;
+  }
+  if (isError) {
+    return <p className="text-[14px] font-medium text-[#BABABA]">Не удалось загрузить баннеры.</p>;
+  }
+  if (banners.length === 0) {
+    return <p className="text-[14px] font-medium text-[#BABABA]">Баннеров пока нет.</p>;
+  }
+
+  const activeBanner = banners[Math.min(activeIndex, banners.length - 1)];
+
+  return (
+    <div className="relative">
+      <BannerPlaceholder>
+        {activeBanner?.image_url ? (
+          <img
+            src={activeBanner.image_url}
+            alt="Баннер"
+            className="h-full w-full object-cover"
+            style={{ borderRadius: 16, maxHeight: 320 }}
+          />
+        ) : null}
+        <BannerIndicators
+          count={banners.length}
+          activeIndex={activeIndex}
+          onSelect={(index) => setActiveIndex(index)}
+          className="mt-0"
+        />
+      </BannerPlaceholder>
+    </div>
+  );
+};
 
 const BannerIndicators = ({ count = 3, activeIndex = 0, onSelect, className }: BannerIndicatorsProps) => (
   <div className={`flex items-center justify-center gap-1 ${className ?? 'mt-4'}`}>
@@ -78,11 +122,9 @@ const BannerIndicators = ({ count = 3, activeIndex = 0, onSelect, className }: B
 
 const TitleBannerSection = () => (
   <section className="px-4 mt-2">
-    <h2 className="text-[21px] font-bold text-[#29292B]">Заголовок 1.1</h2>
+    <h2 className="text-[21px] font-bold text-text-primary">Заголовок 1.1</h2>
     <div className="mt-4">
-      <BannerPlaceholder>
-        <BannerIndicators className="mt-0" />
-      </BannerPlaceholder>
+      <BannerCarousel />
     </div>
   </section>
 );
@@ -182,7 +224,7 @@ const ProductCardsCarousel = () => {
 
   return (
     <section className="px-4">
-      <h2 className="mb-4 text-[21px] font-bold text-[#29292B]">Заголовок 1.2</h2>
+      <h2 className="mb-4 text-[21px] font-bold text-text-primary">Заголовок 1.2</h2>
       <div className="overflow-hidden w-full" ref={containerRef}>
         <div
           className="flex items-stretch gap-6 transition-transform duration-300 ease-out"
@@ -259,7 +301,7 @@ const SizeCalculatorSection = () => (
 );
 
 export const Homepage = () => (
-  <div className="min-h-screen bg-[#FFFFFF] pb-28 text-[#29292B] font-montserrat">
+  <div className="min-h-screen bg-white pb-28 text-text-primary font-montserrat">
     <TopStatusBar />
     <HeaderHome />
     <main className="flex flex-col gap-10 pb-10">

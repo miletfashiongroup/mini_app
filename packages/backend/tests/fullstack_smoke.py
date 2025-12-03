@@ -150,6 +150,13 @@ async def scenario_products(client: httpx.AsyncClient, products: list[SeededProd
     assert detail["data"]["id"] == str(
         products[0].id
     ), f"Product detail mismatch: {detail['data']['id']} != {products[0].id}"
+    related = assert_envelope(await client.get(f"/api/products/{products[0].id}/related"))
+    assert isinstance(related["data"], list)
+
+
+async def scenario_banners(client: httpx.AsyncClient) -> None:
+    banners = assert_envelope(await client.get("/api/banners"))
+    assert len(banners["data"]["banners"]) >= 1
 
 
 async def scenario_cart_and_orders(client: httpx.AsyncClient, products: list[SeededProduct], engine) -> None:
@@ -246,6 +253,7 @@ async def run_smoke() -> None:
     async with httpx.AsyncClient(base_url=BACKEND_BASE_URL, timeout=20.0) as client:
         await wait_for_backend(client)
         for name, coroutine in [
+            ("Banners endpoint", scenario_banners(client)),
             ("Products endpoints", scenario_products(client, products)),
             ("Cart & orders endpoints", scenario_cart_and_orders(client, products, engine)),
         ]:

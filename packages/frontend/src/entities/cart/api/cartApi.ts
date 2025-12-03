@@ -1,6 +1,6 @@
 import { apiClient } from '@/shared/api/httpClient';
 
-import type { CartCollection, CartItem, CartItemPayload } from '../model/types';
+import type { CartCollection, CartItem, CartItemPayload, CartItemUpdatePayload } from '../model/types';
 
 export type { CartCollection, CartItem, CartItemPayload } from '../model/types';
 
@@ -15,6 +15,11 @@ export const fetchCart = async (): Promise<CartCollection> => {
 
 export const addCartItem = async (payload: CartItemPayload): Promise<CartItem> => {
   const response = await apiClient.post<CartItem>('/cart', payload);
+  return response.data;
+};
+
+export const updateCartItem = async (itemId: string, payload: CartItemUpdatePayload): Promise<CartItem> => {
+  const response = await apiClient.patch<CartItem>(`/cart/${itemId}`, payload);
   return response.data;
 };
 

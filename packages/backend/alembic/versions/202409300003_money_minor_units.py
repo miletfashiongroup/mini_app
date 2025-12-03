@@ -17,10 +17,21 @@ def _upgrade_money_column(table: str, old: str, new: str) -> None:
         table,
         sa.Column(new, sa.BigInteger(), nullable=False, server_default="0"),
     )
-    op.execute(
-        f"UPDATE {table} SET {new} = COALESCE(ROUND({old} * 100), 0)::bigint"
-    )
-    op.alter_column(table, new, server_default=None)
+    dialect = op.get_bind().dialect.name
+    if dialect == "sqlite":
+        op.execute(
+            sa.text(
+                f"UPDATE {table} SET {new} = CAST(COALESCE(ROUND({old} * 100), 0) AS INTEGER)"
+            )
+        )
+    else:
+        op.execute(
+            sa.text(
+                f"UPDATE {table} SET {new} = COALESCE(ROUND({old} * 100), 0)::bigint"
+            )
+        )
+    if dialect != "sqlite":
+        op.alter_column(table, new, server_default=None)
     op.drop_column(table, old)
 
 
@@ -29,10 +40,21 @@ def _downgrade_money_column(table: str, old: str, new: str) -> None:
         table,
         sa.Column(old, sa.Numeric(10, 2), nullable=False, server_default="0"),
     )
-    op.execute(
-        f"UPDATE {table} SET {old} = ({new}::numeric / 100)"
-    )
-    op.alter_column(table, old, server_default=None)
+    dialect = op.get_bind().dialect.name
+    if dialect == "sqlite":
+        op.execute(
+            sa.text(
+                f"UPDATE {table} SET {old} = (CAST({new} AS FLOAT) / 100)"
+            )
+        )
+    else:
+        op.execute(
+            sa.text(
+                f"UPDATE {table} SET {old} = ({new}::numeric / 100)"
+            )
+        )
+    if dialect != "sqlite":
+        op.alter_column(table, old, server_default=None)
     op.drop_column(table, new)
 
 

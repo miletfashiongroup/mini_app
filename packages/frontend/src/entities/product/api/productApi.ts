@@ -18,12 +18,13 @@ export type ProductListResult = {
 };
 
 export const fetchProducts = async (
-  params?: { page?: number; pageSize?: number },
+  params?: { page?: number; pageSize?: number; category?: string },
 ): Promise<ProductListResult> => {
   const response = await apiClient.get<Product[]>('/products', {
     params: {
       page: params?.page,
       page_size: params?.pageSize,
+      category: params?.category,
     },
   });
   return {
@@ -35,4 +36,12 @@ export const fetchProducts = async (
 export const fetchProductById = async (productId: string): Promise<Product> => {
   const response = await apiClient.get<Product>(`/products/${productId}`);
   return response.data;
+};
+
+export const fetchRelatedProducts = async (productId: string): Promise<ProductListResult> => {
+  const response = await apiClient.get<Product[]>(`/products/${productId}/related`);
+  return {
+    items: response.data,
+    pagination: null,
+  };
 };

@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+# ruff: noqa: E402  # env setup must occur before application imports
 import asyncio
 import os
 import sys
 import tempfile
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import Any
+
+# Apply test-safe defaults before importing application modules that instantiate settings.
+TEST_TMP = Path(__file__).resolve().parents[1] / ".tmp"
+TEST_TMP.mkdir(exist_ok=True)
+DEFAULT_SQLITE_DSN = f"sqlite+aiosqlite:///{TEST_TMP / 'test.db'}"
+os.environ.setdefault("BRACE_REDIS_URL", "memory://")
+os.environ.setdefault("BRACE_DISABLE_RATE_LIMIT", "true")
+os.environ.setdefault("TEST_DATABASE_URL", DEFAULT_SQLITE_DSN)
+os.environ.setdefault("BRACE_DATABASE_URL", os.environ["TEST_DATABASE_URL"])
 
 import pytest
 from brace_backend.api.deps import get_current_init_data, get_current_user, get_uow
@@ -52,9 +63,15 @@ if str(SRC) not in sys.path:
     sys.path.append(str(SRC))
 
 
-DEFAULT_TEST_DB = "postgresql+asyncpg://postgres:postgres@localhost:5432/brace_test"
+DEFAULT_TEST_DB = DEFAULT_SQLITE_DSN
 TEST_DATABASE_URL = ensure_async_dsn(os.getenv("TEST_DATABASE_URL", DEFAULT_TEST_DB))
 os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
+
+
+def _engine_kwargs(url: str) -> dict[str, Any]:
+    if url.startswith("sqlite"):
+        return {"connect_args": {"check_same_thread": False}}
+    return {}
 
 
 def _quoted_tables() -> str:
@@ -69,16 +86,23 @@ def _quoted_tables() -> str:
 
 async def _reset_database(engine) -> None:
     """Convenience helper used by fixtures that spin up their own sessions."""
-    table_list = _quoted_tables()
-    if not table_list:
-        return
     async with engine.begin() as conn:
+        if engine.dialect.name == "sqlite":
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+            return
+
+        table_list = _quoted_tables()
+        if not table_list:
+            return
         await conn.execute(text(f"TRUNCATE {table_list} RESTART IDENTITY CASCADE"))
 
 
 @pytest.fixture(scope="session")
 def async_engine():
-    setup_engine = create_async_engine(TEST_DATABASE_URL, future=True, poolclass=NullPool)
+    setup_engine = create_async_engine(
+        TEST_DATABASE_URL, future=True, poolclass=NullPool, **_engine_kwargs(TEST_DATABASE_URL)
+    )
 
     async def _prepare_schema(engine):
         async with engine.begin() as conn:
@@ -87,7 +111,9 @@ def async_engine():
     asyncio.run(_prepare_schema(setup_engine))
     asyncio.run(setup_engine.dispose())
 
-    engine = create_async_engine(TEST_DATABASE_URL, future=True, poolclass=NullPool)
+    engine = create_async_engine(
+        TEST_DATABASE_URL, future=True, poolclass=NullPool, **_engine_kwargs(TEST_DATABASE_URL)
+    )
     yield engine
     asyncio.run(engine.dispose())
 

@@ -20,8 +20,10 @@ type Props = {
   product: Product;
 };
 
+type ProductVariantType = NonNullable<Product['variants']>[number];
+
 export const AddToCartForm = ({ product }: Props) => {
-  const variants = product.variants ?? []; // PRINCIPAL-FIX: variants guard
+  const variants: ProductVariantType[] = product.variants ?? []; // PRINCIPAL-FIX: variants guard
   const isAvailable = variants.length > 0;
   const defaultSelection = useProductSelection(product.id);
   const setSelection = useProductSelectionStore((state) => state.setSelection);
@@ -64,7 +66,7 @@ export const AddToCartForm = ({ product }: Props) => {
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
       <div className="flex gap-2 flex-wrap">
-        {variants.map((variant) => (
+        {variants.map((variant: ProductVariantType) => (
           <label
             key={variant.id}
             className={`px-4 py-2 rounded-full border cursor-pointer ${

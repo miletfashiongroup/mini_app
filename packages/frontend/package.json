@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test": "vitest run --pool=forks",
+    "test": "vitest run --pool=threads",
+    "e2e": "playwright test",
     "format": "prettier --write .",
     "prepare": "node ./scripts/run-husky.cjs"
   },
@@ -20,24 +21,27 @@
     "@tanstack/react-query": "^5.56.2",
     "@tanstack/react-query-devtools": "^5.56.2",
     "@twa-dev/sdk": "^7.1.0",
-    "axios": "^1.7.4",
-    "vite": "^7.2.2",
     "@vitejs/plugin-react": "^4.3.1",
     "@vitejs/plugin-react-swc": "^3.5.0",
-    "tailwindcss": "^3.4.10",
-    "postcss": "^8.4.45",
     "autoprefixer": "^10.4.20",
+    "axios": "^1.7.4",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.1.7",
     "nanoid": "^5.0.7",
+    "postcss": "^8.4.45",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.53.0",
     "react-router-dom": "^6.28.0",
+    "tailwind-merge": "^2.6.0",
+    "tailwindcss": "^3.4.10",
+    "vite": "^7.2.2",
     "zod": "^3.23.8",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.5.0",
     "@testing-library/react": "^16.0.1",
     "@testing-library/user-event": "^14.5.2",
@@ -59,9 +63,9 @@
     "jsdom": "^25.0.0",
     "lint-staged": "^15.2.10",
     "msw": "^2.12.2",
-    "openapi-typescript": "^6.7.3",
+    "openapi-typescript": "^6.7.6",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4",
-    "vitest": "^4.0.10"
+    "vitest": "^4.0.15"
   }
 }

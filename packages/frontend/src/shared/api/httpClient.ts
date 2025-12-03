@@ -73,11 +73,15 @@ export const apiClient = {
   get: <T>(url: string, config?: AxiosRequestConfig) => request<T>({ method: 'GET', url, ...config }),
   post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     request<T>({ method: 'POST', url, data, ...config }),
+  patch: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+    request<T>({ method: 'PATCH', url, data, ...config }),
   delete: <T>(url: string, config?: AxiosRequestConfig) =>
     request<T>({ method: 'DELETE', url, ...config }),
 };
 
-const isTestEnv = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
+const isTestEnv =
+  (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test') ||
+  (typeof process !== 'undefined' && process.env.VITEST);
 
 const redirectToAppRoot = () => {
   if (typeof window === 'undefined') {

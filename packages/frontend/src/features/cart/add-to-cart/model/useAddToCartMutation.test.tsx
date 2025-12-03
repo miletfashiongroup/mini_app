@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { cartKeys } from '@/entities/cart/api/cartApi';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { createQueryClientWrapper } from '@/tests/queryClient';
-import { HttpResponse, http, server } from '@/tests/server';
+import { API_BASE_URL, HttpResponse, http, server } from '@/tests/server';
 
 const payload = {
   product_id: 'product-1',
@@ -16,7 +16,7 @@ describe('useAddToCartMutation', () => {
   it('invalidates cart queries on success', async () => {
     // PRINCIPAL-FIX: MSW test
     server.use(
-      http.post('http://localhost/api/cart', () =>
+      http.post(`${API_BASE_URL}/cart`, () =>
         HttpResponse.json({
           data: {
             id: 'item-1',
@@ -44,7 +44,7 @@ describe('useAddToCartMutation', () => {
 
   it('propagates API errors', async () => {
     server.use(
-      http.post('http://localhost/api/cart', () =>
+      http.post(`${API_BASE_URL}/cart`, () =>
         HttpResponse.json(
           { data: null, error: { type: 'internal', message: 'boom' } },
           { status: 500 },

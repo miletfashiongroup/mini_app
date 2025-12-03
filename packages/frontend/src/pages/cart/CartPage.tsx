@@ -1,9 +1,12 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 
 import arrowLeftIcon from '@/assets/images/icon-arrow-left.svg';
-import logoBrace from '@/assets/images/logo-brace.svg';
 import newBadgeIcon from '@/assets/images/icon-new.svg';
+import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { cartKeys, deleteCartItem, updateCartItem } from '@/entities/cart/api/cartApi';
+import type { CartCollection } from '@/entities/cart/model/types';
 import { useCartQuery } from '@/shared/api/queries';
 
 type CartItemView = {
@@ -74,8 +77,8 @@ const CartItemImagePlaceholder = ({ isNew }: { isNew?: boolean }) => (
 
 const CartItemInfo = ({ title, sizeLabel }: { title: string; sizeLabel: string }) => (
   <div className="flex flex-col gap-1 pt-1">
-    <p className="text-[18px] font-semibold leading-[22px] text-[#29292B]">{title}</p>
-    <p className="text-[16px] leading-[20px] text-[#29292B]">{sizeLabel}</p>
+    <p className="text-[18px] font-semibold leading-[22px] text-text-primary">{title}</p>
+    <p className="text-[16px] leading-[20px] text-text-primary">{sizeLabel}</p>
   </div>
 );
 
@@ -117,9 +120,18 @@ const CartItemPriceTag = ({ price }: { price: string }) => (
   </div>
 );
 
-const CartItemCard = ({ item }: { item: CartItemView }) => {
+const CartItemCard = ({
+  item,
+  onChangeQty,
+  onRemove,
+}: {
+  item: CartItemView;
+  onChangeQty: (nextQty: number) => void;
+  onRemove: () => void;
+}) => {
   const itemTotalMinorUnits = item.unitPriceMinorUnits * item.quantity;
   const itemTotalPrice = formatRubles(itemTotalMinorUnits);
+  const canDecrease = item.quantity > 1;
 
   return (
     <article className="w-full rounded-[12px] bg-white p-3.5">
@@ -127,8 +139,23 @@ const CartItemCard = ({ item }: { item: CartItemView }) => {
         <CartItemImagePlaceholder isNew={item.isNew} />
         <div className="flex h-full flex-col gap-2">
           <CartItemInfo title={item.title} sizeLabel={item.sizeLabel} />
-          <CartItemQuantityControls quantity={item.quantity} />
-          {item.stockWarning ? <div className="mt-2"><CartItemStockInfo message={item.stockWarning} /></div> : null}
+          <CartItemQuantityControls
+            quantity={item.quantity}
+            onDecrement={canDecrease ? () => onChangeQty(item.quantity - 1) : undefined}
+            onIncrement={() => onChangeQty(item.quantity + 1)}
+          />
+          {item.stockWarning ? (
+            <div className="mt-2">
+              <CartItemStockInfo message={item.stockWarning} />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            className="self-start text-[12px] text-red-500 underline"
+            onClick={onRemove}
+          >
+            удалить
+          </button>
           <div className="mt-auto">
             <CartItemPriceTag price={itemTotalPrice} />
           </div>
@@ -138,18 +165,31 @@ const CartItemCard = ({ item }: { item: CartItemView }) => {
   );
 };
 
-const CartItemList = ({ items }: { items: CartItemView[] }) => (
+const CartItemList = ({
+  items,
+  onChangeQty,
+  onRemove,
+}: {
+  items: CartItemView[];
+  onChangeQty: (id: string, nextQty: number) => void;
+  onRemove: (id: string) => void;
+}) => (
   <div className="space-y-3">
     {items.map((item) => (
-      <CartItemCard key={item.id} item={item} />
+      <CartItemCard
+        key={item.id}
+        item={item}
+        onChangeQty={(qty) => onChangeQty(item.id, qty)}
+        onRemove={() => onRemove(item.id)}
+      />
     ))}
   </div>
 );
 
 const CartTotalRow = ({ totalLabel, totalPrice }: { totalLabel: string; totalPrice: string }) => (
   <div className="flex items-center justify-between px-4 pt-6">
-    <span className="text-[20px] font-bold text-[#29292B]">{totalLabel}</span>
-    <span className="text-[20px] font-bold text-[#29292B]">{totalPrice}</span>
+    <span className="text-[20px] font-bold text-text-primary">{totalLabel}</span>
+    <span className="text-[20px] font-bold text-text-primary">{totalPrice}</span>
   </div>
 );
 
@@ -157,7 +197,7 @@ const CartCheckoutButton = ({ label }: { label: string }) => (
   <div className="px-4 pb-6 pt-6">
     <button
       type="button"
-      className="flex h-14 w-full items-center justify-center rounded-[16px] bg-[#000043] text-[16px] font-semibold text-white transition duration-150 ease-out hover:bg-[#00005A] active:scale-[0.97]"
+      className="flex h-14 w-full items-center justify-center rounded-[16px] bg-accent text-[16px] font-semibold text-white transition duration-150 ease-out hover:bg-[#00005A] active:scale-[0.97]"
     >
       {label}
     </button>
@@ -172,50 +212,55 @@ const CartSummarySection = ({ totalPrice }: { totalPrice: string }) => (
 );
 
 export const CartPage = () => {
-  const { data } = useCartQuery();
+  const queryClient = useQueryClient();
+  const { data, isLoading, isError } = useCartQuery();
 
-  const defaultItems: CartItemView[] = [
-    {
-      id: 'sample-1',
-      title: 'Название',
-      sizeLabel: '42-44',
-      quantity: 1,
-      unitPriceMinorUnits: 159100,
-      isNew: true,
-      stockWarning: 'Осталась 1 шт.',
-    },
-    {
-      id: 'sample-2',
-      title: 'Название',
-      sizeLabel: '42-44',
-      quantity: 1,
-      unitPriceMinorUnits: 150000,
-      isNew: true,
-      stockWarning: null,
-    },
-  ];
+  const updateMutation = useMutation({
+    mutationFn: ({ id, quantity }: { id: string; quantity: number }) => updateCartItem(id, { quantity }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cartKeys.all }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteCartItem(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cartKeys.all }),
+  });
 
   const cartItems: CartItemView[] =
-    data?.items?.map((item, index) => ({
+    data?.items?.map((item: CartCollection['items'][number], index: number) => ({
       id: String(item.id ?? index),
-      title: item.product_name ?? 'Название',
-      sizeLabel: item.size ? String(item.size) : '42-44',
+      title: item.product_name ?? '—',
+      sizeLabel: item.size ? String(item.size) : '—',
       quantity: item.quantity ?? 1,
       unitPriceMinorUnits: item.unit_price_minor_units ?? 0,
       isNew: true,
-      stockWarning: index === 0 ? 'Осталась 1 шт.' : null,
-    })) ?? defaultItems;
+      stockWarning: item.stock_left === 1 ? 'Осталась 1 шт.' : null,
+    })) ?? [];
 
-  const totalMinorUnits = cartItems.reduce((sum, item) => sum + item.unitPriceMinorUnits * item.quantity, 0);
+  const totalMinorUnits = cartItems.reduce(
+    (sum, item) => sum + item.unitPriceMinorUnits * item.quantity,
+    0,
+  );
   const totalPrice = formatRubles(totalMinorUnits);
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-[#29292B]">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
       <CartStatusBar />
       <CartHeader />
       <CartTitle itemCount={cartItems.length} />
       <CartItemsSection>
-        <CartItemList items={cartItems} />
+        {isLoading ? (
+          <p className="px-2 py-4 text-[14px] text-[#29292B]">Загружаем корзину...</p>
+        ) : isError ? (
+          <p className="px-2 py-4 text-[14px] text-[#29292B]">Не удалось загрузить корзину.</p>
+        ) : cartItems.length === 0 ? (
+          <p className="px-2 py-4 text-[14px] text-[#29292B]">В корзине пока пусто.</p>
+        ) : (
+          <CartItemList
+            items={cartItems}
+            onChangeQty={(id, qty) => updateMutation.mutate({ id, quantity: qty })}
+            onRemove={(id) => deleteMutation.mutate(id)}
+          />
+        )}
       </CartItemsSection>
       <CartSummarySection totalPrice={totalPrice} />
       <CatalogBottomNavigation activeId="cart" />

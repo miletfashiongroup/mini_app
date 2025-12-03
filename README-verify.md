@@ -45,7 +45,7 @@ docker compose -f infra/docker-compose.prod.yml up --build
 - Backend: `http://localhost/api/health`
 
 ## 6. Telegram Mini App Smoke Test
-1. In `.env`, ensure `VITE_BACKEND_URL` and `VITE_APP_URL` resolve from Telegram.
+1. In `.env`, ensure `VITE_API_BASE_URL` and `VITE_APP_BASE_URL` resolve from Telegram, and set `VITE_ENV=production` for production builds.
 2. Set `SMOKE_DATABASE_URL` to a dedicated `brace_smoke` database before running `make smoke`—the runner truncates tables on every execution and now enforces that naming convention.  # PRINCIPAL-FIX
 3. Build frontend: `cd packages/frontend && npm run build`.
 4. Deploy following `DEPLOY.md` (Render + Vercel example).

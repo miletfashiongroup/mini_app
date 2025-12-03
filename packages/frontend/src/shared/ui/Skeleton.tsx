@@ -1,9 +1,7 @@
-import { clsx } from 'clsx';
-
-type Props = {
+type SkeletonProps = {
   className?: string;
 };
 
-export const Skeleton = ({ className }: Props) => (
-  <div className={clsx('animate-pulse rounded bg-white/10', className)} />
+export const Skeleton = ({ className = '' }: SkeletonProps) => (
+  <div className={`animate-pulse rounded-lg bg-gray-100 ${className}`} />
 );

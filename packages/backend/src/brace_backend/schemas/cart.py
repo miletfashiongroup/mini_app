@@ -9,6 +9,10 @@ class CartItemCreate(BaseModel):
     quantity: int = Field(default=1, ge=1, le=10)
 
 
+class CartItemUpdate(BaseModel):
+    quantity: int = Field(default=1, ge=1, le=10)
+
+
 class CartItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -19,6 +23,7 @@ class CartItemRead(BaseModel):
     quantity: int
     unit_price_minor_units: int
     hero_media_url: str | None = None
+    stock_left: int | None = None
 
 
 class CartCollection(BaseModel):

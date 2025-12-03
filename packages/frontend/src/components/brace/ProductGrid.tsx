@@ -1,5 +1,5 @@
-import type { Product } from '@/entities/product/model/types';
 import { ProductCard } from '@/components/brace/ProductCard';
+import type { Product } from '@/entities/product/model/types';
 
 interface Props {
   products: Product[];

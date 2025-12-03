@@ -11,6 +11,7 @@ __pycache__/
 coverage/
 dist/
 build/
+.ruff_cache/
 .sass-cache/
 pip-wheel-metadata/
 .mypy_cache/

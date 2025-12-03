@@ -24,10 +24,10 @@ export const CartItemCard = memo(({ item, actions }: Props) => {
       <div className="flex-1">
         <h3 className="font-semibold">{item.product_name}</h3>
         <p className="text-sm text-slate-400">
-          Размер {item.size} · {item.quantity} шт.
+          Размер {item.size ?? '—'} · {item.quantity ?? 0} шт.
         </p>
         <p className="text-lg font-semibold">
-          {formatPrice(item.quantity * item.unit_price_minor_units)}
+          {formatPrice((item.quantity ?? 0) * (item.unit_price_minor_units ?? 0))}
         </p>
       </div>
       {actions}

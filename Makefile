@@ -27,3 +27,6 @@ smoke:
 lint:
 	cd packages/backend && poetry run ruff check
 	cd packages/frontend && npm run lint
+
+seed:
+	cd packages/backend && poetry run python -m brace_backend.services.seed

@@ -33,7 +33,7 @@ const ProductTabs = ({ activeTab, onChange, onOpenDescription, onOpenSpecs }: Pr
               type="button"
               onClick={handleClick}
               className={`flex h-12 w-1/2 items-center justify-center rounded-[12px] text-[15px] font-semibold lowercase transition duration-150 ease-out hover:brightness-110 active:scale-[0.95] ${
-                isActive ? 'bg-[#000043] text-white' : 'bg-[#000043] text-white'
+                isActive ? 'bg-accent text-white' : 'bg-gray-100 text-text-primary'
               }`}
             >
               {tab.label}

@@ -14,7 +14,10 @@ class CartRepository(SQLAlchemyRepository[CartItem]):
     model = CartItem
 
     def _base_stmt(self):
-        return select(CartItem).options(selectinload(CartItem.product))
+        return select(CartItem).options(
+            selectinload(CartItem.product),
+            selectinload(CartItem.variant),
+        )
 
     async def get_for_user(self, user_id: UUID) -> Sequence[CartItem]:
         stmt = self._base_stmt().where(CartItem.user_id == user_id)
@@ -27,6 +30,11 @@ class CartRepository(SQLAlchemyRepository[CartItem]):
             CartItem.product_id == product_id,
             CartItem.size == size,
         )
+        result = await self.session.scalars(stmt)
+        return result.unique().one_or_none()
+
+    async def get_for_user_by_id(self, *, user_id: UUID, item_id: UUID) -> CartItem | None:
+        stmt = self._base_stmt().where(CartItem.user_id == user_id, CartItem.id == item_id)
         result = await self.session.scalars(stmt)
         return result.unique().one_or_none()
 

@@ -18,8 +18,9 @@
    | Variable | Source | Purpose |
    | --- | --- | --- |
    | `BRACE_TELEGRAM_BOT_TOKEN` | BotFather | Validate initData |
-   | `VITE_APP_URL` | Deployment URL | WebApp root for Telegram |
-   | `VITE_BACKEND_URL` | Backend host | API base for axios client |
+   | `VITE_APP_BASE_URL` | Deployment URL | WebApp root for Telegram |
+   | `VITE_API_BASE_URL` | Backend host | API base for axios client |
+   | `VITE_ENV` | Build flag | `production` for prod builds |
    | `BRACE_CORS_ORIGINS` | Allowed origins | Restrict CORS to Telegram domains |
 
 5. **Validation Endpoint**

@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from brace_backend.core.config import settings
 from brace_backend.core.database import ensure_async_dsn
@@ -13,14 +14,22 @@ class SessionManager:
     """Centralised AsyncSession factory with strict transaction management."""
 
     def __init__(self) -> None:
-        self._engine = create_async_engine(
-            ensure_async_dsn(settings.database_url),
-            echo=settings.database_echo,
-            future=True,
-            pool_pre_ping=True,
-            pool_size=settings.database_pool_size,
-            max_overflow=settings.database_max_overflow,
-        )
+        database_url = ensure_async_dsn(settings.database_url)
+        engine_kwargs: dict[str, object] = {
+            "echo": settings.database_echo,
+            "future": True,
+            "pool_pre_ping": True,
+        }
+        if database_url.startswith("sqlite"):
+            engine_kwargs.update({"connect_args": {"check_same_thread": False}, "poolclass": NullPool})
+        else:
+            engine_kwargs.update(
+                {
+                    "pool_size": settings.database_pool_size,
+                    "max_overflow": settings.database_max_overflow,
+                }
+            )
+        self._engine = create_async_engine(database_url, **engine_kwargs)
         self._session_factory = async_sessionmaker(
             bind=self._engine,
             autoflush=False,

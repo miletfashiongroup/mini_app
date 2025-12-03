@@ -3,9 +3,10 @@ from __future__ import annotations
 from uuid import UUID
 
 from brace_backend.core.exceptions import NotFoundError, ValidationError
+from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.cart import CartItem
-from brace_backend.schemas.cart import CartCollection, CartItemCreate, CartItemRead
+from brace_backend.schemas.cart import CartCollection, CartItemCreate, CartItemRead, CartItemUpdate
 
 MAX_CART_ITEM_QUANTITY = 10
 
@@ -41,6 +42,7 @@ class CartService:
             self._validate_quantity(new_quantity)
             self._validate_stock(new_quantity, variant.stock)
             existing.quantity = new_quantity
+            existing.variant_id = variant.id
             cart_item = existing
         else:
             self._validate_quantity(payload.quantity)
@@ -48,6 +50,7 @@ class CartService:
             cart_item = CartItem(
                 user_id=user_id,
                 product_id=product.id,
+                variant_id=variant.id,
                 size=payload.size,
                 quantity=payload.quantity,
                 unit_price_minor_units=variant.price_minor_units,
@@ -57,6 +60,47 @@ class CartService:
 
         await uow.commit()
         await uow.refresh(cart_item)
+        logger.info(
+            "cart_item_added",
+            user_id=str(user_id),
+            cart_item_id=str(cart_item.id),
+            product_id=str(product.id),
+            variant_id=str(variant.id),
+            quantity=cart_item.quantity,
+        )
+        return self._to_schema(cart_item)
+
+    async def update_item(
+        self,
+        uow: UnitOfWork,
+        *,
+        user_id: UUID,
+        item_id: UUID,
+        payload: CartItemUpdate,
+    ) -> CartItemRead:
+        cart_item = await uow.carts.get_for_user_by_id(user_id=user_id, item_id=item_id)
+        if not cart_item:
+            raise NotFoundError("Cart item not found.")
+
+        product = await uow.products.get_with_variants(cart_item.product_id)
+        if not product:
+            raise NotFoundError("Product not found.")
+        variant = next((v for v in product.variants if v.size == cart_item.size), None)
+        if not variant:
+            raise ValidationError("Variant with requested size is unavailable.")
+
+        self._validate_quantity(payload.quantity)
+        self._validate_stock(payload.quantity, variant.stock)
+        cart_item.quantity = payload.quantity
+        cart_item.variant_id = variant.id
+        await uow.commit()
+        await uow.refresh(cart_item)
+        logger.info(
+            "cart_item_updated",
+            user_id=str(user_id),
+            cart_item_id=str(item_id),
+            quantity=cart_item.quantity,
+        )
         return self._to_schema(cart_item)
 
     async def remove_item(self, uow: UnitOfWork, *, user_id: UUID, item_id: UUID) -> None:
@@ -64,6 +108,7 @@ class CartService:
         if not deleted:
             raise NotFoundError("Cart item not found.")
         await uow.commit()
+        logger.info("cart_item_removed", user_id=str(user_id), cart_item_id=str(item_id))
 
     def _to_schema(self, item: CartItem) -> CartItemRead:
         return CartItemRead(
@@ -74,6 +119,7 @@ class CartService:
             quantity=item.quantity,
             unit_price_minor_units=item.unit_price_minor_units,
             hero_media_url=item.product.hero_media_url if item.product else None,
+            stock_left=item.variant.stock if item.variant else None,
         )
 
     def _validate_quantity(self, quantity: int) -> None:

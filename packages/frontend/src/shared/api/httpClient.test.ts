@@ -51,7 +51,7 @@ describe('httpClient interceptors', () => {
     WebApp.initData = 'telegram-init';
     let header: string | null = null;
     server.use(
-      http.get('http://localhost/api/ping', ({ request }) => {
+      http.get('http://localhost:8000/api/ping', ({ request }) => {
         header = request.headers.get('x-telegram-init-data');
         return HttpResponse.json({ data: { status: 'ok' }, error: null });
       }),
@@ -66,7 +66,7 @@ describe('httpClient interceptors', () => {
   it('redirects and throws friendly error on 401', async () => {
     window.location.href = 'http://localhost/original';
     server.use(
-      http.get('http://localhost/api/ping', () =>
+      http.get('http://localhost:8000/api/ping', () =>
         HttpResponse.json(
           { data: null, error: { type: 'unauthorized', message: 'invalid session' } },
           { status: 401 },
@@ -82,7 +82,7 @@ describe('httpClient interceptors', () => {
 
   it('throws server friendly error on 5xx', async () => {
     server.use(
-      http.get('http://localhost/api/ping', () =>
+      http.get('http://localhost:8000/api/ping', () =>
         HttpResponse.json({ data: null, error: null }, { status: 500 }),
       ),
     );

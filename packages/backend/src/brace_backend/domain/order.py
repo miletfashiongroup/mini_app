@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import uuid
 
+from brace_backend.domain.base import BaseModel
 from sqlalchemy import BigInteger, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from brace_backend.domain.base import BaseModel
 
 
 class Order(BaseModel):
