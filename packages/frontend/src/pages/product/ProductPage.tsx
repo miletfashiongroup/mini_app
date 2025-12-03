@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import ProductBottomBar from '@/components/product/ProductBottomBar';
 import ProductComplementSection from '@/components/product/ProductComplementSection';
@@ -20,6 +20,7 @@ import { useRelatedProductsQuery } from '@/shared/api/queries';
 
 export const ProductPage = () => {
   const { productId } = useParams();
+  const navigate = useNavigate();
   const { data: product, isLoading, isError } = useProductDetails(productId);
   const { data: related } = useRelatedProductsQuery(productId ?? '', { enabled: Boolean(productId) });
   const tags: string[] = product?.tags?.length ? product.tags : ['семейные', '4_шт.', '100%_хлопок'];
@@ -92,7 +93,7 @@ export const ProductPage = () => {
   return (
     <div className="min-h-screen bg-white text-[#29292B] font-montserrat pb-24">
       <ProductStatusBar />
-      <ProductHeader />
+      <ProductHeader onBack={() => (navigate(-1) || navigate('/'))} />
       <ProductTitle title={product.name} />
       <ProductMediaCarousel />
       <ProductThumbnailsStrip />
@@ -112,7 +113,10 @@ export const ProductPage = () => {
       <ProductReviewsSection reviews={reviews} />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
-      <ProductBottomBar />
+      <ProductBottomBar
+        onAddToCart={() => navigate(`/cart`)}
+        onBuyNow={() => navigate(`/cart`)}
+      />
       {/* Остальные блоки будут добавлены по новому дизайну */}
       <ProductDescriptionModal
         isOpen={isDescriptionModalOpen}
