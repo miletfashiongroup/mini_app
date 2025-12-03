@@ -13,7 +13,7 @@ import playIcon from '@/assets/images/icon-play.svg';
 import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
 import { calculateSize } from '@/features/size-calculator/api/sizeCalcApi';
-import { useBannersQuery } from '@/shared/api/queries';
+import { useBannersQuery, useProductsQuery } from '@/shared/api/queries';
 
 type BannerIndicatorsProps = {
   count?: number;
@@ -185,19 +185,16 @@ const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, 
 CarouselCard.displayName = 'CarouselCard';
 
 const ProductCardsCarousel = () => {
+  const { data, isLoading, isError } = useProductsQuery({ pageSize: 5 });
   const items: CarouselItem[] = useMemo(
-    () => [
-      { id: 'product-1', isNew: true },
-      { id: 'product-2', isNew: true },
-      { id: 'product-3', isNew: true },
-    ],
-    [],
+    () => (data?.items ?? []).slice(0, 3).map((product) => ({ id: product.id, isNew: Boolean(product.is_new) })),
+    [data?.items],
   );
   const navigate = useNavigate();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const [currentIndex, setCurrentIndex] = useState(Math.min(1, items.length - 1));
+  const [currentIndex, setCurrentIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -227,6 +224,21 @@ const ProductCardsCarousel = () => {
     else if (deltaX < -30) handleNext();
     touchStartX.current = null;
   };
+
+  if (isLoading) {
+    return (
+      <section className="px-4">
+        <h2 className="mb-4 text-[21px] font-bold text-text-primary">Загружаем товары...</h2>
+      </section>
+    );
+  }
+  if (isError || items.length === 0) {
+    return (
+      <section className="px-4">
+        <h2 className="mb-4 text-[21px] font-bold text-text-primary">Товары недоступны</h2>
+      </section>
+    );
+  }
 
   return (
     <section className="px-4">

@@ -8,26 +8,6 @@ const resolveFromWindow = (): string => {
   return tg?.initData || tg?.initDataUnsafe?.query_id || '';
 };
 
-const STORAGE_KEY = 'brace:last_init_data';
-
-const readFromStorage = (): string => {
-  if (typeof window === 'undefined') return '';
-  try {
-    return sessionStorage.getItem(STORAGE_KEY) || '';
-  } catch {
-    return '';
-  }
-};
-
-const writeToStorage = (value: string) => {
-  if (typeof window === 'undefined' || !value) return;
-  try {
-    sessionStorage.setItem(STORAGE_KEY, value);
-  } catch {
-    // ignore storage failures
-  }
-};
-
 const resolveFromUrl = (): string => {
   if (typeof window === 'undefined') return '';
   const search = new URLSearchParams(window.location.search);
@@ -35,16 +15,33 @@ const resolveFromUrl = (): string => {
   return search.get('tgWebAppData') || hash.get('tgWebAppData') || '';
 };
 
+const extractAuthDate = (initData: string): number | undefined => {
+  try {
+    const params = new URLSearchParams(initData);
+    const value = params.get('auth_date');
+    if (!value) return undefined;
+    const ts = Number(value);
+    return Number.isFinite(ts) ? ts : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const isFresh = (initData: string): boolean => {
+  if (!initData) return false;
+  const authDate = extractAuthDate(initData);
+  if (!authDate) return true;
+  const ageSeconds = Math.floor(Date.now() / 1000) - authDate;
+  return ageSeconds < 55 * 60; // slightly below backend limit (60m)
+};
+
 export const resolveTelegramInitData = (): string => {
   const sdkInitData = WebApp?.initData || '';
   const windowInitData = resolveFromWindow();
   const urlInitData = resolveFromUrl();
-  const storedInitData = readFromStorage();
-
-  const initData = sdkInitData || windowInitData || urlInitData || storedInitData;
-  if (initData) {
-    writeToStorage(initData);
-  }
+  const candidates = [sdkInitData, windowInitData, urlInitData].filter(Boolean) as string[];
+  const fresh = candidates.find(isFresh);
+  const initData = fresh || candidates[0] || '';
 
   if (env.env === 'production') {
     return initData;

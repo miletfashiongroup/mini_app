@@ -103,7 +103,7 @@ const ProfileSectionItem = ({ label, icon }: ProfileSectionItemProps) => {
       type="button"
       aria-label={`Перейти: ${label}`}
       className="group flex w-full items-center gap-3 bg-transparent px-0 py-0 transition duration-150 ease-out hover:brightness-105 active:scale-[0.97] cursor-pointer"
-      onClick={() => navigate('/placeholder')}
+      onClick={() => navigate('/coming-soon')}
     >
       <ProfileSectionIcon icon={icon} />
       <ProfileSectionButton label={label} />
