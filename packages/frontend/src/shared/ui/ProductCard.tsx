@@ -10,6 +10,7 @@ export type ProductCardProps = {
   isNew?: boolean;
   onClick?: () => void;
   onAddToCart?: () => void;
+  defaultSize?: string;
 };
 
 export const ProductCard = ({
@@ -20,6 +21,7 @@ export const ProductCard = ({
   isNew,
   onClick,
   onAddToCart,
+  defaultSize,
 }: ProductCardProps) => (
   <div className="flex flex-col">
     <button
@@ -58,9 +60,17 @@ export const ProductCard = ({
       </div>
     </div>
 
-    <Button variant="primary" className="mt-3 h-12 w-full gap-2" onClick={onAddToCart}>
+    <Button
+      variant="primary"
+      className="mt-3 h-12 w-full gap-2"
+      onClick={(e) => {
+        e.stopPropagation();
+        onAddToCart?.();
+      }}
+      disabled={!defaultSize}
+    >
       <img src={cartIcon} alt="" className="h-5 w-5 invert" />
-      <span className="leading-none">в корзину</span>
+      <span className="leading-none">{defaultSize ? 'в корзину' : 'нет размера'}</span>
     </Button>
   </div>
 );

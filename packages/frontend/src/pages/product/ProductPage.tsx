@@ -16,13 +16,17 @@ import ProductTags from '@/components/product/ProductTags';
 import ProductThumbnailsStrip from '@/components/product/ProductThumbnailsStrip';
 import ProductTitle from '@/components/product/ProductTitle';
 import { useProductDetails } from '@/pages/product/useProductDetails';
+import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { useRelatedProductsQuery } from '@/shared/api/queries';
+import { useToast } from '@/shared/hooks/useToast';
 
 export const ProductPage = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const { data: product, isLoading, isError } = useProductDetails(productId);
   const { data: related } = useRelatedProductsQuery(productId ?? '', { enabled: Boolean(productId) });
+  const addToCart = useAddToCartMutation();
+  const toast = useToast();
   const tags: string[] = product?.tags?.length ? product.tags : ['семейные', '4_шт.', '100%_хлопок'];
   const [activeTab, setActiveTab] = useState<ProductTabId>('description');
   const [isSizeTableOpen, setIsSizeTableOpen] = useState(false);
@@ -89,6 +93,7 @@ export const ProductPage = () => {
     })) ?? [];
   const primaryVariant = product.variants?.[0];
   const priceLabel = formatPrice(primaryVariant?.price_minor_units);
+  const defaultSize = primaryVariant?.size;
 
   return (
     <div className="min-h-screen bg-white text-[#29292B] font-montserrat pb-24">
@@ -114,7 +119,19 @@ export const ProductPage = () => {
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
       <ProductBottomBar
-        onAddToCart={() => navigate(`/cart`)}
+        onAddToCart={() => {
+          if (!defaultSize || !productId) {
+            toast.error('Размер недоступен');
+            return;
+          }
+          addToCart.mutate(
+            { product_id: productId, size: defaultSize, quantity: 1 },
+            {
+              onError: (err: any) => toast.error(err?.message || 'Не удалось добавить в корзину.'),
+              onSuccess: () => toast.success('Товар добавлен в корзину'),
+            },
+          );
+        }}
         onBuyNow={() => navigate(`/cart`)}
       />
       {/* Остальные блоки будут добавлены по новому дизайну */}

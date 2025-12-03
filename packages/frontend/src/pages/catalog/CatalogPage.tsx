@@ -41,6 +41,7 @@ export const CatalogPage = () => {
           ratingCount: typeof product.rating_count === 'number' ? product.rating_count.toString() : '—',
           ratingValue:
             typeof product.rating_value === 'number' ? product.rating_value.toFixed(1) : '—',
+          defaultSize: primaryVariant?.size,
         };
       }),
     [data?.items],
