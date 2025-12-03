@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router-dom';
+
 import arrowLeftIcon from '@/assets/images/icon-arrow-left.svg';
 import boxIcon from '@/assets/images/icon-box.svg';
 import docsIcon from '@/assets/images/icon-docs.svg';
@@ -11,11 +13,14 @@ import { useUserProfileQuery } from '@/shared/api/queries';
 
 const ProfileStatusBar = () => <div className="h-14 w-full bg-[#D9D9D9]" aria-hidden />;
 
-const ProfileBackButton = () => (
-  <button type="button" aria-label="Назад">
-    <img src={arrowLeftIcon} alt="" className="h-12 w-12" />
-  </button>
-);
+const ProfileBackButton = () => {
+  const navigate = useNavigate();
+  return (
+    <button type="button" aria-label="Назад" onClick={() => navigate(-1)}>
+      <img src={arrowLeftIcon} alt="" className="h-12 w-12" />
+    </button>
+  );
+};
 
 const ProfileLogo = () => <img src={logoBrace} alt="BRACE logo" className="h-11 w-auto" />;
 
@@ -91,16 +96,20 @@ const ProfileSectionButton = ({ label }: { label: string }) => (
   </span>
 );
 
-const ProfileSectionItem = ({ label, icon }: ProfileSectionItemProps) => (
-  <button
-    type="button"
-    aria-label={`Перейти: ${label}`}
-    className="group flex w-full items-center gap-3 bg-transparent px-0 py-0 transition duration-150 ease-out hover:brightness-105 active:scale-[0.97] cursor-pointer"
-  >
-    <ProfileSectionIcon icon={icon} />
-    <ProfileSectionButton label={label} />
-  </button>
-);
+const ProfileSectionItem = ({ label, icon }: ProfileSectionItemProps) => {
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      aria-label={`Перейти: ${label}`}
+      className="group flex w-full items-center gap-3 bg-transparent px-0 py-0 transition duration-150 ease-out hover:brightness-105 active:scale-[0.97] cursor-pointer"
+      onClick={() => navigate('/placeholder')}
+    >
+      <ProfileSectionIcon icon={icon} />
+      <ProfileSectionButton label={label} />
+    </button>
+  );
+};
 
 const sectionsList: ProfileSectionItemProps[] = [
   { label: 'мои заказы', icon: boxIcon },

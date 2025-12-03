@@ -8,17 +8,31 @@ export type ProductCardProps = {
   ratingCount?: string;
   ratingValue?: string;
   isNew?: boolean;
+  onClick?: () => void;
+  onAddToCart?: () => void;
 };
 
-export const ProductCard = ({ tags = [], price, ratingCount = '—', ratingValue = '—', isNew }: ProductCardProps) => (
+export const ProductCard = ({
+  tags = [],
+  price,
+  ratingCount = '—',
+  ratingValue = '—',
+  isNew,
+  onClick,
+  onAddToCart,
+}: ProductCardProps) => (
   <div className="flex flex-col">
-    <div className="relative w-full aspect-[232/309] rounded-[16px] bg-gray-100">
+    <button
+      type="button"
+      className="relative w-full aspect-[232/309] rounded-[16px] bg-gray-100 transition duration-150 ease-out active:scale-[0.98]"
+      onClick={onClick}
+    >
       {isNew && (
         <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold font-mono leading-none text-white">
           new
         </span>
       )}
-    </div>
+    </button>
 
     <div className="mt-2 flex flex-nowrap gap-x-1.5 gap-y-1.5">
       {tags.map((tag) => (
@@ -44,7 +58,7 @@ export const ProductCard = ({ tags = [], price, ratingCount = '—', ratingValue
       </div>
     </div>
 
-    <Button variant="primary" className="mt-3 h-12 w-full gap-2">
+    <Button variant="primary" className="mt-3 h-12 w-full gap-2" onClick={onAddToCart}>
       <img src={cartIcon} alt="" className="h-5 w-5 invert" />
       <span className="leading-none">в корзину</span>
     </Button>

@@ -31,6 +31,7 @@ type VideoSectionProps = {
 type CarouselCardProps = {
   isNew?: boolean;
   ariaLabel: string;
+  onClick?: () => void;
 };
 
 type CarouselItem = {
@@ -165,12 +166,13 @@ const VideoSection = ({ onPlay, onPrev, onNext }: VideoSectionProps) => (
   </section>
 );
 
-const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, ariaLabel }, ref) => (
+const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, ariaLabel, onClick }, ref) => (
   <button
     ref={ref}
     type="button"
     aria-label={ariaLabel}
     className="relative flex shrink-0 items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98]"
+    onClick={onClick}
     style={{ width: `${CARD_WIDTH}px`, height: `${CARD_HEIGHT}px` }}
   >
     {isNew && (
@@ -185,12 +187,13 @@ CarouselCard.displayName = 'CarouselCard';
 const ProductCardsCarousel = () => {
   const items: CarouselItem[] = useMemo(
     () => [
-      { id: 'card-1', isNew: true },
-      { id: 'card-2', isNew: true },
-      { id: 'card-3', isNew: true },
+      { id: 'product-1', isNew: true },
+      { id: 'product-2', isNew: true },
+      { id: 'product-3', isNew: true },
     ],
     [],
   );
+  const navigate = useNavigate();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -236,7 +239,12 @@ const ProductCardsCarousel = () => {
           onTouchEnd={handleTouchEnd}
         >
           {items.map((item) => (
-            <CarouselCard key={item.id} isNew={item.isNew} ariaLabel={`Карточка ${item.id}`} />
+            <CarouselCard
+              key={item.id}
+              isNew={item.isNew}
+              ariaLabel={`Карточка ${item.id}`}
+              onClick={() => navigate(`/product/${item.id}`)}
+            />
           ))}
         </div>
       </div>
