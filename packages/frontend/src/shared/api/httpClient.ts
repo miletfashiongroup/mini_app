@@ -11,9 +11,7 @@ const instance = axios.create({
   timeout: 10_000,
 });
 
-instance.interceptors.request.use((config) => {
-  return withTelegramInitData(config);
-});
+instance.interceptors.request.use((config) => withTelegramInitData(config));
 
 instance.interceptors.response.use(
   (response) => response,

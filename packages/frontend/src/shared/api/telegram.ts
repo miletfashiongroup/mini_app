@@ -93,16 +93,35 @@ export const resolveTelegramInitData = (): string => {
   return fallback;
 };
 
-export const withTelegramInitData = <T extends { headers?: Record<string, unknown> }>(config: T): T => {
+const initialUrlData = typeof window !== 'undefined' ? resolveFromUrl() : '';
+if (initialUrlData) {
+  writeToStorage(initialUrlData);
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const resolveTelegramInitDataAsync = async (timeoutMs = 1500, intervalMs = 50): Promise<string> => {
+  let candidate = resolveTelegramInitData();
+  const deadline = Date.now() + timeoutMs;
+
+  while (!candidate && Date.now() < deadline) {
+    await sleep(intervalMs);
+    candidate = resolveTelegramInitData();
+  }
+
+  return candidate;
+};
+
+export const withTelegramInitData = async <T extends { headers?: Record<string, unknown> }>(config: T): Promise<T> => {
   const nextConfig = { ...config };
   const existingHeaders = nextConfig.headers ?? {};
-  const initData = resolveTelegramInitData();
-  if (!initData) {
+  const initData = await resolveTelegramInitDataAsync();
+  if (!initData && env.env !== 'production') {
     console.warn('Telegram init data is empty; requests may be rejected by backend.');
   }
   nextConfig.headers = {
     ...existingHeaders,
-    'X-Telegram-Init-Data': initData,
+    'X-Telegram-Init-Data': initData || existingHeaders['X-Telegram-Init-Data'] || '',
   };
   return nextConfig;
 };
