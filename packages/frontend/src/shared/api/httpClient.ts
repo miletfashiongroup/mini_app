@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
 
-import { withTelegramInitData } from '@/shared/api/telegram';
+import { resolveTelegramInitDataAsync, withTelegramInitData } from '@/shared/api/telegram';
 import { env } from '@/shared/config/env';
 
 import type { ApiEnvelope, ApiSuccess } from './types';
@@ -8,42 +8,61 @@ import { ApiError } from './types';
 
 const instance = axios.create({
   baseURL: `${env.apiBaseUrl}/api`,
-  timeout: 10_000,
+  timeout: 15_000,
 });
 
 instance.interceptors.request.use((config) => withTelegramInitData(config));
 
 instance.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiEnvelope<unknown>>) => {
+  async (error: AxiosError<ApiEnvelope<unknown>>) => {
     const status = error.response?.status;
+    const originalConfig = error.config as AxiosRequestConfig & { __braceRetried?: boolean };
+
+    // Retry once with freshly resolved init data if we got auth-related errors.
+    if (status === 401 || status === 403) {
+      const payload = error.response?.data;
+      const authRelated = payload?.error?.type === 'access_denied' || payload?.error?.type === 'unauthorized';
+      if (!originalConfig?.__braceRetried) {
+        const refreshedInitData = await resolveTelegramInitDataAsync(2000);
+        if (refreshedInitData) {
+          originalConfig.__braceRetried = true;
+          originalConfig.headers = {
+            ...(originalConfig.headers ?? {}),
+            'X-Telegram-Init-Data': refreshedInitData,
+          };
+          return instance.request(originalConfig);
+        }
+      }
+      if (status === 401) {
+        redirectToAppRoot();
+        throw new ApiError(
+          'Сессия Telegram истекла. Откройте мини-приложение заново.',
+          'unauthorized',
+          status,
+        );
+      }
+      if (status === 403 && authRelated) {
+        throw new ApiError(
+          'Проблема с авторизацией в Telegram. Закройте и снова откройте мини-приложение из Telegram.',
+          'access_denied',
+          status,
+        );
+      }
+    }
+
     if (error.code === AxiosError.ETIMEDOUT || error.code === 'ECONNABORTED') {
       throw new ApiError('Сервер не ответил вовремя. Попробуйте ещё раз.', 'timeout', status);
-    }
-    if (status === 401) {
-      redirectToAppRoot();
-      throw new ApiError(
-        'Сессия Telegram истекла. Откройте мини-приложение заново.',
-        'unauthorized',
-        status,
-      );
     }
     if (status && status >= 500) {
       throw new ApiError('Произошла ошибка сервера. Повторите попытку позже.', 'server_error', status);
     }
 
     const payload = error.response?.data;
-    if (status === 403 && payload?.error?.type === 'access_denied') {
-      throw new ApiError(
-        'Проблема с авторизацией в Telegram. Закройте и снова откройте мини-приложение из Telegram.',
-        'access_denied',
-        status,
-      );
-    }
     if (payload?.error) {
       throw new ApiError(payload.error.message, payload.error.type, status);
     }
-    throw new ApiError(error.message || 'Unexpected error', 'network_error', status);
+    throw new ApiError(error.message || 'network_error', 'network_error', status);
   },
 );
 
