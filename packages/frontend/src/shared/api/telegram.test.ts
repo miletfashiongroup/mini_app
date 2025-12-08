@@ -24,6 +24,8 @@ describe('resolveTelegramInitData', () => {
       writable: true,
       value: originalLocation,
     });
+    window.localStorage.clear();
+    window.sessionStorage.clear();
   });
 
   it('returns raw tgWebAppData without decoding it', () => {

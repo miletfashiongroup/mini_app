@@ -5,7 +5,7 @@ import { env } from '@/shared/config/env';
 const resolveFromWindow = (): string => {
   if (typeof window === 'undefined') return '';
   const tg = (window as typeof window & { Telegram?: { WebApp?: typeof WebApp } }).Telegram?.WebApp;
-  return tg?.initData || tg?.initDataUnsafe?.query_id || '';
+  return tg?.initData || '';
 };
 
 const extractRawQueryParam = (source: string, key: string): string => {
@@ -24,6 +24,31 @@ const resolveFromUrl = (): string => {
   if (direct) return direct;
   const fromHref = href.match(/tgWebAppData=([^#]+)/);
   return fromHref?.[1] ?? '';
+};
+
+const STORAGE_KEY = 'brace:twa:init-data';
+
+const readFromStorage = (): string => {
+  if (typeof window === 'undefined') return '';
+  try {
+    return window.sessionStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+const writeToStorage = (value: string) => {
+  if (typeof window === 'undefined' || !value) return;
+  try {
+    window.sessionStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, value);
+  } catch {
+    /* ignore */
+  }
 };
 
 const extractAuthDate = (initData: string): number | undefined => {
@@ -49,11 +74,13 @@ const isFresh = (initData: string): boolean => {
 export const resolveTelegramInitData = (): string => {
   const sdkInitData = WebApp?.initData || '';
   const windowInitData = resolveFromWindow();
+  const storedInitData = readFromStorage();
   const urlInitData = resolveFromUrl();
-  const candidates = [sdkInitData, windowInitData, urlInitData].filter(Boolean) as string[];
+  const candidates = [sdkInitData, windowInitData, urlInitData, storedInitData].filter(Boolean) as string[];
   const fresh = candidates.find(isFresh);
 
   if (fresh) {
+    writeToStorage(fresh);
     return fresh;
   }
 
@@ -61,7 +88,9 @@ export const resolveTelegramInitData = (): string => {
     return '';
   }
 
-  return env.devInitData || candidates[0] || '';
+  const fallback = env.devInitData || candidates[0] || '';
+  if (fallback) writeToStorage(fallback);
+  return fallback;
 };
 
 export const withTelegramInitData = <T extends { headers?: Record<string, unknown> }>(config: T): T => {
