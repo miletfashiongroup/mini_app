@@ -72,25 +72,29 @@ const isFresh = (initData: string): boolean => {
 };
 
 export const resolveTelegramInitData = (): string => {
-  const sdkInitData = WebApp?.initData || '';
-  const windowInitData = resolveFromWindow();
-  const storedInitData = readFromStorage();
+  const sdkInitData = WebApp?.initData || resolveFromWindow();
+  if (isFresh(sdkInitData)) {
+    writeToStorage(sdkInitData);
+    return sdkInitData;
+  }
+
   const urlInitData = resolveFromUrl();
-  const candidates = [sdkInitData, windowInitData, urlInitData, storedInitData].filter(Boolean) as string[];
-  const fresh = candidates.find(isFresh);
-
-  if (fresh) {
-    writeToStorage(fresh);
-    return fresh;
+  if (isFresh(urlInitData)) {
+    writeToStorage(urlInitData);
+    return urlInitData;
   }
 
-  if (env.env === 'production') {
-    return '';
+  const storedInitData = readFromStorage();
+  if (isFresh(storedInitData)) {
+    return storedInitData;
   }
 
-  const fallback = env.devInitData || candidates[0] || '';
-  if (fallback) writeToStorage(fallback);
-  return fallback;
+  if (env.env !== 'production' && env.devInitData) {
+    writeToStorage(env.devInitData);
+    return env.devInitData;
+  }
+
+  return '';
 };
 
 const initialUrlData = typeof window !== 'undefined' ? resolveFromUrl() : '';
