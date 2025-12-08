@@ -5,6 +5,7 @@ import { env } from '@/shared/config/env';
 const resolveFromWindow = (): string => {
   if (typeof window === 'undefined') return '';
   const tg = (window as typeof window & { Telegram?: { WebApp?: typeof WebApp } }).Telegram?.WebApp;
+  // Always prefer raw signed initData; do not fall back to initDataUnsafe/query_id as it is unsigned.
   return tg?.initData || '';
 };
 
@@ -72,18 +73,21 @@ const isFresh = (initData: string): boolean => {
 };
 
 export const resolveTelegramInitData = (): string => {
+  // 1) Telegrаm SDK (WebApp.initData) or injected window.WebApp is the only trusted source.
   const sdkInitData = WebApp?.initData || resolveFromWindow();
   if (isFresh(sdkInitData)) {
     writeToStorage(sdkInitData);
     return sdkInitData;
   }
 
+  // 2) URL param delivered by Telegram on reload/open (raw signed string).
   const urlInitData = resolveFromUrl();
   if (isFresh(urlInitData)) {
     writeToStorage(urlInitData);
     return urlInitData;
   }
 
+  // 3) Persisted value from prior fresh session (only if still fresh).
   const storedInitData = readFromStorage();
   if (isFresh(storedInitData)) {
     return storedInitData;
@@ -115,6 +119,20 @@ export const resolveTelegramInitDataAsync = async (timeoutMs = 1500, intervalMs 
 
   return candidate;
 };
+
+// Expose helpers in non-production for easier debugging inside TWA webview.
+if (typeof window !== 'undefined' && env.env !== 'production') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__braceResolveInit = resolveTelegramInitDataAsync;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__braceInitData = () => ({
+    sdk: WebApp?.initData ?? null,
+    window: resolveFromWindow(),
+    url: resolveFromUrl(),
+    stored: readFromStorage(),
+    resolved: resolveTelegramInitData(),
+  });
+}
 
 export const withTelegramInitData = async <T extends { headers?: Record<string, unknown> }>(config: T): Promise<T> => {
   const nextConfig = { ...config };
