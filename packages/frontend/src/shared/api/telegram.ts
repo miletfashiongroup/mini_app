@@ -8,11 +8,20 @@ const resolveFromWindow = (): string => {
   return tg?.initData || tg?.initDataUnsafe?.query_id || '';
 };
 
+const extractRawQueryParam = (source: string, key: string): string => {
+  if (!source) return '';
+  const query = source.replace(/^[?#]/, '');
+  const marker = `${key}=`;
+  const start = query.indexOf(marker);
+  if (start === -1) return '';
+  return query.slice(start + marker.length);
+};
+
 const resolveFromUrl = (): string => {
   if (typeof window === 'undefined') return '';
-  const search = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-  return search.get('tgWebAppData') || hash.get('tgWebAppData') || '';
+  const search = extractRawQueryParam(window.location.search, 'tgWebAppData');
+  const hash = extractRawQueryParam(window.location.hash, 'tgWebAppData');
+  return search || hash || '';
 };
 
 const extractAuthDate = (initData: string): number | undefined => {
@@ -41,12 +50,16 @@ export const resolveTelegramInitData = (): string => {
   const urlInitData = resolveFromUrl();
   const candidates = [sdkInitData, windowInitData, urlInitData].filter(Boolean) as string[];
   const fresh = candidates.find(isFresh);
-  const initData = fresh || candidates[0] || '';
+
+  if (fresh) {
+    return fresh;
+  }
 
   if (env.env === 'production') {
-    return initData;
+    return '';
   }
-  return initData || env.devInitData || '';
+
+  return env.devInitData || candidates[0] || '';
 };
 
 export const withTelegramInitData = <T extends { headers?: Record<string, unknown> }>(config: T): T => {
