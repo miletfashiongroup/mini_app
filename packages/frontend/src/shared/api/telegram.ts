@@ -19,9 +19,11 @@ const extractRawQueryParam = (source: string, key: string): string => {
 
 const resolveFromUrl = (): string => {
   if (typeof window === 'undefined') return '';
-  const search = extractRawQueryParam(window.location.search, 'tgWebAppData');
-  const hash = extractRawQueryParam(window.location.hash, 'tgWebAppData');
-  return search || hash || '';
+  const { search, hash, href } = window.location;
+  const direct = extractRawQueryParam(search, 'tgWebAppData') || extractRawQueryParam(hash, 'tgWebAppData');
+  if (direct) return direct;
+  const fromHref = href.match(/tgWebAppData=([^#]+)/);
+  return fromHref?.[1] ?? '';
 };
 
 const extractAuthDate = (initData: string): number | undefined => {

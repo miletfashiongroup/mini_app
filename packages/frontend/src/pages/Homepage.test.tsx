@@ -10,6 +10,7 @@ vi.mock('@/shared/api/queries', async (importOriginal) => {
   return {
     ...mod,
     useBannersQuery: vi.fn(),
+    useProductsQuery: vi.fn(),
   };
 });
 
@@ -19,6 +20,17 @@ describe('Homepage', () => {
       data: {
         banners: [{ id: 'b1', image_url: 'https://cdn.test/banner-1.jpg', is_active: true, sort_order: 1 }],
         active_index: 0,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
+    vi.mocked(queries.useProductsQuery).mockReturnValue({
+      data: {
+        items: [
+          { id: 'p1', is_new: true },
+          { id: 'p2', is_new: false },
+        ],
       },
       isLoading: false,
       isError: false,
