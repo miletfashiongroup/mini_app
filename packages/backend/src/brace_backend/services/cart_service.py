@@ -27,12 +27,14 @@ class CartService:
         payload: CartItemCreate,
     ) -> CartItemRead:
         product = await uow.products.get_with_variants(payload.product_id)
-        if not product:
+        if not product or product.is_deleted:
             raise NotFoundError("Product not found.")
 
         variant = next((v for v in product.variants if v.size == payload.size), None)
-        if not variant:
+        if not variant or variant.is_deleted:
             raise ValidationError("Variant with requested size is unavailable.")
+        if variant.active_price_minor_units is None:
+            raise ValidationError("Active price is missing for the requested variant.")
 
         existing = await uow.carts.find_existing(
             user_id=user_id, product_id=product.id, size=payload.size
@@ -41,6 +43,7 @@ class CartService:
             new_quantity = existing.quantity + payload.quantity
             self._validate_quantity(new_quantity)
             self._validate_stock(new_quantity, variant.stock)
+            existing.unit_price_minor_units = variant.active_price_minor_units
             existing.quantity = new_quantity
             existing.variant_id = variant.id
             cart_item = existing
@@ -53,7 +56,7 @@ class CartService:
                 variant_id=variant.id,
                 size=payload.size,
                 quantity=payload.quantity,
-                unit_price_minor_units=variant.price_minor_units,
+                unit_price_minor_units=variant.active_price_minor_units,
             )
             await uow.carts.add(cart_item)
             cart_item.product = product
@@ -83,16 +86,19 @@ class CartService:
             raise NotFoundError("Cart item not found.")
 
         product = await uow.products.get_with_variants(cart_item.product_id)
-        if not product:
+        if not product or product.is_deleted:
             raise NotFoundError("Product not found.")
         variant = next((v for v in product.variants if v.size == cart_item.size), None)
-        if not variant:
+        if not variant or variant.is_deleted:
             raise ValidationError("Variant with requested size is unavailable.")
+        if variant.active_price_minor_units is None:
+            raise ValidationError("Active price is missing for the requested variant.")
 
         self._validate_quantity(payload.quantity)
         self._validate_stock(payload.quantity, variant.stock)
         cart_item.quantity = payload.quantity
         cart_item.variant_id = variant.id
+        cart_item.unit_price_minor_units = variant.active_price_minor_units
         await uow.commit()
         await uow.refresh(cart_item)
         logger.info(

@@ -1,18 +1,14 @@
 import asyncio
 import uuid
+from datetime import datetime, timezone
 
 from brace_backend.core.money import to_minor_units
 from brace_backend.db.session import engine as global_engine
 from brace_backend.db.session import session_manager
-from brace_backend.domain import (
-    Banner,
-    Order,
-    OrderItem,
-    Product,
-    ProductMedia,
-    ProductVariant,
-    User,
-)
+from brace_backend.domain.banner import Banner
+from brace_backend.domain.order import Order, OrderItem
+from brace_backend.domain.product import Product, ProductMedia, ProductPrice, ProductVariant
+from brace_backend.domain.user import User
 from brace_backend.domain.base import Base
 from sqlalchemy import select
 
@@ -43,15 +39,29 @@ async def seed_products() -> None:
                 ProductVariant(
                     id=uuid.uuid5(SEED_NAMESPACE, f"brace-essential-{idx}:{size}"),
                     size=size,
-                    price_minor_units=to_minor_units(29.99 + idx),
                     stock=100,
                     product_id=product.id,
                 )
                 for size in ["S", "M", "L", "XL"]
             ]
+            for variant in product.variants:
+                variant.prices.append(
+                    ProductPrice(
+                        id=uuid.uuid5(SEED_NAMESPACE, f"price:{variant.id}"),
+                        product_variant_id=variant.id,
+                        price_minor_units=to_minor_units(29.99 + idx),
+                        currency_code="RUB",
+                        starts_at=datetime.now(tz=timezone.utc),
+                    )
+                )
             product.gallery = [
                 ProductMedia(
                     id=uuid.uuid5(SEED_NAMESPACE, f"brace-essential-{idx}:media:{media_idx}"),
+                    # TODO (MANUAL):
+                    # Здесь необходимо вручную добавить:
+                    # - URL изображения карточки товара (S3 / CDN / reg.ru storage)
+                    # - Опционально видео-обзор в отдельной записи product_media
+                    # Формат: HTTPS ссылка на CDN/объектное хранилище
                     url=f"https://cdn.example.com/products/{idx}-{media_idx}.jpg",
                     sort_order=media_idx,
                 )
@@ -70,6 +80,11 @@ async def seed_banners() -> None:
         banners = [
             Banner(
                 id=uuid.uuid5(SEED_NAMESPACE, "banner:hero"),
+                # TODO (MANUAL):
+                # Заполнить:
+                # - banner.image_url (HTTPS ссылка из CDN/S3/reg.ru)
+                # - banner.video_url (опционально) для WebApp
+                # - banner.sort_order
                 image_url="https://cdn.example.com/banners/hero.jpg",
                 video_url=None,
                 is_active=True,
@@ -77,6 +92,11 @@ async def seed_banners() -> None:
             ),
             Banner(
                 id=uuid.uuid5(SEED_NAMESPACE, "banner:hero2"),
+                # TODO (MANUAL):
+                # Заполнить:
+                # - banner.image_url (HTTPS ссылка из CDN/S3/reg.ru)
+                # - banner.video_url (опционально)
+                # - banner.sort_order
                 image_url="https://cdn.example.com/banners/secondary.jpg",
                 video_url=None,
                 is_active=True,
@@ -115,12 +135,15 @@ async def seed_user_and_orders() -> None:
         await session.flush()
 
         variant = product.variants[0]
+        price_minor_units = (
+            variant.prices[0].price_minor_units if getattr(variant, "prices", None) else to_minor_units(59.99)
+        )
         order_item = OrderItem(
             order_id=order.id,
             product_id=product.id,
             size=variant.size,
             quantity=1,
-            unit_price_minor_units=variant.price_minor_units,
+            unit_price_minor_units=price_minor_units,
         )
         session.add(order_item)
         await session.commit()

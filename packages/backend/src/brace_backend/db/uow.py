@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from brace_backend.repositories import (
+    AuditRepository,
     BannerRepository,
     CartRepository,
     OrderRepository,
@@ -24,6 +25,7 @@ class UnitOfWork:
     orders: OrderRepository = field(init=False, repr=False)
     users: UserRepository = field(init=False, repr=False)
     banners: BannerRepository = field(init=False, repr=False)
+    audits: AuditRepository = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.products = ProductRepository(self.session)
@@ -31,6 +33,7 @@ class UnitOfWork:
         self.orders = OrderRepository(self.session)
         self.users = UserRepository(self.session)
         self.banners = BannerRepository(self.session)
+        self.audits = AuditRepository(self.session)
 
     async def commit(self) -> None:
         await self.session.commit()

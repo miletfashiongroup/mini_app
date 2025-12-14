@@ -14,7 +14,7 @@ class ProductRepository(SQLAlchemyRepository[Product]):
     model = Product
 
     def _base_stmt(self) -> Select[tuple[Product]]:
-        return select(Product).options(
+        return select(Product).where(Product.is_deleted.is_(False)).options(
             selectinload(Product.variants),
             selectinload(Product.gallery),
         )
@@ -49,7 +49,11 @@ class ProductRepository(SQLAlchemyRepository[Product]):
     async def get_variant_for_update(self, product_id: UUID, size: str) -> ProductVariant | None:
         stmt = (
             select(ProductVariant)
-            .where(ProductVariant.product_id == product_id, ProductVariant.size == size)
+            .where(
+                ProductVariant.product_id == product_id,
+                ProductVariant.size == size,
+                ProductVariant.is_deleted.is_(False),
+            )
             .with_for_update()
         )
         return await self.session.scalar(stmt)

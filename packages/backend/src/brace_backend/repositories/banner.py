@@ -10,7 +10,11 @@ class BannerRepository(SQLAlchemyRepository[Banner]):
     model = Banner
 
     async def list_ordered(self) -> list[Banner]:
-        stmt = select(Banner).order_by(Banner.sort_order.asc(), Banner.created_at.asc())
+        stmt = (
+            select(Banner)
+            .where(Banner.is_deleted.is_(False))
+            .order_by(Banner.sort_order.asc(), Banner.created_at.asc())
+        )
         result = await self.session.scalars(stmt)
         return result.unique().all()
 

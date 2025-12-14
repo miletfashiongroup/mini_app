@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from uuid import UUID
 
 from brace_backend.core.exceptions import ValidationError
@@ -7,6 +8,7 @@ from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.order import Order
 from brace_backend.domain.product import ProductVariant
+from brace_backend.services.audit_service import audit_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
 
 
@@ -41,17 +43,33 @@ class OrderService:
                 variant = await uow.products.get_variant_for_update(item.product_id, item.size)
                 if variant is None:
                     raise ValidationError("Product variant is unavailable.")
+                if variant.is_deleted:
+                    raise ValidationError("Product variant is unavailable.")
                 locked_variants[key] = variant
 
             if variant.stock is None or variant.stock < item.quantity:
                 raise ValidationError("Insufficient stock for the requested product.")
             variant.stock -= item.quantity
 
-            line_total = item.quantity * item.unit_price_minor_units
+            price = variant.active_price_minor_units
+            if price is None:
+                raise ValidationError("Active price is missing for the requested variant.")
+
+            item.unit_price_minor_units = price
+            line_total = item.quantity * price
             total_amount_minor_units += line_total
 
+        idempotency_key = self._compute_idempotency(cart_items)
+        existing_order = await uow.orders.get_by_idempotency(user_id=user_id, idempotency_key=idempotency_key)
+        if existing_order:
+            await uow.session.refresh(existing_order, attribute_names=["items"])
+            return self._to_schema(existing_order)
+
         order = await uow.orders.create(
-            user_id=user_id, shipping_address=payload.shipping_address, note=payload.note
+            user_id=user_id,
+            shipping_address=payload.shipping_address,
+            note=payload.note,
+            idempotency_key=idempotency_key,
         )
 
         for item in cart_items:
@@ -67,6 +85,23 @@ class OrderService:
         order.total_amount_minor_units = total_amount_minor_units
         await uow.commit()
         await uow.session.refresh(order, attribute_names=["items"])
+        await audit_service.log(
+            uow,
+            action="order_created",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"items": len(order.items), "total_minor_units": total_amount_minor_units},
+            actor_user_id=user_id,
+        )
+        for item in order.items:
+            await audit_service.log(
+                uow,
+                action="stock_decrement",
+                entity_type="product_variant",
+                entity_id=str(item.product_id),
+                metadata={"qty": item.quantity, "order_id": str(order.id)},
+                actor_user_id=user_id,
+            )
         logger.info(
             "order_created",
             user_id=str(user_id),
@@ -75,6 +110,15 @@ class OrderService:
             total_minor_units=total_amount_minor_units,
         )
         return self._to_schema(order)
+
+    def _compute_idempotency(self, cart_items) -> str:
+        digest = hashlib.sha256()
+        for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
+            digest.update(str(item.product_id).encode())
+            digest.update(str(item.variant_id).encode())
+            digest.update(str(item.quantity).encode())
+            digest.update(str(item.unit_price_minor_units).encode())
+        return digest.hexdigest()
 
     def _to_schema(self, order: Order) -> OrderRead:
         return OrderRead(

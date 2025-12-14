@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     }
     telegram_debug_logging: bool = False
     telegram_emergency_bypass: bool = False
+    pii_encryption_key: str = Field(
+        default="",
+        description="Fernet key for PII encryption at rest. REQUIRED in production.",
+    )
 
     @property
     def is_production(self) -> bool:
@@ -225,6 +229,9 @@ class Settings(BaseSettings):
 
         if self.allow_dev_mode or self.telegram_dev_mode or bool(self.telegram_dev_fallback_token):
             raise RuntimeError("Dev mode is not allowed in production")
+
+        if not self.pii_encryption_key:
+            raise RuntimeError("PII encryption key is required in production")
 
         return self
 

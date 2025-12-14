@@ -47,8 +47,15 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         status: str = "pending",
         shipping_address: str | None = None,
         note: str | None = None,
+        idempotency_key: str,
     ) -> Order:
-        order = Order(user_id=user_id, status=status, shipping_address=shipping_address, note=note)
+        order = Order(
+            user_id=user_id,
+            status=status,
+            shipping_address=shipping_address,
+            note=note,
+            idempotency_key=idempotency_key,
+        )
         await self.add(order)
         await self.session.flush()
         return order
@@ -71,3 +78,10 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         )
         self.session.add(item)
         return item
+
+    async def get_by_idempotency(self, *, user_id: UUID, idempotency_key: str) -> Order | None:
+        stmt = self._base_stmt().where(
+            Order.user_id == user_id, Order.idempotency_key == idempotency_key
+        )
+        result = await self.session.scalars(stmt)
+        return result.unique().one_or_none()

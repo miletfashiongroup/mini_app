@@ -35,3 +35,9 @@ async def get_current_user(
     uow: UnitOfWork = Depends(get_uow),
 ) -> User:
     return await user_service.sync_from_telegram(uow, init_data)
+
+
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    if (user.role or "").lower() != "admin":
+        raise AccessDeniedError("Admin privileges required.")
+    return user

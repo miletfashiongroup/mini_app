@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from brace_backend.core.exceptions import NotFoundError
+from brace_backend.core.exceptions import NotFoundError, ValidationError
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.product import Product
 from brace_backend.schemas.products import ProductRead
@@ -33,6 +33,9 @@ class ProductService:
         return [self._to_schema(product) for product in products]
 
     def _to_schema(self, product: Product) -> ProductRead:
+        for variant in product.variants:
+            if variant.active_price_minor_units is None:
+                raise ValidationError("Active price is missing for a product variant.")
         return ProductRead(
             id=product.id,
             name=product.name,
@@ -51,7 +54,7 @@ class ProductService:
                 {
                     "id": variant.id,
                     "size": variant.size,
-                    "price_minor_units": variant.price_minor_units,
+                    "price_minor_units": variant.active_price_minor_units,
                     "stock": variant.stock,
                 }
                 for variant in product.variants

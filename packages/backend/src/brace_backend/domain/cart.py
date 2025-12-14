@@ -4,7 +4,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from brace_backend.domain.base import BaseModel
-from sqlalchemy import BigInteger, ForeignKey, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 if TYPE_CHECKING:
@@ -14,7 +14,11 @@ if TYPE_CHECKING:
 
 class CartItem(BaseModel):
     __tablename__ = "cart_items"
-    __table_args__ = (UniqueConstraint("user_id", "variant_id", name="uniq_cart_item_variant"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "variant_id", name="uniq_cart_item_variant"),
+        CheckConstraint("quantity > 0", name="ck_cart_quantity_positive"),
+        CheckConstraint("unit_price_minor_units >= 0", name="ck_cart_price_nonnegative"),
+    )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     product_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))

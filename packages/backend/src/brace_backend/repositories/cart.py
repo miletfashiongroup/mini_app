@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from brace_backend.domain.cart import CartItem
+from brace_backend.domain.product import Product, ProductVariant
 from brace_backend.repositories.base import SQLAlchemyRepository
 
 
@@ -14,9 +15,15 @@ class CartRepository(SQLAlchemyRepository[CartItem]):
     model = CartItem
 
     def _base_stmt(self):
-        return select(CartItem).options(
-            selectinload(CartItem.product),
-            selectinload(CartItem.variant),
+        return (
+            select(CartItem)
+            .join(Product, CartItem.product_id == Product.id)
+            .join(ProductVariant, CartItem.variant_id == ProductVariant.id)
+            .where(Product.is_deleted.is_(False), ProductVariant.is_deleted.is_(False))
+            .options(
+                selectinload(CartItem.product),
+                selectinload(CartItem.variant),
+            )
         )
 
     async def get_for_user(self, user_id: UUID) -> Sequence[CartItem]:

@@ -13,7 +13,9 @@ from sqlalchemy.orm import Session
 from brace_backend.core.config import settings
 from brace_backend.core.database import ensure_sync_dsn
 from brace_backend.core.money import to_minor_units
-from brace_backend.domain.product import Product, ProductVariant
+from datetime import datetime, timezone
+
+from brace_backend.domain.product import Product, ProductPrice, ProductVariant
 
 LOG = logging.getLogger("brace_backend.db.seed")
 
@@ -72,6 +74,12 @@ SEED_NAMESPACE = uuid.UUID("cb4290f9-9882-4a9d-9c82-2d19a7af8e0d")  # PRINCIPAL-
 
 def _seed_products(session: Session) -> None:
     catalog = [
+        # TODO (MANUAL):
+        # Здесь необходимо вручную добавить:
+        # - URL изображения карточки товара (S3 / CDN / reg.ru storage) в hero_media_url
+        # - Видео-обзор (опционально) в product_media
+        # - Тексты описаний (description/specs)
+        # - Цены с периодами в product_prices при обновлениях
         ("Smoke Tee", "Classic tee for smoke tests", "39.99", "M", 50),
         ("Smoke Hoodie", "Cozy hoodie for testing", "59.99", "L", 25),
         ("Smoke Joggers", "Comfort joggers", "45.00", "S", 10),
@@ -84,10 +92,16 @@ def _seed_products(session: Session) -> None:
             id=variant_id,
             product_id=product_id,
             size=size,
-            price_minor_units=to_minor_units(price),
             stock=stock,
         )
+        price_row = ProductPrice(
+            product_variant_id=variant_id,
+            price_minor_units=to_minor_units(price),
+            currency_code="RUB",
+            starts_at=datetime.now(tz=timezone.utc),
+        )
         product.variants.append(variant)
+        variant.prices.append(price_row)
         session.add(product)
     session.commit()
     LOG.info("Seeded %s products for smoke tests.", len(catalog))  # PRINCIPAL-FIX: deterministic seed data

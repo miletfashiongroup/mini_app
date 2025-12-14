@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from brace_backend.domain.base import BaseModel
+from brace_backend.domain.base import BaseModel, SoftDeleteMixin
 from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class Banner(BaseModel):
+class Banner(BaseModel, SoftDeleteMixin):
     __tablename__ = "banners"
 
     image_url: Mapped[str] = mapped_column(String(512), nullable=False)
