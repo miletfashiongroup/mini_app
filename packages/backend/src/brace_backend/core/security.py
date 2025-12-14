@@ -8,7 +8,7 @@ import time
 import re
 from json import JSONDecodeError
 from typing import Any
-from urllib.parse import parse_qsl
+from urllib.parse import parse_qsl, unquote_plus
 
 from brace_backend.core.config import settings
 from brace_backend.core.exceptions import AccessDeniedError
@@ -24,10 +24,6 @@ except Exception:  # pragma: no cover
 
 def _log_auth_debug(message: str, **extra: Any) -> None:
     """Emit structured Telegram auth debug logs (emergency mode)."""
-    if settings.is_production:
-        logger.bind(auth="telegram").info("TELEGRAM AUTH DEBUG: <REDACTED>")
-        return
-
     safe_extra = {key: _redact_value(value) for key, value in extra.items() if value is not None}
     logger.bind(auth="telegram", **safe_extra).info(f"TELEGRAM AUTH DEBUG: {message}")
 
@@ -78,17 +74,35 @@ def _redact_value(value: Any) -> Any:
 
 
 def parse_init_data(raw: str) -> dict[str, Any]:
-    """Decode Telegram init data query string into Python objects."""
-    pairs = parse_qsl(raw, strict_parsing=False, keep_blank_values=True)
-    data: dict[str, Any] = {}
-    for key, value in pairs:
-        if key == "user":
-            try:
-                data[key] = json.loads(value)
-            except JSONDecodeError as exc:
-                raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
-        else:
-            data[key] = value
+    """Decode Telegram init data query string into Python objects.
+
+    The frontend should pass `Telegram.WebApp.initData` as-is, but in practice it can arrive:
+    - URL-encoded twice (`%3D`, `%26`, etc.)
+    - with a leading `?` or `tgWebAppData=` prefix from location hash.
+    We attempt a best-effort single unquote + prefix trim before parsing.
+    """
+
+    def _parse(qs: str) -> dict[str, Any]:
+        pairs = parse_qsl(qs, strict_parsing=False, keep_blank_values=True)
+        data: dict[str, Any] = {}
+        for key, value in pairs:
+            if key == "user":
+                try:
+                    data[key] = json.loads(value)
+                except JSONDecodeError as exc:
+                    raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
+            else:
+                data[key] = value
+        return data
+
+    normalized = raw.lstrip("?")
+    if normalized.startswith("tgWebAppData="):
+        normalized = normalized.split("tgWebAppData=", 1)[1]
+
+    data = _parse(normalized)
+    # Fallback: if no hash found and the string looks URL-encoded, unquote once and parse again.
+    if ("hash" not in data) and ("%3D" in normalized or "%26" in normalized):
+        data = _parse(unquote_plus(normalized))
     return data
 
 
