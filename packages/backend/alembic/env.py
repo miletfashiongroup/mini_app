@@ -1,33 +1,41 @@
 from __future__ import annotations
 
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
-from brace_backend import domain  # noqa: F401 - гарантируем регистрацию моделей
-from brace_backend.core.config import settings
-from brace_backend.core.database import ensure_sync_dsn
-from brace_backend.domain.base import Base
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
 
-from alembic import context
+# Make sure the project src/ is importable even if the package is not yet installed.
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
+
+from brace_backend import domain  # noqa: F401,E402 - ensure models are imported
+from brace_backend.core.config import settings  # noqa: E402
+from brace_backend.core.database import ensure_sync_dsn  # noqa: E402
+from brace_backend.domain.base import Base  # noqa: E402
 
 config = context.config
 
-# 1) Берем DSN для Alembic. В Docker он приходит из ALEMBIC_DATABASE_URL.
-#    Если переменной нет, используем BRACE_DATABASE_URL, чтобы локально работало.
+# Configure the DSN for Alembic (prefers ALEMBIC_DATABASE_URL, falls back to app settings).
 alembic_url = os.getenv("ALEMBIC_DATABASE_URL", settings.database_url)
 config.set_main_option("sqlalchemy.url", ensure_sync_dsn(alembic_url))
 
-# Подключаем логирование (если оно активировано в ini)
+# Configure Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Target metadata for autogenerate support.
 target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Для offline-режима Alembic генерирует SQL без подключения к БД."""
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
 
@@ -36,7 +44,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    """Общий код для online-миграций."""
+    """Run migrations in 'online' mode using the given connection."""
     context.configure(connection=connection, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -44,7 +52,7 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 def run_migrations_online() -> None:
-    """Online-режим: создаем синхронный движок и прогоняем upgrade/downgrade."""
+    """Create engine and run migrations in 'online' mode."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

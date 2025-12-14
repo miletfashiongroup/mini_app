@@ -11,6 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 from cryptography.fernet import Fernet
 
+_PII_PREFIX = "enc::"
+
 revision: str = "202501010001"
 down_revision: str | None = "202411210001"
 branch_labels: Sequence[str] | None = None
@@ -21,11 +23,25 @@ def _now() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
+def _load_cipher() -> Fernet | None:
+    key = (os.getenv("BRACE_PII_ENCRYPTION_KEY") or os.getenv("PII_ENCRYPTION_KEY") or "").strip()
+    if not key:
+        return None
+    return Fernet(key.encode())
+
+
+def _encrypt(value: str | None, cipher: Fernet | None) -> str | None:
+    """Mirror runtime encryption format (enc:: prefix) so ORM decrypts correctly."""
+    if cipher is None or value is None:
+        return value
+    token = cipher.encrypt(value.encode("utf-8")).decode("utf-8")
+    return f"{_PII_PREFIX}{token}"
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
-    encryption_key = os.getenv("BRACE_PII_ENCRYPTION_KEY") or os.getenv("PII_ENCRYPTION_KEY")
-    cipher = Fernet(encryption_key.encode()) if encryption_key else None
+    cipher = _load_cipher()
     if dialect == "postgresql" and cipher is None:
         raise RuntimeError("BRACE_PII_ENCRYPTION_KEY is required to encrypt existing PII.")
 
@@ -62,9 +78,9 @@ def upgrade() -> None:
                 ),
                 {
                     "id": row.id,
-                    "first_name": cipher.encrypt((row.first_name or "").encode()).decode(),
-                    "last_name": cipher.encrypt((row.last_name or "").encode()).decode(),
-                    "username": cipher.encrypt((row.username or "").encode()).decode(),
+                    "first_name": _encrypt(row.first_name, cipher),
+                    "last_name": _encrypt(row.last_name, cipher),
+                    "username": _encrypt(row.username, cipher),
                 },
             )
 
