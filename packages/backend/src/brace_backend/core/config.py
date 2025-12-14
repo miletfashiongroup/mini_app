@@ -147,6 +147,8 @@ class Settings(BaseSettings):
             "http://localhost",
             "http://localhost:4173",
             "http://localhost:5173",
+            # Render frontend (production)
+            "https://brace-1-frontend.onrender.com",
         ],
         description="Allowed CORS origins (JSON array string or comma-separated)",
     )

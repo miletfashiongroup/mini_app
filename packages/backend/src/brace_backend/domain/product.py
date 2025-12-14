@@ -114,9 +114,9 @@ class ProductVariant(BaseModel, SoftDeleteMixin):
     )
 
     active_price_minor_units: Mapped[int | None] = column_property(
-        select(ProductPrice.price_minor_units)
+        lambda cls: select(ProductPrice.price_minor_units)
         .where(
-            ProductPrice.product_variant_id == ProductVariant.id,
+            ProductPrice.product_variant_id == cls.id,
             ProductPrice.starts_at <= func.now(),
             (ProductPrice.ends_at.is_(None)) | (ProductPrice.ends_at > func.now()),
         )
