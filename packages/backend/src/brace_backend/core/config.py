@@ -111,6 +111,7 @@ class Settings(BaseSettings):
     telegram_emergency_bypass: bool = False
     pii_encryption_key: str = Field(
         default="",
+        validation_alias=AliasChoices("BRACE_PII_ENCRYPTION_KEY", "PII_ENCRYPTION_KEY"),
         description="Fernet key for PII encryption at rest. REQUIRED in production.",
     )
 
