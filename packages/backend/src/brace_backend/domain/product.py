@@ -113,16 +113,20 @@ class ProductVariant(BaseModel, SoftDeleteMixin):
         back_populates="variant", cascade="all, delete-orphan", order_by="ProductPrice.starts_at"
     )
 
+    # Latest active price for the variant (by starts_at), resolved via scalar subquery
     active_price_minor_units: Mapped[int | None] = column_property(
-        lambda cls: select(ProductPrice.price_minor_units)
-        .where(
-            ProductPrice.product_variant_id == cls.id,
-            ProductPrice.starts_at <= func.now(),
-            (ProductPrice.ends_at.is_(None)) | (ProductPrice.ends_at > func.now()),
+        lambda cls: (
+            select(ProductPrice.price_minor_units)
+            .where(
+                ProductPrice.product_variant_id == cls.id,
+                ProductPrice.starts_at <= func.now(),
+                (ProductPrice.ends_at.is_(None)) | (ProductPrice.ends_at > func.now()),
+            )
+            .order_by(ProductPrice.starts_at.desc())
+            .limit(1)
+            .correlate_except(ProductPrice)
+            .scalar_subquery()
         )
-        .order_by(ProductPrice.starts_at.desc())
-        .limit(1)
-        .correlate_except(ProductPrice)
     )
 
 
