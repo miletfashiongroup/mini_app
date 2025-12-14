@@ -51,6 +51,7 @@ services:
       BRACE_CORS_ORIGINS: ${BRACE_CORS_ORIGINS:-["http://localhost","http://localhost:4173"]}
       BRACE_TELEGRAM_BOT_TOKEN: ${BRACE_TELEGRAM_BOT_TOKEN:?BRACE_TELEGRAM_BOT_TOKEN is required}
       BRACE_TELEGRAM_WEBAPP_SECRET: ${BRACE_TELEGRAM_WEBAPP_SECRET:-}
+      BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
     depends_on:
       db:
         condition: service_healthy

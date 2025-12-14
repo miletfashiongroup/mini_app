@@ -24,7 +24,7 @@ class AuditService:
             action=action,
             entity_type=entity_type,
             entity_id=entity_id,
-            metadata=metadata,
+            meta=metadata,
             ip_address=ip_address,
             user_agent=user_agent,
         )
