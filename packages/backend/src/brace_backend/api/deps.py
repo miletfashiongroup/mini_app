@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator
 
-from fastapi import Depends, Header
+from fastapi import Depends, Header, Query
 
 from brace_backend.core.exceptions import AccessDeniedError
 from brace_backend.core.logging import logger
@@ -12,8 +12,17 @@ from brace_backend.services.user_service import user_service
 
 
 async def get_current_init_data(
-    init_data: str | None = Header(default=None, alias="X-Telegram-Init-Data")
+    init_data_header: str | None = Header(default=None, alias="X-Telegram-Init-Data"),
+    init_data_header_alt: str | None = Header(default=None, alias="X-Telegram-WebApp-Data"),
+    init_data_query: str | None = Query(default=None, alias="tgWebAppData"),
+    init_data_query_alt: str | None = Query(default=None, alias="initData"),
 ) -> TelegramInitData:
+    init_data = (
+        init_data_header
+        or init_data_header_alt
+        or init_data_query
+        or init_data_query_alt
+    )
     try:
         return await validate_request(init_data)
     except AccessDeniedError as exc:

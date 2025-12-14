@@ -99,11 +99,14 @@ def parse_init_data(raw: str) -> dict[str, Any]:
     if normalized.startswith("tgWebAppData="):
         normalized = normalized.split("tgWebAppData=", 1)[1]
 
-    data = _parse(normalized)
-    # Fallback: if no hash found and the string looks URL-encoded, unquote once and parse again.
-    if ("hash" not in data) and ("%3D" in normalized or "%26" in normalized):
-        data = _parse(unquote_plus(normalized))
-    return data
+    # Try up to two decoding passes to handle double-encoded inputs reliably.
+    candidates = [normalized, unquote_plus(normalized)]
+    for candidate in candidates:
+        data = _parse(candidate)
+        if "hash" in data:
+            return data
+    # Last resort: one more unquote if still no hash.
+    return _parse(unquote_plus(unquote_plus(normalized)))
 
 
 def build_data_check_string(payload: dict[str, Any]) -> str:
