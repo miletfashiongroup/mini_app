@@ -11,9 +11,18 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_VERSION=1.8.3 
 WORKDIR /app
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends build-essential curl \
- && rm -rf /var/lib/apt/lists/*
+# More resilient apt: switch to a reachable mirror and retry updates
+RUN set -eux; \
+    sed -i 's|http://deb.debian.org/debian|http://mirror.yandex.ru/debian|g' /etc/apt/sources.list; \
+    sed -i 's|http://security.debian.org/debian-security|http://mirror.yandex.ru/debian-security|g' /etc/apt/sources.list; \
+    for i in 1 2 3 4 5; do \
+      apt-get update && \
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+      && break || { echo "apt failed on attempt $i, retrying..."; sleep 5; }; \
+    done; \
+    rm -rf /var/lib/apt/lists/*
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
 # FIX poetry
