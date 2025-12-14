@@ -10,7 +10,8 @@ ENV CI=1 \
 
 # Install dependencies with a pristine node_modules tree
 COPY packages/frontend/package.json packages/frontend/package-lock.json ./
-RUN npm ci --no-audit --progress=false
+# Use install to tolerate minor lock drift in CI/build environments
+RUN npm install --no-audit --progress=false --legacy-peer-deps
 
 # Copy sources after deps are installed so host artefacts never override node_modules
 COPY packages/frontend/ ./
