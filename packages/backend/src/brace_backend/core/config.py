@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     telegram_webapp_secret: str | None = None
     telegram_dev_mode: bool = False
     telegram_dev_fallback_token: str = Field(
-        default="dev-telegram-token",
+        default="",
         description="Used ONLY in dev mode when no real bot token is configured.",
     )
     telegram_dev_user: dict[str, Any] = {
