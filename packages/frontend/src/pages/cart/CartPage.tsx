@@ -1,9 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 
-import arrowLeftIcon from '@/assets/images/icon-arrow-left.svg';
 import newBadgeIcon from '@/assets/images/icon-new.svg';
-import logoBrace from '@/assets/images/logo-brace.svg';
+import { PageTopBar } from '@/components/brace';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
 import { cartKeys, deleteCartItem, updateCartItem } from '@/entities/cart/api/cartApi';
 import type { CartCollection } from '@/entities/cart/model/types';
@@ -33,28 +32,6 @@ const getItemCountLabel = (count: number) => {
   if (count >= 2 && count <= 4) return `${count} товара`;
   return `${count} товаров`;
 };
-
-const CartStatusBar = () => <div className="h-6 w-full bg-[#D9D9D9]" aria-hidden />;
-
-const CartBackButton = () => (
-  <button
-    type="button"
-    aria-label="Назад"
-    onClick={() => window.history.back()}
-    className="flex h-12 w-12 items-center justify-center rounded-full bg-[#000043] transition duration-150 ease-out hover:brightness-105 active:scale-[0.96]"
-  >
-    <img src={arrowLeftIcon} alt="" className="h-5 w-5 invert" />
-  </button>
-);
-
-const CartLogo = () => <img src={logoBrace} alt="BRACE logo" className="h-8 w-auto" />;
-
-const CartHeader = () => (
-  <header className="flex items-center justify-between bg-white px-4 py-4">
-    <CartBackButton />
-    <CartLogo />
-  </header>
-);
 
 const CartTitle = ({ itemCount }: { itemCount: number }) => (
   <div className="mt-2 mb-3 bg-white px-4">
@@ -244,8 +221,7 @@ export const CartPage = () => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
-      <CartStatusBar />
-      <CartHeader />
+      <PageTopBar statusBarHeightClassName="h-14" backButtonVariant="ghost" />
       <CartTitle itemCount={cartItems.length} />
       <CartItemsSection>
         {isLoading ? (

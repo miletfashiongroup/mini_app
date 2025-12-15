@@ -1,35 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 
-import arrowLeftIcon from '@/assets/images/icon-arrow-left.svg';
 import boxIcon from '@/assets/images/icon-box.svg';
 import docsIcon from '@/assets/images/icon-docs.svg';
 import giftIcon from '@/assets/images/icon-gift.svg';
 import handsIcon from '@/assets/images/icon-hands.svg';
 import profileAccountIcon from '@/assets/images/icon-profile_white.svg';
 import supportIcon from '@/assets/images/icon-support.svg';
-import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { PageTopBar } from '@/components/brace';
 import { useUserProfileQuery } from '@/shared/api/queries';
-
-const ProfileStatusBar = () => <div className="h-14 w-full bg-[#D9D9D9]" aria-hidden />;
-
-const ProfileBackButton = () => {
-  const navigate = useNavigate();
-  return (
-    <button type="button" aria-label="Назад" onClick={() => navigate(-1)}>
-      <img src={arrowLeftIcon} alt="" className="h-12 w-12" />
-    </button>
-  );
-};
-
-const ProfileLogo = () => <img src={logoBrace} alt="BRACE logo" className="h-11 w-auto" />;
-
-const ProfileHeader = () => (
-  <header className="flex items-center justify-between bg-white px-3 py-4">
-    <ProfileBackButton />
-    <ProfileLogo />
-  </header>
-);
 
 const ProfileTitle = () => (
   <div className="px-4 pb-4 pt-4">
@@ -140,8 +119,7 @@ export const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-white pb-28 font-montserrat text-text-primary">
-      <ProfileStatusBar />
-      <ProfileHeader />
+      <PageTopBar />
       <ProfileTitle />
       {isLoading ? (
         <div className="px-4 py-6 text-[14px]">Загружаем профиль...</div>
