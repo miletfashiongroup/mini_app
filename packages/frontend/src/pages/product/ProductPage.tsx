@@ -10,7 +10,6 @@ import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSize
 import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
 import ProductSizeTableModal from '@/components/product/ProductSizeTableModal';
-import ProductStatusBar from '@/components/product/ProductStatusBar';
 import { ProductTabId } from '@/components/product/ProductTabs';
 import ProductTags from '@/components/product/ProductTags';
 import ProductThumbnailsStrip from '@/components/product/ProductThumbnailsStrip';
@@ -105,7 +104,6 @@ export const ProductPage = () => {
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white text-[#29292B] font-montserrat pb-24">
-      <ProductStatusBar />
       <ProductHeader />
       <ProductTitle title={product.name} />
       <ProductMediaCarousel />

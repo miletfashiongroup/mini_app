@@ -14,12 +14,8 @@ const LogoButton = () => (
   </Link>
 );
 
-export const PageTopBar = ({
-  statusBarHeightClassName = 'h-12',
-  className = '',
-}: PageTopBarProps) => (
+export const PageTopBar = ({ className = '' }: PageTopBarProps) => (
   <div className={`w-full bg-white ${className}`}>
-    <div className={`${statusBarHeightClassName} w-full bg-[#D9D9D9]`} aria-hidden />
     <header className="px-4 py-6">
       <LogoButton />
     </header>
