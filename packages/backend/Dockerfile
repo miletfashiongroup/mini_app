@@ -25,7 +25,7 @@ RUN set -eux; \
     done; \
     rm -rf /var/lib/apt/lists/*
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
+RUN pip install --no-cache-dir "poetry==1.8.3"
 # FIX poetry
 ENV PATH="/root/.local/bin:$PATH" 
 
