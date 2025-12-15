@@ -48,7 +48,8 @@ class TelegramInitData:
 
 
 TELEGRAM_MAX_AGE_SECONDS = 60 * 60
-TELEGRAM_CLOCK_SKEW_SECONDS = 30
+# Telegram clients occasionally have clock drift; allow a generous skew to reduce false 403s.
+TELEGRAM_CLOCK_SKEW_SECONDS = 5 * 60
 TELEGRAM_SIGNATURE_SALT = b"WebAppData"
 EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 

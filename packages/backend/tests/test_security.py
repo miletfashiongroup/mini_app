@@ -112,8 +112,8 @@ def test_verify_init_data_expired():
 
 
 def test_verify_init_data_future_timestamp():
-    """Timestamps in the future must be rejected to stop replay attacks."""
-    future = int(time.time() + 120)
+    """Timestamps too far in the future must be rejected to stop replay attacks."""
+    future = int(time.time() + 600)
     raw = build_init_header({"id": 4}, auth_date=future)
     with pytest.raises(AccessDeniedError):
         verify_init_data(raw)
