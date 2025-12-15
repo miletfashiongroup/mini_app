@@ -133,7 +133,15 @@ async def seed_user_and_orders() -> None:
             await session.commit()
             return
 
-        order = Order(user_id=user.id, status="completed", total_amount_minor_units=to_minor_units(59.99))
+        order = Order(
+            user_id=user.id,
+            status="completed",
+            total_amount_minor_units=to_minor_units(59.99),
+            # Deterministic idempotency key to satisfy NOT NULL/unique constraint
+            idempotency_key=str(uuid.uuid5(SEED_NAMESPACE, "order:demo")),
+            shipping_address=None,
+            note=None,
+        )
         session.add(order)
         await session.flush()
 
