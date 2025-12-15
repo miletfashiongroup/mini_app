@@ -12,10 +12,10 @@ ENV CI=1 \
     VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_APP_BASE_URL=${VITE_APP_BASE_URL}
 
-# Install dependencies with a pristine node_modules tree
+# Install dependencies with a pristine node_modules tree; skip husky/prepare in container
 COPY packages/frontend/package.json packages/frontend/package-lock.json ./
 # Use install to tolerate minor lock drift in CI/build environments
-RUN npm install --no-audit --progress=false --legacy-peer-deps
+RUN HUSKY=0 npm install --no-audit --progress=false --legacy-peer-deps --ignore-scripts
 
 # Copy sources after deps are installed so host artefacts never override node_modules
 COPY packages/frontend/ ./
