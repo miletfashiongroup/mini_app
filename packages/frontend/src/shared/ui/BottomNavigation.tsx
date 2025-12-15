@@ -15,8 +15,8 @@ export const BottomNavigation = <T extends string = string>({
   activeId,
   onSelect,
 }: BottomNavigationProps<T>) => (
-  <nav className="fixed bottom-4 left-4 right-4 z-10 h-[88px] rounded-2xl bg-gray-100 px-4 py-3 shadow-subtle">
-    <div className="flex h-full items-center justify-between">
+  <nav className="fixed bottom-4 inset-x-0 z-10">
+    <div className="mx-auto flex h-[88px] w-full max-w-[1000px] items-center justify-between rounded-2xl bg-gray-100 px-4 py-3 shadow-subtle">
       {items.map((item) => {
         const isActive = item.id === activeId;
         return (
