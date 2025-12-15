@@ -5,15 +5,14 @@ from datetime import datetime, timezone
 from brace_backend.core.money import to_minor_units
 from brace_backend.db.session import session_manager
 from brace_backend.domain.banner import Banner
-from brace_backend.domain.order import Order, OrderItem
 from brace_backend.domain.product import Product, ProductMedia, ProductPrice, ProductVariant
 # Ensure relationship targets are registered before mapper configuration (Product.cart_items, etc.).
 from brace_backend.domain.order import Order, OrderItem  # noqa: F401
 from brace_backend.domain.cart import CartItem  # noqa: F401
 from brace_backend.domain.user import User  # noqa: F401
-from brace_backend.domain.user import User
 from brace_backend.domain.base import Base
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 SEED_NAMESPACE = uuid.UUID("ac4d53b1-d996-4d06-9c90-25f6a16aaf7f")  # PRINCIPAL-FIX: deterministic ids
 
@@ -123,7 +122,13 @@ async def seed_user_and_orders() -> None:
             session.add(user)
             await session.flush()
 
-        product = await session.scalar(select(Product).limit(1))
+        product = await session.scalar(
+            select(Product)
+            .options(
+                selectinload(Product.variants).selectinload(ProductVariant.prices)
+            )
+            .limit(1)
+        )
         if not product:
             await session.commit()
             return
