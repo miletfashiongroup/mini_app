@@ -1,12 +1,10 @@
 import { useMemo, useState } from 'react';
 
-import logoBrace from '@/assets/images/logo-brace.svg';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
 import CatalogCategoryTabs, { CatalogTabOption } from '@/components/catalog/CatalogCategoryTabs';
-import CatalogHeader from '@/components/catalog/CatalogHeader';
 import CatalogProductGrid, { CatalogProduct } from '@/components/catalog/CatalogProductGrid';
 import CatalogSectionTitle from '@/components/catalog/CatalogSectionTitle';
-import CatalogTopStatusBar from '@/components/catalog/CatalogTopStatusBar';
+import { PageTopBar } from '@/components/brace';
 import { useProductsQuery } from '@/shared/api/queries';
 
 const CATEGORY_TABS: CatalogTabOption[] = [
@@ -49,8 +47,7 @@ export const CatalogPage = () => {
 
   return (
     <div className="min-h-screen bg-white pb-28 font-montserrat text-text-primary">
-      <CatalogTopStatusBar />
-      <CatalogHeader logoSrc={logoBrace} />
+      <PageTopBar />
       <CatalogSectionTitle title="Заголовок 2.1" />
       <CatalogCategoryTabs tabs={CATEGORY_TABS} activeTab={activeTab} onChange={setActiveTab} />
       {isLoading ? (
