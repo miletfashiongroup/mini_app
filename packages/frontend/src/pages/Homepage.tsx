@@ -51,7 +51,7 @@ const HeaderHome = () => (
 
 const BannerPlaceholder = ({ children }: { children?: React.ReactNode }) => (
   <div
-    className="relative flex w-full items-center justify-center rounded-[16px] bg-[#D9D9D9]"
+    className="relative flex w-full items-center justify-center overflow-hidden rounded-[16px] bg-[#D9D9D9]"
     style={{ aspectRatio: '1.7 / 1', minHeight: '210px' }}
   >
     <span className="text-[16px] font-semibold text-[#BABABA]">Баннер</span>
@@ -87,7 +87,7 @@ const BannerCarousel = () => {
           <img
             src={activeBanner.image_url}
             alt="Баннер"
-            className="h-full w-full object-cover"
+            className="block h-full w-full object-cover"
             style={{ borderRadius: 16, maxHeight: 320 }}
           />
         ) : null}
