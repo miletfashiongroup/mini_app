@@ -7,6 +7,10 @@ from brace_backend.db.session import session_manager
 from brace_backend.domain.banner import Banner
 from brace_backend.domain.order import Order, OrderItem
 from brace_backend.domain.product import Product, ProductMedia, ProductPrice, ProductVariant
+# Ensure relationship targets are registered before mapper configuration (Product.cart_items, etc.).
+from brace_backend.domain.order import Order, OrderItem  # noqa: F401
+from brace_backend.domain.cart import CartItem  # noqa: F401
+from brace_backend.domain.user import User  # noqa: F401
 from brace_backend.domain.user import User
 from brace_backend.domain.base import Base
 from sqlalchemy import select
