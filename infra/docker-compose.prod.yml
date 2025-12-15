@@ -83,6 +83,10 @@ services:
         condition: service_healthy
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - certbot-certs:/etc/letsencrypt
+      - certbot-web:/var/www/certbot
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost >/dev/null 2>&1"]
@@ -116,3 +120,5 @@ services:
 
 volumes:
   db_data:
+  certbot-certs:
+  certbot-web:
