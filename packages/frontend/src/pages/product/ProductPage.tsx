@@ -72,12 +72,16 @@ export const ProductPage = () => {
   ];
 
   if (isLoading) {
-    return <div className="min-h-screen bg-white pb-24 font-montserrat text-text-primary">Загружаем товар...</div>;
+    return (
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white pb-24 font-montserrat text-text-primary">
+        Загружаем товар...
+      </div>
+    );
   }
 
   if (isError || !product) {
     return (
-      <div className="min-h-screen bg-white pb-24 font-montserrat text-text-primary">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white pb-24 font-montserrat text-text-primary">
         Не удалось загрузить товар.
       </div>
     );
@@ -96,7 +100,7 @@ export const ProductPage = () => {
   const defaultSize = primaryVariant?.size;
 
   return (
-    <div className="min-h-screen bg-white text-[#29292B] font-montserrat pb-24">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white text-[#29292B] font-montserrat pb-24">
       <ProductStatusBar />
       <ProductHeader />
       <ProductTitle title={product.name} />
