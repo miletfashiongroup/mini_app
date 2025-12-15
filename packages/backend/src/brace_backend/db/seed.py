@@ -16,6 +16,8 @@ from brace_backend.core.money import to_minor_units
 from datetime import datetime, timezone
 
 from brace_backend.domain.product import Product, ProductPrice, ProductVariant
+# Ensure related mappers (OrderItem) are registered before Product relationships are configured.
+from brace_backend.domain.order import OrderItem  # noqa: F401
 
 LOG = logging.getLogger("brace_backend.db.seed")
 
