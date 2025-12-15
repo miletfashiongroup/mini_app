@@ -6,8 +6,7 @@ import giftIcon from '@/assets/images/icon-gift.svg';
 import handsIcon from '@/assets/images/icon-hands.svg';
 import profileAccountIcon from '@/assets/images/icon-profile_white.svg';
 import supportIcon from '@/assets/images/icon-support.svg';
-import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
-import { PageTopBar } from '@/components/brace';
+import { AppBottomNav, PageTopBar } from '@/components/brace';
 import { useUserProfileQuery } from '@/shared/api/queries';
 
 const ProfileTitle = () => (
@@ -129,7 +128,7 @@ export const ProfilePage = () => {
         <ProfileUserDataSection id={profileId} name={profileName} username={profileUsername} />
       )}
       <ProfileSectionsSection />
-      <CatalogBottomNavigation activeId="profile" />
+      <AppBottomNav activeId="profile" />
     </div>
   );
 };

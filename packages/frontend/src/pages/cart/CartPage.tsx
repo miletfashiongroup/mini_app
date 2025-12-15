@@ -2,8 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 
 import newBadgeIcon from '@/assets/images/icon-new.svg';
-import { PageTopBar } from '@/components/brace';
-import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { AppBottomNav, PageTopBar } from '@/components/brace';
 import { cartKeys, deleteCartItem, updateCartItem } from '@/entities/cart/api/cartApi';
 import type { CartCollection } from '@/entities/cart/model/types';
 import { useCartQuery } from '@/shared/api/queries';
@@ -239,7 +238,7 @@ export const CartPage = () => {
         )}
       </CartItemsSection>
       <CartSummarySection totalPrice={totalPrice} />
-      <CatalogBottomNavigation activeId="cart" />
+      <AppBottomNav activeId="cart" />
     </div>
   );
 };

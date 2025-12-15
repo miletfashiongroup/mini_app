@@ -10,3 +10,4 @@ export { Card } from './Card';
 export { SizeCalculator } from './SizeCalculator';
 export { SizeInput } from './SizeInput';
 export { PageTopBar } from './PageTopBar';
+export { AppBottomNav } from './AppBottomNav';

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 
-import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
 import CatalogCategoryTabs, { CatalogTabOption } from '@/components/catalog/CatalogCategoryTabs';
 import CatalogProductGrid, { CatalogProduct } from '@/components/catalog/CatalogProductGrid';
 import CatalogSectionTitle from '@/components/catalog/CatalogSectionTitle';
 import { PageTopBar } from '@/components/brace';
+import { AppBottomNav } from '@/components/brace';
 import { useProductsQuery } from '@/shared/api/queries';
 
 const CATEGORY_TABS: CatalogTabOption[] = [
@@ -57,7 +57,7 @@ export const CatalogPage = () => {
       ) : (
         <CatalogProductGrid products={products} />
       )}
-      <CatalogBottomNavigation activeId="home" />
+      <AppBottomNav activeId="bag" />
     </div>
   );
 };

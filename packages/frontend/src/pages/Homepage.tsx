@@ -11,7 +11,7 @@ import checkIcon from '@/assets/images/icon-check.svg';
 import newIcon from '@/assets/images/icon-new.svg';
 import playIcon from '@/assets/images/icon-play.svg';
 import logoBrace from '@/assets/images/logo-brace.svg';
-import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { AppBottomNav } from '@/components/brace';
 import { calculateSize } from '@/features/size-calculator/api/sizeCalcApi';
 import { useBannersQuery, useProductsQuery } from '@/shared/api/queries';
 
@@ -364,7 +364,7 @@ export const Homepage = () => (
       <VideoSection />
       <ProductCardsCarousel />
       <SizeCalculatorSection />
-      <CatalogBottomNavigation activeId="home" />
+      <AppBottomNav activeId="home" />
     </main>
   </div>
 );

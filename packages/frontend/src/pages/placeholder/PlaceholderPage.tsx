@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 import shutterstock from '@/assets/images/shutterstock.svg';
-import { PageTopBar } from '@/components/brace';
-import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
+import { AppBottomNav, PageTopBar } from '@/components/brace';
 
 const PlaceholderTitle = () => (
   <div className="bg-white px-4 pt-3 pb-4">
@@ -47,7 +46,7 @@ export const PlaceholderPage = () => {
         <PlaceholderCard />
       </section>
       <div className="mt-auto" />
-      <CatalogBottomNavigation activeId="home" />
+      <AppBottomNav activeId="home" />
     </div>
   );
 };
