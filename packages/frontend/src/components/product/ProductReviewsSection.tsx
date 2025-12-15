@@ -139,25 +139,19 @@ const ReviewUtpBar = ({ label = 'УТП 1', segments = 5, activeIndex = 0 }: { l
   );
 };
 
-const ReviewGallery = ({ images = [] }: { images?: string[] }) => {
-  if (!images.length) {
-    return null;
-  }
-  return (
-    <div className="mt-4 overflow-x-auto">
-      <div className="flex flex-row gap-3">
-        {images.map((src, index) => (
-          <div
-            key={index}
-            className="flex h-24 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#D9D9D9]"
-          >
-            <img src={src} alt="" className="h-full w-full object-cover" />
-          </div>
-        ))}
+const ReviewGallery = ({ images = [] }: { images?: string[] }) => (
+  <div className="flex flex-row gap-3 overflow-x-auto" style={{ marginLeft: '130px', marginTop: '-60px' }}>
+    {(images.length ? images : Array.from({ length: 5 })).map((src, index) => (
+      <div
+        key={index}
+        className="w-20 aspect-[232/309] flex-shrink-0 overflow-hidden rounded-[25px] bg-[#D9D9D9]"
+        style={{ borderRadius: '10px' }}
+      >
+        {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : null}
       </div>
-    </div>
-  );
-};
+    ))}
+  </div>
+);
 
 const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpfulCount?: number; notHelpfulCount?: number }) => (
   <div className="mt-4" style={{ marginLeft: '130px' }}>
