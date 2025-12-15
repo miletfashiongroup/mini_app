@@ -3,7 +3,6 @@ import uuid
 from datetime import datetime, timezone
 
 from brace_backend.core.money import to_minor_units
-from brace_backend.db.session import engine as global_engine
 from brace_backend.db.session import session_manager
 from brace_backend.domain.banner import Banner
 from brace_backend.domain.order import Order, OrderItem
@@ -150,7 +149,8 @@ async def seed_user_and_orders() -> None:
 
 
 async def seed_all() -> None:
-    async with global_engine.begin() as conn:
+    # Reuse the shared async engine from the session manager so pool/config stay consistent.
+    async with session_manager.engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     await seed_products()
     await seed_banners()
