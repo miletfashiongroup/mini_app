@@ -24,7 +24,9 @@ config = context.config
 
 # Configure the DSN for Alembic (prefers ALEMBIC_DATABASE_URL, falls back to app settings).
 alembic_url = os.getenv("ALEMBIC_DATABASE_URL", settings.database_url)
-config.set_main_option("sqlalchemy.url", ensure_sync_dsn(alembic_url))
+# ConfigParser treats '%' as interpolation, so escape to avoid ValueError while keeping the real DSN.
+safe_alembic_url = ensure_sync_dsn(alembic_url).replace("%", "%%")
+config.set_main_option("sqlalchemy.url", safe_alembic_url)
 
 # Configure Python logging.
 if config.config_file_name is not None:
