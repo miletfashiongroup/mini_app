@@ -25,8 +25,6 @@ __pycache__
 packages/backend/.pytest_cache
 packages/backend/.ruff_cache
 packages/backend/.coverage
-wheelhouse
 dist
 build
 tests/.pytest_cache
-packages/frontend/nginx.conf

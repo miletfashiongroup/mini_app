@@ -5,6 +5,10 @@ ARG VITE_API_BASE_URL=http://localhost:8000
 ARG VITE_APP_BASE_URL=http://localhost
 WORKDIR /app
 ENV CI=1 \
+    npm_config_registry=https://registry.npmjs.org/ \
+    npm_config_fetch_retries=5 \
+    npm_config_fetch_retry_mintimeout=20000 \
+    npm_config_fetch_retry_maxtimeout=120000 \
     VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_APP_BASE_URL=${VITE_APP_BASE_URL}
 

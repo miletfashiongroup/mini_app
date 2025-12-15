@@ -8,11 +8,18 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_RETRIES=5 \
-    POETRY_VERSION=1.8.3 
+    PIP_INDEX_URL=https://mirror.yandex.ru/pypi/simple \
+    PIP_EXTRA_INDEX_URL=https://pypi.org/simple \
+    PIP_FIND_LINKS=/wheels \
+    PIP_PREFER_BINARY=1 \
+    PIP_TRUSTED_HOST=mirror.yandex.ru \
+    POETRY_VERSION=1.8.3
 WORKDIR /app
+COPY wheelhouse /wheels
 
 # More resilient apt: switch to a reachable mirror and retry updates
 RUN set -eux; \
+    printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' > /etc/apt/apt.conf.d/99retries; \
     echo "deb http://mirror.yandex.ru/debian bookworm main contrib non-free" > /etc/apt/sources.list; \
     echo "deb http://mirror.yandex.ru/debian bookworm-updates main contrib non-free" >> /etc/apt/sources.list; \
     echo "deb http://mirror.yandex.ru/debian-security bookworm-security main contrib non-free" >> /etc/apt/sources.list; \
@@ -25,7 +32,7 @@ RUN set -eux; \
     done; \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir "poetry==1.8.3"
+RUN pip install --no-cache-dir --retries=5 --timeout=240 --find-links=/wheels "poetry==1.8.3"
 # FIX poetry
 ENV PATH="/root/.local/bin:$PATH" 
 
@@ -34,7 +41,7 @@ RUN poetry config virtualenvs.create false \
  && poetry export --without-hashes -f requirements.txt -o requirements.txt \
  && python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install --timeout=240 --retries=5 --no-cache-dir -r requirements.txt
+ && /opt/venv/bin/pip install --timeout=240 --retries=5 --no-cache-dir --find-links=/wheels --prefer-binary -r requirements.txt
 
 FROM python:${PYTHON_VERSION} AS runtime
 ENV PYTHONUNBUFFERED=1 \
