@@ -39,7 +39,7 @@ const PlaceholderPrimaryButton = () => {
 
 export const PlaceholderPage = () => {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-[#29292B]">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-[#29292B]">
       <PageTopBar />
       <PlaceholderTitle />
       <section className="bg-[#D9D9D9] border-t border-[#D9D9D9] pb-[15px]">

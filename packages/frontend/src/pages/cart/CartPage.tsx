@@ -219,7 +219,7 @@ export const CartPage = () => {
   const totalPrice = formatRubles(totalMinorUnits);
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary relative">
       <PageTopBar />
       <CartTitle itemCount={cartItems.length} />
       <CartItemsSection>
@@ -237,7 +237,9 @@ export const CartPage = () => {
           />
         )}
       </CartItemsSection>
-      <CartSummarySection totalPrice={totalPrice} />
+      <div className="pb-28">
+        <CartSummarySection totalPrice={totalPrice} />
+      </div>
       <AppBottomNav activeId="cart" />
     </div>
   );

@@ -356,7 +356,7 @@ const SizeCalculatorSection = () => {
 };
 
 export const Homepage = () => (
-  <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 text-text-primary font-montserrat">
+  <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 text-text-primary font-montserrat">
     <TopStatusBar />
     <HeaderHome />
     <main className="flex flex-col gap-10">

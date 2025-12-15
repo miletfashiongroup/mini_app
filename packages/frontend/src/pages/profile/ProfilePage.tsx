@@ -117,7 +117,7 @@ export const ProfilePage = () => {
   const profileUsername = data?.username ? `@${data.username}` : '—';
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
+    <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
       <PageTopBar />
       <ProfileTitle />
       {isLoading ? (
