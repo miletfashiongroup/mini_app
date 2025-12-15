@@ -221,7 +221,7 @@ export const CartPage = () => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
-      <PageTopBar statusBarHeightClassName="h-14" backButtonVariant="ghost" />
+      <PageTopBar />
       <CartTitle itemCount={cartItems.length} />
       <CartItemsSection>
         {isLoading ? (

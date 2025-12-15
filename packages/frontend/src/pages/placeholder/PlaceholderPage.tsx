@@ -1,30 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 
-import arrowLeftIcon from '@/assets/images/icon-arrow-left.svg';
-import logoBrace from '@/assets/images/logo-brace.svg';
 import shutterstock from '@/assets/images/shutterstock.svg';
+import { PageTopBar } from '@/components/brace';
 import CatalogBottomNavigation from '@/components/catalog/CatalogBottomNavigation';
-
-const PlaceholderStatusBar = () => <div className="h-14 w-full bg-[#D9D9D9]" aria-hidden />;
-
-const PlaceholderBackButton = () => (
-  <button
-    type="button"
-    aria-label="Назад"
-    onClick={() => window.history.back()}
-  >
-    <img src={arrowLeftIcon} alt="" className="h-[50px] w-[50px]" />
-  </button>
-);
-
-const PlaceholderLogo = () => <img src={logoBrace} alt="BRACE logo" className="h-10 w-auto" />;
-
-const PlaceholderHeader = () => (
-  <header className="flex items-center justify-between bg-white px-4 py-4">
-    <PlaceholderBackButton />
-    <PlaceholderLogo />
-  </header>
-);
 
 const PlaceholderTitle = () => (
   <div className="bg-white px-4 pt-3 pb-4">
@@ -63,8 +41,7 @@ const PlaceholderPrimaryButton = () => {
 export const PlaceholderPage = () => {
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-[#29292B]">
-      <PlaceholderStatusBar />
-      <PlaceholderHeader />
+      <PageTopBar />
       <PlaceholderTitle />
       <section className="bg-[#D9D9D9] border-t border-[#D9D9D9] pb-[15px]">
         <PlaceholderCard />
