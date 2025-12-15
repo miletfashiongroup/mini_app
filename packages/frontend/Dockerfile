@@ -28,7 +28,7 @@ RUN npm run build
 FROM nginx:1.27-alpine AS runtime
 WORKDIR /usr/share/nginx/html
 COPY --from=build /app/dist .
-# Explicit path because build context is repo root (infra/docker-compose.prod.yml)
-COPY packages/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Use canonical config path inside repo to avoid symlink issues
+COPY infra/nginx/app.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
