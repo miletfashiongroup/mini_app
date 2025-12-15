@@ -16,7 +16,6 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 COPY wheelhouse /wheels
 COPY packages/wheelhouse /wheels
-COPY /wheels/poetry-1.8.3-*.whl /tmp/poetry.whl
 
 # More resilient apt: switch to a reachable mirror and retry updates
 RUN set -eux; \
@@ -34,7 +33,17 @@ RUN set -eux; \
     done; \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --no-index /tmp/poetry.whl
+RUN set -eux; \
+    POETRY_WHL=$(ls /wheels/poetry-1.8.3-*.whl 2>/dev/null || true); \
+    if [ -n "$POETRY_WHL" ]; then \
+      pip install --no-cache-dir --no-index --find-links=/wheels "$POETRY_WHL"; \
+    else \
+      pip install --no-cache-dir --retries=3 --timeout=60 \
+        --index-url=https://mirror.yandex.ru/pypi/simple \
+        --extra-index-url=https://pypi.org/simple \
+        --trusted-host=mirror.yandex.ru \
+        "poetry==1.8.3"; \
+    fi
 # FIX poetry
 ENV PATH="/root/.local/bin:$PATH" 
 
