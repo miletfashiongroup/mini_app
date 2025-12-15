@@ -113,9 +113,6 @@ class ProductVariant(BaseModel, SoftDeleteMixin):
         back_populates="variant", cascade="all, delete-orphan", order_by="ProductPrice.starts_at"
     )
 
-    # Defined after class to avoid early references during class construction
-    active_price_minor_units: Mapped[int | None]
-
 
 class ProductMedia(BaseModel, SoftDeleteMixin):
     __tablename__ = "product_media"
@@ -129,7 +126,7 @@ class ProductMedia(BaseModel, SoftDeleteMixin):
 
 # Attach the scalar subquery for the latest active price after the class is defined,
 # so SQLAlchemy receives a ClauseElement instead of a Python callable at compile time.
-ProductVariant.active_price_minor_units = column_property(
+ProductVariant.active_price_minor_units: Mapped[int | None] = column_property(
     select(ProductPrice.price_minor_units)
     .where(
         ProductPrice.product_variant_id == ProductVariant.id,
