@@ -46,7 +46,7 @@ export const CatalogPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-white pb-28 font-montserrat text-text-primary">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
       <PageTopBar />
       <CatalogSectionTitle title="Заголовок 2.1" />
       <CatalogCategoryTabs tabs={CATEGORY_TABS} activeTab={activeTab} onChange={setActiveTab} />
