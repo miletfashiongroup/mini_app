@@ -32,7 +32,17 @@ RUN set -eux; \
     done; \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir --no-index --retries=5 --timeout=120 --find-links=/wheels "poetry==1.8.3"
+RUN set -eux; \
+    POETRY_WHL=$(ls /wheels/poetry-1.8.3-*.whl 2>/dev/null || true); \
+    if [ -n "$POETRY_WHL" ]; then \
+      pip install --no-cache-dir --no-index --find-links=/wheels "$POETRY_WHL"; \
+    else \
+      pip install --no-cache-dir --retries=3 --timeout=60 \
+        --index-url=https://mirror.yandex.ru/pypi/simple \
+        --extra-index-url=https://pypi.org/simple \
+        --trusted-host=mirror.yandex.ru \
+        "poetry==1.8.3"; \
+    fi
 # FIX poetry
 ENV PATH="/root/.local/bin:$PATH" 
 
@@ -41,7 +51,8 @@ RUN poetry config virtualenvs.create false \
  && poetry export --without-hashes -f requirements.txt -o requirements.txt \
  && python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install --timeout=120 --retries=5 --no-cache-dir --no-index --find-links=/wheels --prefer-binary -r requirements.txt
+ && /opt/venv/bin/pip install --timeout=120 --retries=5 --no-cache-dir --find-links=/wheels \
+       --prefer-binary -r requirements.txt
 
 FROM python:${PYTHON_VERSION} AS runtime
 ENV PYTHONUNBUFFERED=1 \
