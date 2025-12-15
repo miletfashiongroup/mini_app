@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 import logoBrace from '@/assets/images/logo-brace.svg';
 
@@ -9,19 +9,11 @@ type PageTopBarProps = {
   rightSlot?: React.ReactNode;
 };
 
-const LogoButton = () => {
-  const navigate = useNavigate();
-  return (
-    <button
-      type="button"
-      aria-label="На главный экран"
-      onClick={() => navigate('/')}
-      className="flex items-center"
-    >
-      <img src={logoBrace} alt="BRACE logo" className="h-10 w-auto" />
-    </button>
-  );
-};
+const LogoButton = () => (
+  <Link to="/" aria-label="На главный экран">
+    <img src={logoBrace} alt="BRACE logo" className="h-10 w-auto" />
+  </Link>
+);
 
 export const PageTopBar = ({
   statusBarHeightClassName = 'h-12',
