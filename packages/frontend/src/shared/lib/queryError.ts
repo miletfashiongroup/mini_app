@@ -16,6 +16,10 @@ export const notifyQueryError = (error: unknown) => {
   }
 
   if (error instanceof ApiError) {
+    // Do not spam UI with auth-related popups; these are handled by redirects/retries.
+    if (error.type === 'unauthorized' || error.type === 'access_denied') {
+      return;
+    }
     errorHandler(error.message);
     return;
   }

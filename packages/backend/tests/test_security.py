@@ -89,6 +89,16 @@ def test_verify_init_data_success(monkeypatch):
     assert result.user["id"] == 1
 
 
+def test_verify_init_data_ignores_signature_field():
+    """Optional `signature` field from Telegram should not break hash validation."""
+    now = int(time.time())
+    raw = build_init_header({"id": 2}, auth_date=now)
+    raw_with_signature = f"{raw}&signature=SHOULD_BE_IGNORED"
+    result = verify_init_data(raw_with_signature)
+    assert isinstance(result, TelegramInitData)
+    assert result.user["id"] == 2
+
+
 def test_verify_init_data_missing_hash():
     """Missing hash values should raise AccessDeniedError."""
     with pytest.raises(AccessDeniedError):
