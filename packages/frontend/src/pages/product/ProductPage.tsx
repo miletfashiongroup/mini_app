@@ -54,7 +54,11 @@ export const ProductPage = () => {
       utpLabel: 'УТП 1',
       utpSegments: 5,
       utpActiveIndex: 2,
-      galleryCount: 5,
+      gallery: [
+        'https://cdn.example.com/reviews/rev1-1.jpg',
+        'https://cdn.example.com/reviews/rev1-2.jpg',
+        'https://cdn.example.com/reviews/rev1-3.jpg',
+      ],
     },
   ];
   const complementProducts = [

@@ -15,7 +15,7 @@ export type ProductReview = {
   utpLabel?: string;
   utpSegments?: number;
   utpActiveIndex?: number;
-  galleryCount?: number;
+  gallery?: string[];
 };
 
 const StarIconImg = () => <img src={starIcon} alt="" className="h-3 w-3" />;
@@ -139,17 +139,25 @@ const ReviewUtpBar = ({ label = 'УТП 1', segments = 5, activeIndex = 0 }: { l
   );
 };
 
-const ReviewGallery = ({ count = 5 }: { count?: number }) => (
-  <div className="flex flex-row gap-3" style={{ marginLeft: '130px', marginTop: '-60px' }}>
-    {Array.from({ length: count }).map((_, index) => (
-      <div
-        key={index}
-        className="w-20 aspect-[232/309] flex-shrink-0 overflow-hidden rounded-[25px] bg-[#D9D9D9]"
-        style={{ borderRadius: '10px' }}
-      />
-    ))}
-  </div>
-);
+const ReviewGallery = ({ images = [] }: { images?: string[] }) => {
+  if (!images.length) {
+    return null;
+  }
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <div className="flex flex-row gap-3">
+        {images.map((src, index) => (
+          <div
+            key={index}
+            className="flex h-24 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#D9D9D9]"
+          >
+            <img src={src} alt="" className="h-full w-full object-cover" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpfulCount?: number; notHelpfulCount?: number }) => (
   <div className="mt-4" style={{ marginLeft: '130px' }}>
@@ -169,7 +177,7 @@ const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpful
 
 const ProductReviewCard = ({ review }: { review: ProductReview }) => {
   const ratingStarsCount = review.ratingStarsCount ?? 5;
-  const galleryCount = review.galleryCount ?? 5;
+  const galleryImages = review.gallery ?? [];
 
   return (
     <article className="px-4 mt-4">
@@ -177,7 +185,7 @@ const ProductReviewCard = ({ review }: { review: ProductReview }) => {
         <ReviewHeader name={review.name} status={review.status} ratingStarsCount={ratingStarsCount} />
         <ReviewMetaAndText review={review} />
         <ReviewUtpBar label={review.utpLabel ?? 'УТП 1'} segments={review.utpSegments ?? 5} activeIndex={review.utpActiveIndex ?? 0} />
-        <ReviewGallery count={galleryCount} />
+        <ReviewGallery images={galleryImages} />
         <ReviewHelpfulBlock helpfulCount={review.helpfulCount} notHelpfulCount={review.notHelpfulCount} />
       </div>
     </article>
