@@ -39,10 +39,6 @@ type CarouselItem = {
   isNew?: boolean;
 };
 
-const CARD_WIDTH = 232;
-const CARD_HEIGHT = 309;
-const GAP_PX = 24;
-
 const HeaderHome = () => (
   <header className="px-4 py-6">
     <img src={logoBrace} alt="Логотип BRACE" className="h-10 w-auto" />
@@ -169,9 +165,9 @@ const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, 
     ref={ref}
     type="button"
     aria-label={ariaLabel}
-    className="relative flex shrink-0 items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98]"
+    className="relative flex shrink-0 snap-center items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98]"
     onClick={onClick}
-    style={{ width: `${CARD_WIDTH}px`, height: `${CARD_HEIGHT}px` }}
+    style={{ width: '232px', height: '309px' }}
   >
     {isNew && (
       <img src={newIcon} alt="Новинка" className="absolute left-3 top-3 h-5 w-auto" />
@@ -189,39 +185,6 @@ const ProductCardsCarousel = () => {
     [data?.items],
   );
   const navigate = useNavigate();
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
-
-  useEffect(() => {
-    const measure = () => setContainerWidth(containerRef.current?.clientWidth ?? 0);
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
-
-  const translateX = useMemo(() => {
-    if (!containerWidth) return 0;
-    const base = (containerWidth - CARD_WIDTH) / 2;
-    return base - currentIndex * (CARD_WIDTH + GAP_PX);
-  }, [containerWidth, currentIndex]);
-
-  const handlePrev = () => setCurrentIndex((prev) => Math.max(prev - 1, 0));
-  const handleNext = () => setCurrentIndex((prev) => Math.min(prev + 1, items.length - 1));
-
-  const handleTouchStart = (event: ReactTouchEvent) => {
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-  };
-
-  const handleTouchEnd = (event: ReactTouchEvent) => {
-    if (touchStartX.current === null) return;
-    const deltaX = event.changedTouches[0]?.clientX - touchStartX.current;
-    if (deltaX > 30) handlePrev();
-    else if (deltaX < -30) handleNext();
-    touchStartX.current = null;
-  };
 
   if (isLoading) {
     return (
@@ -241,12 +204,13 @@ const ProductCardsCarousel = () => {
   return (
     <section className="px-4">
       <h2 className="mb-4 text-[21px] font-bold text-text-primary">Заголовок 1.2</h2>
-      <div className="overflow-hidden w-full" ref={containerRef}>
+      <div
+        className="w-full overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch] scroll-smooth"
+        style={{ padding: '0 12px' }}
+      >
         <div
-          className="flex items-stretch gap-6 transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(${translateX}px)` }}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          className="flex items-stretch gap-6 pr-4"
+          style={{ minWidth: 'min(100%, 720px)', scrollSnapType: 'x mandatory' }}
         >
           {items.map((item) => (
             <CarouselCard
