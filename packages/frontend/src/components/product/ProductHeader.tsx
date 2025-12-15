@@ -1,18 +1,29 @@
-import arrowLeft from '@/assets/images/icon-arrow-left.svg';
+import { useNavigate } from 'react-router-dom';
+
 import logoBrace from '@/assets/images/logo-brace.svg';
 
 type ProductHeaderProps = {
-  onBack?: () => void;
+  statusBarHeightClassName?: string;
+  className?: string;
+  rightSlot?: React.ReactNode;
 };
 
-const ProductHeader = ({ onBack }: ProductHeaderProps) => {
+const ProductHeader = ({
+  statusBarHeightClassName = 'h-12',
+  className = '',
+  rightSlot,
+}: ProductHeaderProps) => {
+  const navigate = useNavigate();
   return (
-    <header className="flex items-center justify-between px-4 pt-3 pb-2">
-      <button type="button" aria-label="Назад" onClick={onBack} className="p-2">
-        <img src={arrowLeft} alt="" className="h-12 w-12" />
-      </button>
-      <img src={logoBrace} alt="Brace" className="h-[38px] w-auto" />
-    </header>
+    <div className={`w-full bg-white ${className}`}>
+      <div className={`${statusBarHeightClassName} w-full bg-[#D9D9D9]`} aria-hidden />
+      <header className="flex items-center justify-between px-4 py-6">
+        <button type="button" aria-label="На главный экран" onClick={() => navigate('/')} className="flex items-center">
+          <img src={logoBrace} alt="BRACE logo" className="h-10 w-auto" />
+        </button>
+        <div className="min-w-[48px] text-right">{rightSlot}</div>
+      </header>
+    </div>
   );
 };
 

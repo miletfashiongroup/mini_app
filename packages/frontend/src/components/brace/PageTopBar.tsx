@@ -31,7 +31,6 @@ export const PageTopBar = ({
   <div className={`w-full bg-white ${className}`}>
     <div className={`${statusBarHeightClassName} w-full bg-[#D9D9D9]`} aria-hidden />
     <header className="flex items-center justify-between px-4 py-6">
-      <div className="min-w-[48px]" aria-hidden />
       <LogoButton />
       <div className="min-w-[48px] text-right">{rightSlot}</div>
     </header>

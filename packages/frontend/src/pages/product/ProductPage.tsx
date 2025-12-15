@@ -98,7 +98,7 @@ export const ProductPage = () => {
   return (
     <div className="min-h-screen bg-white text-[#29292B] font-montserrat pb-24">
       <ProductStatusBar />
-      <ProductHeader onBack={() => (navigate(-1) || navigate('/'))} />
+      <ProductHeader />
       <ProductTitle title={product.name} />
       <ProductMediaCarousel />
       <ProductThumbnailsStrip />
