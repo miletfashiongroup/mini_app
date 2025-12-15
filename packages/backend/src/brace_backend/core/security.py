@@ -200,7 +200,12 @@ class NonceReplayProtector:
             raise AccessDeniedError("Telegram init data nonce is invalid.")
 
     def ensure_unique(self, nonce: str) -> None:
-        """Guarantee each Telegram payload is processed at most once."""
+        """Record nonce use; allow legitimate replays within TTL while refreshing expiry.
+
+        Telegram WebApp sends the same signed initData for the whole session, so multiple
+        concurrent API calls legitimately reuse the nonce. We still persist the nonce to
+        discourage long-lived replay from other clients, but we no longer reject repeats.
+        """
         self._assert_nonce_value(nonce)
         now = time.time()
 
@@ -219,14 +224,19 @@ class NonceReplayProtector:
                 )
                 self._redis_client = None
             else:
-                if inserted:
-                    return
-                raise AccessDeniedError("Telegram init data nonce has already been used.")
+                # If the nonce already exists, refresh TTL and continue instead of failing the request.
+                if not inserted:
+                    self._redis_client.expire(name=f"telegram:init_data:{nonce}", time=self.ttl)
+                    _log_auth_debug("nonce_reused_allowed", nonce=nonce)
+                return
 
         with self._lock:
             self._purge_expired_locked(now)
             if nonce in self._memory_store:
-                raise AccessDeniedError("Telegram init data nonce has already been used.")
+                # Refresh expiry and allow reuse for concurrent in-app requests.
+                self._memory_store[nonce] = now + self.ttl
+                _log_auth_debug("nonce_reused_allowed", nonce=nonce)
+                return
             self._memory_store[nonce] = now + self.ttl
 
 

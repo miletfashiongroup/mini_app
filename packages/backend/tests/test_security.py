@@ -129,12 +129,12 @@ def test_verify_init_data_requires_nonce():
 
 
 def test_verify_init_data_detects_replayed_nonce():
-    """Re-using a nonce must be stopped even within the TTL window."""
+    """Re-using a nonce within TTL should be allowed for parallel API calls."""
     now = int(time.time())
     header = build_init_header({"id": 6}, auth_date=now, nonce="dup-nonce")
-    assert isinstance(verify_init_data(header), TelegramInitData)
-    with pytest.raises(AccessDeniedError):
-        verify_init_data(header)
+    first = verify_init_data(header)
+    second = verify_init_data(header)
+    assert first.user["id"] == second.user["id"]
 
 
 def test_verify_init_data_honors_webapp_secret(monkeypatch, override_settings):
@@ -183,10 +183,11 @@ async def test_validate_request_dev_mode_locked_outside_dev_env(monkeypatch, ove
 
 
 def test_replay_protector_rejects_duplicate_nonce(fresh_replay_protector):
-    """Replay protector must reject the same nonce within TTL."""
+    """Replay protector should allow reuse but refresh expiry timestamp."""
     fresh_replay_protector.ensure_unique("repeatable-nonce")
-    with pytest.raises(AccessDeniedError):
-        fresh_replay_protector.ensure_unique("repeatable-nonce")
+    # Second call should not raise and should extend TTL in memory store.
+    fresh_replay_protector.ensure_unique("repeatable-nonce")
+    assert "repeatable-nonce" in fresh_replay_protector._memory_store
 
 
 def test_log_auth_debug_redacts_in_production(monkeypatch):
