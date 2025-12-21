@@ -255,8 +255,6 @@ def verify_init_data(init_data: str) -> TelegramInitData:
 
     parsed = parse_init_data(init_data)
     provided_hash = parsed.pop("hash", None)
-    # Some clients append `signature` alongside `hash`; it must be excluded from the check string.
-    parsed.pop("signature", None)
     if not provided_hash:
         _log_auth_debug("hash_missing", keys=list(parsed.keys()))
         raise AccessDeniedError("Init data hash is missing.")
