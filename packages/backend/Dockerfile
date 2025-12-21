@@ -32,22 +32,24 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 COPY packages/backend/pyproject.toml packages/backend/poetry.lock* ./ 
-RUN python - <<'PY' \
-import pathlib, tomllib \
-lock_text = pathlib.Path("poetry.lock").read_text(encoding="utf-8") \
-data = tomllib.loads(lock_text) \
-reqs = [] \
-for pkg in data.get("package", []): \
-    if "main" not in pkg.get("groups", []): \
-        continue \
-    line = f"{pkg['name']}=={pkg['version']}" \
-    markers = pkg.get("markers") \
-    if markers: \
-        line = f"{line}; {markers}" \
-    reqs.append(line) \
-pathlib.Path("requirements.txt").write_text("\n".join(sorted(reqs)) + "\n", encoding="utf-8") \
-PY \
- && python -m venv /opt/venv \
+RUN python - <<'PY'
+import pathlib
+import tomllib
+
+lock_text = pathlib.Path("poetry.lock").read_text(encoding="utf-8")
+data = tomllib.loads(lock_text)
+reqs = []
+for pkg in data.get("package", []):
+    if "main" not in pkg.get("groups", []):
+        continue
+    line = f"{pkg['name']}=={pkg['version']}"
+    markers = pkg.get("markers")
+    if markers:
+        line = f"{line}; {markers}"
+    reqs.append(line)
+pathlib.Path("requirements.txt").write_text("\n".join(sorted(reqs)) + "\n", encoding="utf-8")
+PY
+RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
  && /opt/venv/bin/pip install --timeout=120 --retries=5 --no-cache-dir --find-links=/wheels \
        --prefer-binary -r requirements.txt
