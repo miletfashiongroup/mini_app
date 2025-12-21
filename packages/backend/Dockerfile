@@ -1,5 +1,7 @@
 
 ARG PYTHON_VERSION=3.12-slim-bookworm
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG PIP_EXTRA_INDEX_URL=https://mirror.yandex.ru/pypi/simple
 
 FROM python:${PYTHON_VERSION} AS deps
 ENV PYTHONUNBUFFERED=1 \
@@ -8,7 +10,8 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_RETRIES=5 \
-    PIP_INDEX_URL=https://mirror.yandex.ru/pypi/simple \
+    PIP_INDEX_URL=${PIP_INDEX_URL} \
+    PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL} \
     PIP_FIND_LINKS=/wheels \
     PIP_PREFER_BINARY=1 \
     PIP_TRUSTED_HOST=mirror.yandex.ru
