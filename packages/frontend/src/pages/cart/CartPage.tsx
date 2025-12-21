@@ -1,10 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import React from 'react';
+import React, { useState } from 'react';
 
 import newBadgeIcon from '@/assets/images/icon-new.svg';
 import { AppBottomNav, PageTopBar } from '@/components/brace';
 import { cartKeys, deleteCartItem, updateCartItem } from '@/entities/cart/api/cartApi';
 import type { CartCollection } from '@/entities/cart/model/types';
+import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
 import { useCartQuery } from '@/shared/api/queries';
 
 type CartItemView = {
@@ -169,27 +170,47 @@ const CartTotalRow = ({ totalLabel, totalPrice }: { totalLabel: string; totalPri
   </div>
 );
 
-const CartCheckoutButton = ({ label }: { label: string }) => (
+const CartCheckoutButton = ({
+  label,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}) => (
   <div className="px-4 pb-6 pt-6">
     <button
       type="button"
-      className="flex h-14 w-full items-center justify-center rounded-[16px] bg-accent text-[16px] font-semibold text-white transition duration-150 ease-out hover:bg-[#00005A] active:scale-[0.97]"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex h-14 w-full items-center justify-center rounded-[16px] bg-accent text-[16px] font-semibold text-white transition duration-150 ease-out hover:bg-[#00005A] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-60"
     >
       {label}
     </button>
   </div>
 );
 
-const CartSummarySection = ({ totalPrice }: { totalPrice: string }) => (
+const CartSummarySection = ({
+  totalPrice,
+  onCheckout,
+  disabled,
+}: {
+  totalPrice: string;
+  onCheckout: () => void;
+  disabled: boolean;
+}) => (
   <section className="bg-white">
     <CartTotalRow totalLabel="Итого" totalPrice={totalPrice} />
-    <CartCheckoutButton label="оформить заказ" />
+    <CartCheckoutButton label="оформить заказ" onClick={onCheckout} disabled={disabled} />
   </section>
 );
 
 export const CartPage = () => {
   const queryClient = useQueryClient();
   const { data, isLoading, isError } = useCartQuery();
+  const [showOrderSent, setShowOrderSent] = useState(false);
+  const createOrderMutation = useCreateOrderMutation();
 
   const updateMutation = useMutation({
     mutationFn: ({ id, quantity }: { id: string; quantity: number }) => updateCartItem(id, { quantity }),
@@ -217,6 +238,16 @@ export const CartPage = () => {
     0,
   );
   const totalPrice = formatRubles(totalMinorUnits);
+  const isCheckoutDisabled = cartItems.length === 0 || createOrderMutation.isPending;
+
+  const handleCheckout = () => {
+    if (isCheckoutDisabled) return;
+    createOrderMutation.mutate(undefined, {
+      onSuccess: () => {
+        setShowOrderSent(true);
+      },
+    });
+  };
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary relative">
@@ -238,9 +269,26 @@ export const CartPage = () => {
         )}
       </CartItemsSection>
       <div className="pb-28">
-        <CartSummarySection totalPrice={totalPrice} />
+        <CartSummarySection totalPrice={totalPrice} onCheckout={handleCheckout} disabled={isCheckoutDisabled} />
       </div>
       <AppBottomNav activeId="cart" />
+      {showOrderSent ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
+            <h3 className="text-[18px] font-bold text-[#29292B]">Заказ передан менеджеру</h3>
+            <p className="mt-2 text-[14px] text-[#29292B]/80">
+              Мы уже передали ваш заказ. Менеджер скоро свяжется с вами.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowOrderSent(false)}
+              className="mt-5 w-full rounded-[12px] bg-[#000043] px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-[#00005A]"
+            >
+              Понятно
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

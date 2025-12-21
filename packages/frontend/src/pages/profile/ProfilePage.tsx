@@ -37,15 +37,31 @@ type ProfileUserDataSectionProps = {
   id: string;
   name: string;
   username: string;
+  phone: string;
+  email: string;
+  birthDate: string;
+  gender: string;
 };
 
-const ProfileUserDataSection = ({ id, name, username }: ProfileUserDataSectionProps) => (
+const ProfileUserDataSection = ({
+  id,
+  name,
+  username,
+  phone,
+  email,
+  birthDate,
+  gender,
+}: ProfileUserDataSectionProps) => (
   <section className="mt-0 w-full bg-[#D9D9D9] px-4 py-3">
     <ProfileUserDataHeader />
     <div className="mt-3 flex flex-col gap-2">
       <ProfileUserDataRow label="ID" value={id} />
       <ProfileUserDataRow label="Имя" value={name} />
       <ProfileUserDataRow label="Username" value={username} />
+      <ProfileUserDataRow label="Телефон" value={phone} />
+      <ProfileUserDataRow label="Email" value={email} />
+      <ProfileUserDataRow label="Дата рождения" value={birthDate} />
+      <ProfileUserDataRow label="Пол" value={gender} />
     </div>
   </section>
 );
@@ -113,8 +129,15 @@ export const ProfilePage = () => {
   const { data, isLoading, isError } = useUserProfileQuery();
 
   const profileId = (data as any)?.telegram_id?.toString?.() ?? data?.id ?? '—';
-  const profileName = [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim() || '—';
+  const profileName =
+    data?.full_name ||
+    [data?.first_name, data?.last_name].filter(Boolean).join(' ').trim() ||
+    '—';
   const profileUsername = data?.username ? `@${data.username}` : '—';
+  const profilePhone = data?.phone ?? '—';
+  const profileEmail = data?.email ?? '—';
+  const profileBirthDate = data?.birth_date ? String(data.birth_date) : '—';
+  const profileGender = data?.gender ? String(data.gender) : '—';
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
@@ -125,7 +148,15 @@ export const ProfilePage = () => {
       ) : isError ? (
         <div className="px-4 py-6 text-[14px]">Не удалось загрузить профиль.</div>
       ) : (
-        <ProfileUserDataSection id={profileId} name={profileName} username={profileUsername} />
+        <ProfileUserDataSection
+          id={profileId}
+          name={profileName}
+          username={profileUsername}
+          phone={profilePhone}
+          email={profileEmail}
+          birthDate={profileBirthDate}
+          gender={profileGender}
+        />
       )}
       <ProfileSectionsSection />
       <AppBottomNav activeId="profile" />

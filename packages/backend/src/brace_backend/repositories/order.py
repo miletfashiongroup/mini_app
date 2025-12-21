@@ -14,7 +14,9 @@ class OrderRepository(SQLAlchemyRepository[Order]):
     model = Order
 
     def _base_stmt(self):
-        return select(Order).options(selectinload(Order.items))
+        return select(Order).options(
+            selectinload(Order.items).selectinload(OrderItem.product)
+        )
 
     async def list_for_user(
         self, user_id: UUID, *, page: int | None = None, page_size: int | None = None

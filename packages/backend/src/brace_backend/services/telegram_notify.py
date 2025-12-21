@@ -35,9 +35,13 @@ def _build_order_message(order: Order, user: User) -> str:
         "Состав:",
     ]
     for item in order.items:
+        product_name = None
+        if item.product is not None:
+            product_name = item.product.name
         lines.append(
-            f"- {escape(str(item.product_id))} | размер {escape(item.size)} | "
-            f"x{item.quantity} | {_format_money(item.unit_price_minor_units)}"
+            f"- {escape(product_name) if product_name else escape(str(item.product_id))} | "
+            f"размер {escape(item.size)} | x{item.quantity} | "
+            f"{_format_money(item.unit_price_minor_units)}"
         )
     return "\n".join(lines)
 
