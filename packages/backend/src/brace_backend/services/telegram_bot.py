@@ -96,8 +96,12 @@ class TelegramBotService:
             return
 
         contact = message.get("contact")
-        if contact and _next_step(user) == "phone":
+        if contact:
             await self._handle_phone(uow, chat_id, user, contact)
+            return
+
+        if not text:
+            await self._prompt_next(uow, chat_id, user)
             return
 
         await self._handle_text_step(uow, chat_id, user, text)
@@ -128,6 +132,9 @@ class TelegramBotService:
     async def _handle_phone(
         self, uow: UnitOfWork, chat_id: int, user: User, contact: dict[str, Any]
     ) -> None:
+        if not user.consent_given_at:
+            await self._prompt_next(uow, chat_id, user)
+            return
         phone = contact.get("phone_number") or ""
         try:
             user.phone = _normalize_phone(phone)
