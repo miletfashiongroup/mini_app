@@ -74,8 +74,8 @@ def _redact_value(value: Any) -> Any:
     return value
 
 
-def parse_init_data(raw: str) -> dict[str, Any]:
-    """Decode Telegram init data query string into Python objects.
+def parse_init_data(raw: str) -> dict[str, str]:
+    """Decode Telegram init data query string into raw string values.
 
     The frontend should pass `Telegram.WebApp.initData` as-is, but in practice it can arrive:
     - URL-encoded twice (`%3D`, `%26`, etc.)
@@ -83,17 +83,11 @@ def parse_init_data(raw: str) -> dict[str, Any]:
     We attempt a best-effort single unquote + prefix trim before parsing.
     """
 
-    def _parse(qs: str) -> dict[str, Any]:
+    def _parse(qs: str) -> dict[str, str]:
         pairs = parse_qsl(qs, strict_parsing=False, keep_blank_values=True)
-        data: dict[str, Any] = {}
+        data: dict[str, str] = {}
         for key, value in pairs:
-            if key == "user":
-                try:
-                    data[key] = json.loads(value)
-                except JSONDecodeError as exc:
-                    raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
-            else:
-                data[key] = value
+            data[key] = value
         return data
 
     normalized = raw.lstrip("?")
@@ -149,13 +143,11 @@ def build_signature(
     ).hexdigest()
 
 
-def validate_payload_schema(payload: dict[str, Any]) -> None:
+def validate_payload_schema(payload: dict[str, str]) -> None:
     """Ensure Telegram payload contains the minimum required structure."""
     user = payload.get("user")
-    if not isinstance(user, dict):
+    if not user:
         raise AccessDeniedError("Telegram init data user payload is missing.")
-    if "id" not in user:
-        raise AccessDeniedError("Telegram init data user payload is invalid.")
 
 
 class NonceReplayProtector:
@@ -324,6 +316,15 @@ def verify_init_data(init_data: str) -> TelegramInitData:
         raise AccessDeniedError("Telegram init data nonce is required.")
     _replay_protector.ensure_unique(nonce)
     _log_auth_debug("nonce_ok", nonce=nonce)
+
+    user_raw = parsed.get("user", "")
+    try:
+        parsed["user"] = json.loads(user_raw)
+    except JSONDecodeError as exc:
+        _log_auth_debug("user_json_invalid", user_raw=user_raw[:120])
+        raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
+    if "id" not in parsed["user"]:
+        raise AccessDeniedError("Telegram init data user payload is invalid.")
 
     return TelegramInitData(parsed)
 
