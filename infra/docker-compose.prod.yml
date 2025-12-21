@@ -2,6 +2,10 @@ x-backend-build: &backend-build
   context: ..
   dockerfile: packages/backend/Dockerfile
   target: app
+  args:
+    PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    PIP_EXTRA_INDEX_URL: ${PIP_EXTRA_INDEX_URL:-https://mirror.yandex.ru/pypi/simple}
+    PIP_OFFLINE: ${PIP_OFFLINE:-0}
 
 x-frontend-build: &frontend-build
   context: ..

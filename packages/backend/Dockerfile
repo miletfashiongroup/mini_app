@@ -59,8 +59,11 @@ for pkg in data.get("package", []):
 pathlib.Path("requirements.txt").write_text("\n".join(sorted(reqs)) + "\n", encoding="utf-8")
 PY
 RUN python -m venv /opt/venv \
- && /opt/venv/bin/pip install --upgrade pip \
  && if [ "$PIP_OFFLINE" = "1" ]; then \
+      if [ -z "$(ls -A /wheels 2>/dev/null)" ]; then \
+        echo "wheelhouse is empty; build it on a machine with internet or set PIP_OFFLINE=0" >&2; \
+        exit 2; \
+      fi; \
       /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
     else \
       /opt/venv/bin/pip download --dest /wheels --prefer-binary -r requirements.txt; \
