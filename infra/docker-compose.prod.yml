@@ -89,7 +89,7 @@ services:
       - certbot-web:/var/www/certbot
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "wget -qO- https://localhost --no-check-certificate >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 5
