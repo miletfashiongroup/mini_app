@@ -95,6 +95,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None)
 
     telegram_webapp_secret: str | None = None
+    order_manager_telegram_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_ORDER_MANAGER_TELEGRAM_ID", "ORDER_MANAGER_TELEGRAM_ID"),
+        description="Telegram chat ID for order notifications (manager).",
+    )
     telegram_dev_mode: bool = False
     telegram_dev_fallback_token: str = Field(
         default="",

@@ -147,3 +147,28 @@ export const withTelegramInitData = async <T extends { headers?: Record<string, 
   };
   return nextConfig;
 };
+
+export const requestTelegramContact = async (): Promise<string | null> => {
+  const requestContact = (WebApp as any)?.requestContact;
+  if (typeof requestContact !== 'function') {
+    return null;
+  }
+  return new Promise((resolve) => {
+    try {
+      requestContact((sent: boolean, event: any) => {
+        if (!sent) {
+          resolve(null);
+          return;
+        }
+        const phone =
+          event?.responseUnsafe?.phone_number ||
+          event?.response?.phone_number ||
+          event?.phone_number ||
+          null;
+        resolve(phone);
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+};

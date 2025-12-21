@@ -68,10 +68,18 @@ export interface components {
     };
     UserProfile: {
       id?: string;
+      telegram_id?: number;
       username?: string | null;
       first_name?: string | null;
       last_name?: string | null;
       language_code?: string | null;
+      full_name?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      birth_date?: string | null;
+      gender?: string | null;
+      consent_given_at?: string | null;
+      profile_completed_at?: string | null;
     };
   };
 }

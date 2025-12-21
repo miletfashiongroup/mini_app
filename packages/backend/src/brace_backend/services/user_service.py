@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from brace_backend.core.exceptions import ValidationError
 from brace_backend.core.security import TelegramInitData
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.user import User
+from brace_backend.schemas.users import UserProfileUpdate
+from brace_backend.services.audit_service import audit_service
 
 
 class UserService:
@@ -26,6 +30,69 @@ class UserService:
             )
             await uow.users.add(user)
 
+        await uow.commit()
+        await uow.refresh(user)
+        return user
+
+    async def record_consent(
+        self,
+        uow: UnitOfWork,
+        user: User,
+        *,
+        consent_text: str,
+        client_ip: str | None,
+        user_agent: str | None,
+    ) -> User:
+        if user.consent_given_at:
+            return user
+        user.consent_given_at = datetime.now(timezone.utc)
+        user.consent_text = consent_text.strip()[:512] if consent_text else None
+        user.consent_ip = client_ip
+        user.consent_user_agent = user_agent
+        await audit_service.log(
+            uow,
+            action="consent_granted",
+            entity_type="user",
+            entity_id=str(user.id),
+            actor_user_id=user.id,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            metadata={"consent_text": user.consent_text},
+        )
+        await uow.commit()
+        await uow.refresh(user)
+        return user
+
+    async def update_profile(
+        self,
+        uow: UnitOfWork,
+        user: User,
+        *,
+        payload: UserProfileUpdate,
+        client_ip: str | None,
+        user_agent: str | None,
+    ) -> User:
+        if not user.consent_given_at:
+            raise ValidationError("Consent is required before submitting profile data.")
+        user.full_name = payload.full_name
+        user.phone = payload.phone
+        user.email = payload.email
+        user.birth_date = payload.birth_date
+        user.gender = payload.gender
+
+        if user.profile_completed_at is None:
+            user.profile_completed_at = datetime.now(timezone.utc)
+
+        await audit_service.log(
+            uow,
+            action="profile_updated",
+            entity_type="user",
+            entity_id=str(user.id),
+            actor_user_id=user.id,
+            ip_address=client_ip,
+            user_agent=user_agent,
+            metadata={"fields": ["full_name", "phone", "email", "birth_date", "gender"]},
+        )
         await uow.commit()
         await uow.refresh(user)
         return user

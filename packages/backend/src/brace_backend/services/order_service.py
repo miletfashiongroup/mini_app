@@ -10,6 +10,7 @@ from brace_backend.domain.order import Order
 from brace_backend.domain.product import ProductVariant
 from brace_backend.services.audit_service import audit_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
+from brace_backend.services.telegram_notify import notify_manager_order
 
 
 class OrderService:
@@ -109,6 +110,9 @@ class OrderService:
             items_count=len(order.items),
             total_minor_units=total_amount_minor_units,
         )
+        user = await uow.users.get(user_id)
+        if user:
+            await notify_manager_order(order, user)
         return self._to_schema(order)
 
     def _compute_idempotency(self, cart_items) -> str:
