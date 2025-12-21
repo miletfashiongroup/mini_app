@@ -18,6 +18,7 @@ class User(BaseModel):
     full_name: Mapped[str | None] = mapped_column(EncryptedString(255))
     phone: Mapped[str | None] = mapped_column(EncryptedString(32))
     email: Mapped[str | None] = mapped_column(EncryptedString(255))
+    email_opt_out: Mapped[bool] = mapped_column(default=False, nullable=False)
     birth_date: Mapped[Date | None] = mapped_column(Date)
     gender: Mapped[str | None] = mapped_column(String(10))
     consent_given_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))

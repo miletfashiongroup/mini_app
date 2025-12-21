@@ -95,6 +95,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None)
 
     telegram_webapp_secret: str | None = None
+    telegram_webhook_secret: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_WEBHOOK_SECRET"),
+        description="Optional secret token for Telegram webhook validation.",
+    )
     order_manager_telegram_id: int | None = Field(
         default=None,
         validation_alias=AliasChoices("BRACE_ORDER_MANAGER_TELEGRAM_ID", "ORDER_MANAGER_TELEGRAM_ID"),

@@ -82,6 +82,12 @@
 - **Default:** `None` (не используется)
 - **Production:** Опционально, для дополнительной безопасности
 
+#### `BRACE_TELEGRAM_WEBHOOK_SECRET`
+- **Описание:** Секретный токен для защиты Telegram webhook
+- **Формат:** Строка
+- **Default:** Не задан
+- **Production:** Рекомендуется задать и передать в Bot API `setWebhook` как `secret_token`
+
 #### `BRACE_ORDER_MANAGER_TELEGRAM_ID`
 - **Описание:** Telegram chat ID менеджера для уведомлений о заказах
 - **Формат:** Число (ID чата/пользователя)

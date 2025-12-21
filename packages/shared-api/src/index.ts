@@ -76,6 +76,7 @@ export interface components {
       full_name?: string | null;
       phone?: string | null;
       email?: string | null;
+      email_opt_out?: boolean | null;
       birth_date?: string | null;
       gender?: string | null;
       consent_given_at?: string | null;

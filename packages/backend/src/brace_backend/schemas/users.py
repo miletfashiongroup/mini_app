@@ -18,6 +18,7 @@ class UserProfile(BaseModel):
     full_name: str | None = None
     phone: str | None = None
     email: str | None = None
+    email_opt_out: bool | None = None
     birth_date: date | None = None
     gender: str | None = None
     consent_given_at: datetime | None = None

@@ -279,6 +279,16 @@ def verify_init_data(init_data: str) -> TelegramInitData:
     )
     expected_hash = build_signature(parsed, secret_token=secret_source, check_string=check_string)
     hashes_match = hmac.compare_digest(expected_hash, provided_hash)
+    if not hashes_match and "signature" in parsed:
+        # Some Telegram Mini Apps SDKs include "signature" in init data but still compute hash without it.
+        signature_value = parsed.pop("signature", None)
+        fallback_check_string = build_data_check_string(parsed)
+        fallback_hash = build_signature(
+            parsed, secret_token=secret_source, check_string=fallback_check_string
+        )
+        hashes_match = hmac.compare_digest(fallback_hash, provided_hash)
+        if signature_value is not None:
+            parsed["signature"] = signature_value
     _log_auth_debug(
         "signature_computed",
         provided_hash=provided_hash,
