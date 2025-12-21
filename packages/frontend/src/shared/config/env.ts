@@ -17,4 +17,5 @@ export const env = {
     normalizeUrl(rawEnv.VITE_APP_BASE_URL || rawEnv.VITE_APP_URL, 'http://localhost:4173') ||
     (typeof window !== 'undefined' ? window.location.origin : undefined),
   devInitData: rawEnv.VITE_DEV_INIT_DATA ?? '',
+  telegramBotUsername: rawEnv.VITE_TELEGRAM_BOT_USERNAME ?? 'testing_brace_all_bot',
 } as const;
