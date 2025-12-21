@@ -1,8 +1,9 @@
 from datetime import date, datetime
+import re
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 
 class UserProfile(BaseModel):
@@ -37,7 +38,7 @@ class UserConsentRequest(BaseModel):
 class UserProfileUpdate(BaseModel):
     full_name: str
     phone: str
-    email: EmailStr | None = None
+    email: str | None = None
     birth_date: date
     gender: Literal["male", "female"]
 
@@ -58,3 +59,15 @@ class UserProfileUpdate(BaseModel):
         if len(digits_only) < 8 or len(digits_only) > 15:
             raise ValueError("Phone number is invalid.")
         return f"+{digits_only}"
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", cleaned):
+            raise ValueError("Email is invalid.")
+        return cleaned
