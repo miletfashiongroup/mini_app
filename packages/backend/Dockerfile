@@ -15,7 +15,6 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_VERSION=1.8.3
 WORKDIR /app
 COPY wheelhouse /wheels
-COPY packages/wheelhouse /wheels
 
 # More resilient apt: switch to a reachable mirror and retry updates
 RUN set -eux; \
