@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import Select, func, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import lazyload, selectinload
 
 from brace_backend.domain.product import Product, ProductVariant
 from brace_backend.repositories.base import SQLAlchemyRepository
@@ -54,7 +54,8 @@ class ProductRepository(SQLAlchemyRepository[Product]):
                 ProductVariant.size == size,
                 ProductVariant.is_deleted.is_(False),
             )
-            .with_for_update()
+            .options(lazyload(ProductVariant.product), lazyload(ProductVariant.prices))
+            .with_for_update(of=ProductVariant)
         )
         return await self.session.scalar(stmt)
 
