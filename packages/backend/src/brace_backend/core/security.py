@@ -316,14 +316,15 @@ def verify_init_data(init_data: str) -> TelegramInitData:
 
     nonce = str(parsed.get("nonce") or parsed.get("query_id") or "")
     if not nonce:
+        # Telegram Mini Apps may omit nonce/query_id; accept but skip replay protection.
         _log_auth_debug(
-            "nonce_missing",
+            "nonce_missing_allowed",
             has_nonce=bool(parsed.get("nonce")),
             has_query_id=bool(parsed.get("query_id")),
         )
-        raise AccessDeniedError("Telegram init data nonce is required.")
-    _replay_protector.ensure_unique(nonce)
-    _log_auth_debug("nonce_ok", nonce=nonce)
+    else:
+        _replay_protector.ensure_unique(nonce)
+        _log_auth_debug("nonce_ok", nonce=nonce)
 
     user_raw = parsed.get("user", "")
     try:
