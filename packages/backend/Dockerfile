@@ -2,16 +2,20 @@
 ARG PYTHON_VERSION=3.12-slim-bookworm
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG PIP_EXTRA_INDEX_URL=https://mirror.yandex.ru/pypi/simple
+ARG PIP_OFFLINE=0
 
 FROM python:${PYTHON_VERSION} AS deps
+ARG PIP_INDEX_URL
+ARG PIP_EXTRA_INDEX_URL
+ARG PIP_OFFLINE
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DEFAULT_TIMEOUT=120 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1 \
     PIP_RETRIES=5 \
     PIP_INDEX_URL=${PIP_INDEX_URL} \
     PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL} \
+    PIP_CACHE_DIR=/root/.cache/pip \
     PIP_FIND_LINKS=/wheels \
     PIP_PREFER_BINARY=1 \
     PIP_TRUSTED_HOST=mirror.yandex.ru
@@ -56,8 +60,12 @@ pathlib.Path("requirements.txt").write_text("\n".join(sorted(reqs)) + "\n", enco
 PY
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
- && /opt/venv/bin/pip install --timeout=120 --retries=5 --no-cache-dir --find-links=/wheels \
-       --prefer-binary -r requirements.txt
+ && if [ "$PIP_OFFLINE" = "1" ]; then \
+      /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
+    else \
+      /opt/venv/bin/pip download --dest /wheels --prefer-binary -r requirements.txt; \
+      /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
+    fi
 
 FROM python:${PYTHON_VERSION} AS runtime
 ENV PYTHONUNBUFFERED=1 \
