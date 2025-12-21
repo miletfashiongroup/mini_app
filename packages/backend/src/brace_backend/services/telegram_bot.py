@@ -14,7 +14,6 @@ from brace_backend.services.audit_service import audit_service
 
 
 CONSENT_TEXT = "Вы согласны на обработку ваших данных?"
-SKIP_EMAIL_VALUES = {"пропустить", "skip", "нет"}
 
 
 def _normalize_phone(value: str) -> str:
@@ -53,19 +52,11 @@ def _parse_email(value: str) -> str:
 
 
 def _next_step(user: User) -> str | None:
-    if not user.consent_given_at:
-        return "consent"
     if not user.phone:
         return "phone"
-    if not user.full_name:
-        return "full_name"
-    if not user.birth_date:
-        return "birth_date"
-    if not user.gender:
-        return "gender"
-    if not user.email and not user.email_opt_out:
-        return "email"
-    return None
+    if user.profile_completed_at:
+        return None
+    return "webapp"
 
 
 @dataclass
@@ -104,7 +95,7 @@ class TelegramBotService:
             await self._prompt_next(uow, chat_id, user)
             return
 
-        await self._handle_text_step(uow, chat_id, user, text)
+        await self._prompt_next(uow, chat_id, user)
 
     async def _handle_callback(self, uow: UnitOfWork, callback: dict[str, Any]) -> None:
         data = (callback.get("data") or "").strip()
@@ -132,9 +123,6 @@ class TelegramBotService:
     async def _handle_phone(
         self, uow: UnitOfWork, chat_id: int, user: User, contact: dict[str, Any]
     ) -> None:
-        if not user.consent_given_at:
-            await self._prompt_next(uow, chat_id, user)
-            return
         phone = contact.get("phone_number") or ""
         try:
             user.phone = _normalize_phone(phone)
@@ -153,45 +141,7 @@ class TelegramBotService:
         await self._prompt_next(uow, chat_id, user)
 
     async def _handle_text_step(self, uow: UnitOfWork, chat_id: int, user: User, text: str) -> None:
-        step = _next_step(user)
-        if step == "full_name":
-            if len(text) < 2:
-                await self._send_message(chat_id, "Введите ФИО полностью.")
-                return
-            user.full_name = " ".join(text.split())
-            await audit_service.log(
-                uow,
-                action="profile_full_name_set",
-                entity_type="user",
-                entity_id=str(user.id),
-                actor_user_id=user.id,
-            )
-        elif step == "birth_date":
-            try:
-                user.birth_date = _parse_birth_date(text)
-            except ValueError as exc:
-                await self._send_message(chat_id, str(exc))
-                return
-        elif step == "gender":
-            try:
-                user.gender = _parse_gender(text)
-            except ValueError as exc:
-                await self._send_message(chat_id, str(exc))
-                return
-        elif step == "email":
-            if text.lower() in SKIP_EMAIL_VALUES:
-                user.email_opt_out = True
-            else:
-                try:
-                    user.email = _parse_email(text)
-                except ValueError as exc:
-                    await self._send_message(chat_id, str(exc))
-                    return
-        else:
-            return
-
-        await uow.commit()
-        await uow.refresh(user)
+        _ = (uow, user, text)
         await self._prompt_next(uow, chat_id, user)
 
     async def _record_consent(self, uow: UnitOfWork, user: User) -> None:
@@ -212,23 +162,9 @@ class TelegramBotService:
     async def _prompt_next(self, uow: UnitOfWork, chat_id: int, user: User) -> None:
         step = _next_step(user)
         if step is None:
-            if user.profile_completed_at is None:
-                user.profile_completed_at = datetime.now(timezone.utc)
-                await uow.commit()
             await self._send_message(chat_id, "Спасибо! Данные сохранены.")
             return
-        if step == "consent":
-            await self._send_message(
-                chat_id,
-                CONSENT_TEXT,
-                reply_markup={
-                    "inline_keyboard": [[
-                        {"text": "Да", "callback_data": "consent_yes"},
-                        {"text": "Нет", "callback_data": "consent_no"},
-                    ]]
-                },
-            )
-        elif step == "phone":
+        if step == "phone":
             await self._send_message(
                 chat_id,
                 "Пожалуйста, поделитесь контактным телефоном.",
@@ -238,22 +174,8 @@ class TelegramBotService:
                     "one_time_keyboard": True,
                 },
             )
-        elif step == "full_name":
-            await self._send_message(chat_id, "Введите ФИО полностью.")
-        elif step == "birth_date":
-            await self._send_message(chat_id, "Введите дату рождения в формате ДД.ММ.ГГГГ.")
-        elif step == "gender":
-            await self._send_message(
-                chat_id,
-                "Выберите пол:",
-                reply_markup={
-                    "keyboard": [[{"text": "Мужской"}, {"text": "Женский"}]],
-                    "resize_keyboard": True,
-                    "one_time_keyboard": True,
-                },
-            )
-        elif step == "email":
-            await self._send_message(chat_id, "Введите email или отправьте 'Пропустить'.")
+        elif step == "webapp":
+            await self._send_webapp_link(chat_id)
 
     async def _sync_user(self, uow: UnitOfWork, sender: dict[str, Any]) -> User | None:
         telegram_id = sender.get("id")
@@ -291,6 +213,19 @@ class TelegramBotService:
             response.raise_for_status()
         except Exception as exc:  # pragma: no cover - external dependency
             logger.warning("telegram_bot_send_failed", error=str(exc), chat_id=str(chat_id))
+
+    async def _send_webapp_link(self, chat_id: int) -> None:
+        url = settings.telegram_webapp_url
+        if not url:
+            await self._send_message(
+                chat_id,
+                "Пожалуйста, откройте мини-приложение из меню бота и заполните анкету.",
+            )
+            return
+        await self._send_message(
+            chat_id,
+            f"Заполните данные в приложении: {url}",
+        )
 
 
 telegram_bot_service = TelegramBotService(token=settings.telegram_bot_token or "")

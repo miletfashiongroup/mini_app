@@ -95,6 +95,11 @@ class Settings(BaseSettings):
     telegram_bot_token: str | None = Field(default=None)
 
     telegram_webapp_secret: str | None = None
+    telegram_webapp_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_TELEGRAM_WEBAPP_URL", "TELEGRAM_WEBAPP_URL"),
+        description="Public Telegram Mini App URL sent by the bot after contact sharing.",
+    )
     telegram_webhook_secret: str | None = Field(
         default=None,
         validation_alias=AliasChoices("BRACE_TELEGRAM_WEBHOOK_SECRET", "TELEGRAM_WEBHOOK_SECRET"),
