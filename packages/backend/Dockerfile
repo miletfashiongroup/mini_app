@@ -11,8 +11,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_INDEX_URL=https://mirror.yandex.ru/pypi/simple \
     PIP_FIND_LINKS=/wheels \
     PIP_PREFER_BINARY=1 \
-    PIP_TRUSTED_HOST=mirror.yandex.ru \
-    POETRY_VERSION=1.8.3
+    PIP_TRUSTED_HOST=mirror.yandex.ru
 WORKDIR /app
 COPY wheelhouse /wheels
 
@@ -32,23 +31,22 @@ RUN set -eux; \
     done; \
     rm -rf /var/lib/apt/lists/*
 
-RUN set -eux; \
-    POETRY_WHL=$(ls /wheels/poetry-1.8.3-*.whl 2>/dev/null || true); \
-    if [ -n "$POETRY_WHL" ]; then \
-      pip install --no-cache-dir --no-index --find-links=/wheels "$POETRY_WHL"; \
-    else \
-      pip install --no-cache-dir --retries=3 --timeout=60 \
-        --index-url=https://mirror.yandex.ru/pypi/simple \
-        --extra-index-url=https://pypi.org/simple \
-        --trusted-host=mirror.yandex.ru \
-        "poetry==1.8.3"; \
-    fi
-# FIX poetry
-ENV PATH="/root/.local/bin:$PATH" 
-
 COPY packages/backend/pyproject.toml packages/backend/poetry.lock* ./ 
-RUN poetry config virtualenvs.create false \
- && poetry export --without-hashes -f requirements.txt -o requirements.txt \
+RUN python - <<'PY' \
+import pathlib, tomllib \
+lock_text = pathlib.Path("poetry.lock").read_text(encoding="utf-8") \
+data = tomllib.loads(lock_text) \
+reqs = [] \
+for pkg in data.get("package", []): \
+    if "main" not in pkg.get("groups", []): \
+        continue \
+    line = f"{pkg['name']}=={pkg['version']}" \
+    markers = pkg.get("markers") \
+    if markers: \
+        line = f"{line}; {markers}" \
+    reqs.append(line) \
+pathlib.Path("requirements.txt").write_text("\n".join(sorted(reqs)) + "\n", encoding="utf-8") \
+PY \
  && python -m venv /opt/venv \
  && /opt/venv/bin/pip install --upgrade pip \
  && /opt/venv/bin/pip install --timeout=120 --retries=5 --no-cache-dir --find-links=/wheels \
