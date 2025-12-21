@@ -44,6 +44,8 @@ for pkg in data.get("package", []):
         continue
     line = f"{pkg['name']}=={pkg['version']}"
     markers = pkg.get("markers")
+    if isinstance(markers, dict):
+        markers = markers.get("main")
     if markers:
         line = f"{line}; {markers}"
     reqs.append(line)
