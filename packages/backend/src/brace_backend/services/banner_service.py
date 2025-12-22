@@ -20,7 +20,12 @@ class BannerService:
         if self._cache and now < self._cache_expires_at:
             return self._cache
         banners = await uow.banners.list_ordered()
-        schema_items = [BannerRead.model_validate(banner) for banner in banners]
+        schema_items = []
+        for banner in banners:
+            item = BannerRead.model_validate(banner)
+            if item.image_url and "cdn.example.com" in item.image_url:
+                item.image_url = None
+            schema_items.append(item)
         active_index = 0
         for idx, banner in enumerate(banners):
             if banner.is_active:

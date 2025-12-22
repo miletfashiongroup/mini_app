@@ -141,9 +141,11 @@ export const withTelegramInitData = async <T extends { headers?: Record<string, 
   if (!initData && env.env !== 'production') {
     console.warn('Telegram init data is empty; requests may be rejected by backend.');
   }
+  const authHeader = initData ? `tma ${initData}` : existingHeaders.Authorization;
   nextConfig.headers = {
     ...existingHeaders,
     'X-Telegram-Init-Data': initData || existingHeaders['X-Telegram-Init-Data'] || '',
+    Authorization: authHeader,
   };
   return nextConfig;
 };

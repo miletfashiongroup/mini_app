@@ -30,6 +30,7 @@ instance.interceptors.response.use(
           originalConfig.headers = {
             ...(originalConfig.headers ?? {}),
             'X-Telegram-Init-Data': refreshedInitData,
+            Authorization: `tma ${refreshedInitData}`,
           };
           return instance.request(originalConfig);
         }
