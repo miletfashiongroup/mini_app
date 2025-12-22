@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import ProductBottomBar from '@/components/product/ProductBottomBar';
@@ -19,6 +19,7 @@ import { useProductDetails } from '@/pages/product/useProductDetails';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { useRelatedProductsQuery } from '@/shared/api/queries';
 import { useToast } from '@/shared/hooks/useToast';
+import { trackEvent } from '@/shared/analytics/tracker';
 
 export const ProductPage = () => {
   const { productId } = useParams();
@@ -32,6 +33,7 @@ export const ProductPage = () => {
   const [isSizeTableOpen, setIsSizeTableOpen] = useState(false);
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false);
+  const productTracked = useRef(false);
   const rubleFormatter = new Intl.NumberFormat('ru-RU', {
     style: 'currency',
     currency: 'RUB',
@@ -95,9 +97,30 @@ export const ProductPage = () => {
       label: variant.size,
       subLabel: variant.size,
     })) ?? [];
+  const variantById = useMemo(() => {
+    const entries = product.variants?.map((variant) => [variant.id, variant]) ?? [];
+    return new Map(entries);
+  }, [product.variants]);
   const primaryVariant = product.variants?.[0];
   const priceLabel = formatPrice(primaryVariant?.price_minor_units);
   const defaultSize = primaryVariant?.size;
+  const currency = 'RUB';
+
+  useEffect(() => {
+    if (!productTracked.current && productId && product) {
+      trackEvent(
+        'product_view',
+        {
+          product_id: productId,
+          category: product.category ?? null,
+          price_minor_units: primaryVariant?.price_minor_units ?? null,
+          currency,
+        },
+        `/product/${productId}`,
+      );
+      productTracked.current = true;
+    }
+  }, [currency, primaryVariant?.price_minor_units, product, productId]);
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white text-[#29292B] font-montserrat pb-24">
@@ -112,6 +135,14 @@ export const ProductPage = () => {
         ratingValue="4,9"
         sizeOptions={sizeOptions}
         initialSizeId={sizeOptions[0]?.id ?? ''}
+        onSelectSize={(id) => {
+          const variant = variantById.get(id);
+          trackEvent(
+            'size_selected',
+            { product_id: productId, size: variant?.size ?? id },
+            `/product/${productId}`,
+          );
+        }}
         activeTab={activeTab}
         onChangeTab={setActiveTab}
         onOpenSizeTable={() => setIsSizeTableOpen(true)}

@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { RouteObject, useLocation, useRoutes } from 'react-router-dom';
 
 import { CartPage } from '@/pages/cart/CartPage';
@@ -14,6 +14,7 @@ import { ProfilePage } from '@/pages/profile/ProfilePage';
 import { SizeTablePage } from '@/pages/size-table/SizeTablePage';
 import { TextPage } from '@/pages/text/TextPage';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
+import { trackAppOpen, trackScreenView } from '@/shared/analytics/tracker';
 
 const routes: RouteObject[] = [
   { path: '/', element: <Homepage /> },
@@ -33,6 +34,15 @@ const routes: RouteObject[] = [
 export const AppRoutes = () => {
   const location = useLocation();
   const element = useRoutes(routes, location);
+  const hasOpened = useRef(false);
+
+  useEffect(() => {
+    if (!hasOpened.current) {
+      trackAppOpen(location.pathname);
+      hasOpened.current = true;
+    }
+    trackScreenView(location.pathname);
+  }, [location.pathname]);
 
   return (
     <ErrorBoundary>
