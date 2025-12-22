@@ -17,6 +17,27 @@ body {
   color: #29292b;
 }
 
+.page-transition {
+  animation: page-enter 240ms ease-out;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    animation: none;
+  }
+}
+
 button:focus-visible,
 input:focus-visible {
   outline: 2px solid #000043;
