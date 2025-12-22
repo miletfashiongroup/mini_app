@@ -83,6 +83,10 @@ RUN python -m venv /opt/venv \
       fi; \
       /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
     else \
+      if [ -n "$(ls -A /wheels 2>/dev/null)" ]; then \
+        /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
+        exit 0; \
+      fi; \
       set -e; \
       for INDEX in $PIP_INDEX_CANDIDATES; do \
         echo "Trying index: $INDEX"; \
