@@ -1,4 +1,5 @@
 
+# syntax=docker/dockerfile:1.6
 ARG PYTHON_VERSION=3.12-slim-bookworm
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG PIP_EXTRA_INDEX_URL=https://mirror.yandex.ru/pypi/simple
@@ -26,14 +27,14 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 COPY wheelhouse /wheels
 
-RUN if [ -n "$WHEELHOUSE_URL" ]; then \
+RUN --network=host if [ -n "$WHEELHOUSE_URL" ]; then \
       echo "Downloading wheelhouse from $WHEELHOUSE_URL"; \
       mkdir -p /wheels; \
       curl -fL "$WHEELHOUSE_URL" | tar -xz -C /wheels; \
     fi
 
 # More resilient apt: switch to a reachable mirror and retry updates
-RUN set -eux; \
+RUN --network=host set -eux; \
     rm -f /etc/apt/sources.list.d/debian.sources; \
     printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' > /etc/apt/apt.conf.d/99retries; \
     echo "deb http://mirror.yandex.ru/debian bookworm main contrib non-free" > /etc/apt/sources.list; \
@@ -68,7 +69,7 @@ for pkg in data.get("package", []):
     reqs.append(line)
 pathlib.Path("requirements.txt").write_text("\n".join(sorted(reqs)) + "\n", encoding="utf-8")
 PY
-RUN python -m venv /opt/venv \
+RUN --network=host python -m venv /opt/venv \
  && if [ "$PIP_OFFLINE" = "1" ]; then \
       if [ -z "$(ls -A /wheels 2>/dev/null)" ]; then \
         echo "wheelhouse is empty; build it on a machine with internet or set PIP_OFFLINE=0" >&2; \
