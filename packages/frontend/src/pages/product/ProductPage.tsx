@@ -14,6 +14,7 @@ import { ProductTabId } from '@/components/product/ProductTabs';
 import ProductTags from '@/components/product/ProductTags';
 import ProductThumbnailsStrip from '@/components/product/ProductThumbnailsStrip';
 import ProductTitle from '@/components/product/ProductTitle';
+import reviewPlaceholder from '@/assets/images/shutterstock.svg';
 import { useProductDetails } from '@/pages/product/useProductDetails';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { useRelatedProductsQuery } from '@/shared/api/queries';
@@ -53,11 +54,7 @@ export const ProductPage = () => {
       utpLabel: 'УТП 1',
       utpSegments: 5,
       utpActiveIndex: 2,
-      gallery: [
-        'https://cdn.example.com/reviews/rev1-1.jpg',
-        'https://cdn.example.com/reviews/rev1-2.jpg',
-        'https://cdn.example.com/reviews/rev1-3.jpg',
-      ],
+      gallery: [reviewPlaceholder],
     },
   ];
   const complementProducts = [
