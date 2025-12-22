@@ -1,4 +1,5 @@
 from brace_backend.repositories.audit import AuditRepository
+from brace_backend.repositories.analytics import AnalyticsRepository
 from brace_backend.repositories.banner import BannerRepository
 from brace_backend.repositories.cart import CartRepository
 from brace_backend.repositories.order import OrderRepository
@@ -12,4 +13,5 @@ __all__ = [
     "UserRepository",
     "BannerRepository",
     "AuditRepository",
+    "AnalyticsRepository",
 ]

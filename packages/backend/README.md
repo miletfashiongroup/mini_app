@@ -29,3 +29,9 @@ Seed demo products:
 ```bash
 poetry run python -m brace_backend.services.seed
 ```
+
+## Analytics
+Run analytics tests:
+```bash
+poetry run pytest tests/test_analytics_ingest.py tests/test_analytics_schema.py
+```

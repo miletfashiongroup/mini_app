@@ -69,3 +69,32 @@ async def notify_manager_order(order: Order, user: User) -> None:
             order_id=str(order.id),
             error=str(exc),
         )
+
+
+async def send_analytics_report(message: str, *, report_type: str, retries: int = 2) -> bool:
+    if not settings.analytics_report_recipient_ids:
+        logger.info("analytics_report_skipped", reason="recipients_missing", report_type=report_type)
+        return False
+    if not settings.telegram_bot_token:
+        logger.warning("analytics_report_skipped", reason="bot_token_missing", report_type=report_type)
+        return False
+
+    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+    payloads = [{"chat_id": chat_id, "text": message} for chat_id in settings.analytics_report_recipient_ids]
+    attempt = 0
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                for payload in payloads:
+                    response = await client.post(url, json=payload)
+                    response.raise_for_status()
+            return True
+        except Exception as exc:  # pragma: no cover - external dependency
+            attempt += 1
+            if attempt > retries:
+                logger.warning(
+                    "analytics_report_failed",
+                    report_type=report_type,
+                    error=str(exc),
+                )
+                return False

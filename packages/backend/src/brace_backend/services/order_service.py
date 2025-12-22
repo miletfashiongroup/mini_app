@@ -9,6 +9,7 @@ from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.order import Order
 from brace_backend.domain.product import ProductVariant
 from brace_backend.services.audit_service import audit_service
+from brace_backend.services.analytics_service import analytics_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
 from brace_backend.services.telegram_notify import notify_manager_order
 
@@ -109,6 +110,18 @@ class OrderService:
             order_id=str(order.id),
             items_count=len(order.items),
             total_minor_units=total_amount_minor_units,
+        )
+        await analytics_service.record_server_event(
+            uow,
+            name="order_created",
+            occurred_at=order.created_at,
+            user_id=user_id,
+            properties={
+                "order_id": str(order.id),
+                "order_total_minor_units": total_amount_minor_units,
+                "currency": "RUB",
+                "items_count": len(order.items),
+            },
         )
         user = await uow.users.get(user_id)
         if user:
