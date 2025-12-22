@@ -24,7 +24,7 @@ instance.interceptors.response.use(
       const payload = error.response?.data;
       const authRelated = payload?.error?.type === 'access_denied' || payload?.error?.type === 'unauthorized';
       if (!originalConfig?.__braceRetried) {
-        const refreshedInitData = await resolveTelegramInitDataAsync(2000);
+        const refreshedInitData = await resolveTelegramInitDataAsync(4000);
         if (refreshedInitData) {
           originalConfig.__braceRetried = true;
           originalConfig.headers = {

@@ -108,7 +108,7 @@ if (initialUrlData) {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export const resolveTelegramInitDataAsync = async (timeoutMs = 1500, intervalMs = 50): Promise<string> => {
+export const resolveTelegramInitDataAsync = async (timeoutMs = 4000, intervalMs = 75): Promise<string> => {
   let candidate = resolveTelegramInitData();
   const deadline = Date.now() + timeoutMs;
 
