@@ -14,6 +14,7 @@ import {
   productKeys,
   fetchRelatedProducts,
 } from '@/entities/product/api/productApi';
+import { type Order, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
 import { ApiError } from '@/shared/api/types';
 
@@ -73,5 +74,12 @@ export const useUserProfileQuery = (options?: QueryOptions<UserProfile>) =>
   useQuery<UserProfile, ApiError>({
     queryKey: userKeys.profile,
     queryFn: fetchProfile,
+    ...options,
+  });
+
+export const useOrdersQuery = (options?: QueryOptions<Order[]>) =>
+  useQuery<Order[], ApiError>({
+    queryKey: orderKeys.list,
+    queryFn: fetchOrders,
     ...options,
   });
