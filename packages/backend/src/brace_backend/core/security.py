@@ -267,28 +267,40 @@ def verify_init_data(init_data: str) -> TelegramInitData:
 
     validate_payload_schema(parsed)
 
-    secret_source = settings.telegram_webapp_secret or settings.telegram_bot_token
-    if not secret_source:
+    secret_candidates = [
+        secret for secret in (settings.telegram_webapp_secret, settings.telegram_bot_token) if secret
+    ]
+    if not secret_candidates:
         raise AccessDeniedError("Telegram bot token is not configured.")
+
     check_string = build_data_check_string(parsed)
     _log_auth_debug(
         "signature_inputs_prepared",
         check_string_length=len(check_string),
-        bot_token_present=bool(secret_source),
-        bot_token_length=len(secret_source) if secret_source else 0,
+        bot_token_present=bool(secret_candidates),
+        bot_token_length=max(len(secret) for secret in secret_candidates),
     )
-    expected_hash = build_signature(parsed, secret_token=secret_source, check_string=check_string)
-    hashes_match = hmac.compare_digest(expected_hash, provided_hash)
-    if not hashes_match and "signature" in parsed:
-        # Some Telegram Mini Apps SDKs include "signature" in init data but still compute hash without it.
-        signature_value = parsed.pop("signature", None)
-        fallback_check_string = build_data_check_string(parsed)
-        fallback_hash = build_signature(
-            parsed, secret_token=secret_source, check_string=fallback_check_string
-        )
-        hashes_match = hmac.compare_digest(fallback_hash, provided_hash)
-        if signature_value is not None:
-            parsed["signature"] = signature_value
+
+    hashes_match = False
+    expected_hash = ""
+    for secret_source in secret_candidates:
+        expected_hash = build_signature(parsed, secret_token=secret_source, check_string=check_string)
+        hashes_match = hmac.compare_digest(expected_hash, provided_hash)
+        if hashes_match:
+            break
+        if "signature" in parsed:
+            # Some Telegram Mini Apps SDKs include "signature" in init data but still compute hash without it.
+            signature_value = parsed.pop("signature", None)
+            fallback_check_string = build_data_check_string(parsed)
+            fallback_hash = build_signature(
+                parsed, secret_token=secret_source, check_string=fallback_check_string
+            )
+            hashes_match = hmac.compare_digest(fallback_hash, provided_hash)
+            if signature_value is not None:
+                parsed["signature"] = signature_value
+            if hashes_match:
+                break
+
     _log_auth_debug(
         "signature_computed",
         provided_hash=provided_hash,
