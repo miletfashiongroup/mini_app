@@ -2,12 +2,16 @@
 ARG PYTHON_VERSION=3.12-slim-bookworm
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG PIP_EXTRA_INDEX_URL=https://mirror.yandex.ru/pypi/simple
+ARG PIP_TRUSTED_HOST=mirror.yandex.ru
 ARG PIP_OFFLINE=0
+ARG WHEELHOUSE_URL=
 
 FROM python:${PYTHON_VERSION} AS deps
 ARG PIP_INDEX_URL
 ARG PIP_EXTRA_INDEX_URL
 ARG PIP_OFFLINE
+ARG PIP_TRUSTED_HOST
+ARG WHEELHOUSE_URL
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_DEFAULT_TIMEOUT=120 \
@@ -18,9 +22,15 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_CACHE_DIR=/root/.cache/pip \
     PIP_FIND_LINKS=/wheels \
     PIP_PREFER_BINARY=1 \
-    PIP_TRUSTED_HOST=mirror.yandex.ru
+    PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
 WORKDIR /app
 COPY wheelhouse /wheels
+
+RUN if [ -n "$WHEELHOUSE_URL" ]; then \
+      echo "Downloading wheelhouse from $WHEELHOUSE_URL"; \
+      mkdir -p /wheels; \
+      curl -fL "$WHEELHOUSE_URL" | tar -xz -C /wheels; \
+    fi
 
 # More resilient apt: switch to a reachable mirror and retry updates
 RUN set -eux; \
