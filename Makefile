@@ -6,6 +6,9 @@ backend-install:
 backend-test:
 	cd packages/backend && poetry run pytest
 
+analytics-test:
+	cd packages/backend && poetry run pytest tests/test_analytics_ingest.py tests/test_analytics_schema.py
+
 frontend-install:
 	cd packages/frontend && npm install
 

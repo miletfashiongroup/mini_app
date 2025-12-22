@@ -135,6 +135,64 @@
 - **Default:** `5`
 - **Production:** Можно увеличить при необходимости
 
+#### `BRACE_ANALYTICS_ENABLED`
+- **Описание:** Включить прием событий аналитики
+- **Формат:** `true` / `false`
+- **Default:** `true`
+- **Production:** Рекомендуется `true`
+
+#### `BRACE_ANALYTICS_HASH_SALT`
+- **Описание:** Соль HMAC для хэширования идентификаторов аналитики
+- **Формат:** Строка
+- **Default:** пусто
+- **Production:** ✅ Обязательно заполнить
+
+#### `BRACE_ANALYTICS_ALLOW_ANONYMOUS`
+- **Описание:** Разрешить прием событий без Telegram user id
+- **Формат:** `true` / `false`
+- **Default:** `true`
+- **Production:** Можно оставить `true` для входов без initData
+
+#### `BRACE_ANALYTICS_RATE_LIMIT`
+- **Описание:** Rate limit для эндпоинта аналитики
+- **Формат:** `"число/период"`
+- **Default:** `120/minute`
+
+#### `BRACE_ANALYTICS_MAX_BATCH_SIZE`
+- **Описание:** Максимальный размер batch для событий
+- **Формат:** Число
+- **Default:** `25`
+
+#### `BRACE_ANALYTICS_MAX_PAYLOAD_BYTES`
+- **Описание:** Максимальный размер payload аналитики
+- **Формат:** Число (байты)
+- **Default:** `64000`
+
+#### `BRACE_ANALYTICS_RETENTION_DAYS`
+- **Описание:** TTL для сырых событий аналитики
+- **Формат:** Число (дни)
+- **Default:** `180`
+
+#### `BRACE_ANALYTICS_ROLLUP_RETENTION_DAYS`
+- **Описание:** TTL для дневных агрегатов
+- **Формат:** Число (дни)
+- **Default:** `1095`
+
+#### `BRACE_ANALYTICS_REPORTS_RETENTION_DAYS`
+- **Описание:** TTL для истории отчетов
+- **Формат:** Число (дни)
+- **Default:** `365`
+
+#### `BRACE_ANALYTICS_REPORT_ENABLED`
+- **Описание:** Отправка ежедневных/еженедельных отчетов
+- **Формат:** `true` / `false`
+- **Default:** `false`
+
+#### `BRACE_ANALYTICS_REPORT_RECIPIENT_IDS`
+- **Описание:** Список chat_id для отчетов
+- **Формат:** `12345,67890`
+- **Default:** пусто
+
 #### `BRACE_DATABASE_ECHO`
 - **Описание:** Логировать SQL запросы (только для debugging!)
 - **Формат:** `true` / `false`
@@ -301,6 +359,21 @@
 - **Production:** ❌ НЕ использовать в production!
 - **Примечание:** Только для локальной разработки без Telegram
 
+#### `VITE_ANALYTICS_ENABLED`
+- **Описание:** Включить клиентскую аналитику
+- **Формат:** `true` / `false`
+- **Default:** `true`
+
+#### `VITE_ANALYTICS_FLUSH_INTERVAL_MS`
+- **Описание:** Интервал отправки событий (мс)
+- **Формат:** Число
+- **Default:** `15000`
+
+#### `VITE_ANALYTICS_BATCH_SIZE`
+- **Описание:** Размер батча событий
+- **Формат:** Число
+- **Default:** `20`
+
 ---
 
 ## Smoke Tests Variables
@@ -341,6 +414,10 @@ BRACE_REDIS_URL=redis://...  # или оставить memory://
 BRACE_RATE_LIMIT=120/minute
 BRACE_LOG_LEVEL=INFO
 BRACE_LOG_JSON=true
+BRACE_ANALYTICS_ENABLED=true
+BRACE_ANALYTICS_HASH_SALT=your_strong_salt
+BRACE_ANALYTICS_REPORT_ENABLED=true
+BRACE_ANALYTICS_REPORT_RECIPIENT_IDS=12345,67890
 ```
 
 ### Render Frontend Service
@@ -350,6 +427,9 @@ BRACE_LOG_JSON=true
 ```bash
 # Required
 VITE_API_BASE_URL=https://your-backend.onrender.com
+VITE_ANALYTICS_ENABLED=true
+VITE_ANALYTICS_FLUSH_INTERVAL_MS=15000
+VITE_ANALYTICS_BATCH_SIZE=20
 VITE_APP_BASE_URL=https://your-frontend.onrender.com
 VITE_ENV=production
 ```

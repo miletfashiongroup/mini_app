@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  metabase:
+    image: metabase/metabase:v0.49.8
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - ./metabase/.env.metabase
+    volumes:
+      - metabase-data:/metabase-data
+
+volumes:
+  metabase-data:
