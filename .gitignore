@@ -32,3 +32,9 @@ packages/frontend/vite.config.ts.timestamp-*
 
 # Docker
 volumes/
+
+# analytics infra local secrets
+infra/metabase/
+wheelhouse/
+packages/wheelhouse/
+wheelhouse-requirements.txt

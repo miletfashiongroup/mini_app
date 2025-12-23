@@ -24,3 +24,10 @@
 ## Ретеншн и обслуживание
 - Запуск очистки: `python -m brace_backend.scripts.analytics_cleanup`
 - Проверка размеров таблиц: `SELECT pg_size_pretty(pg_total_relation_size('analytics_events'));`
+
+## Финальные прод‑проверки
+- `/api/analytics/health` возвращает метрики, `ingest_errors=0`.
+- Метрики rollup обновляются (`analytics_daily_metrics`).
+- Cron‑задачи на rollup/alerts/report/cleanup присутствуют и выполняются.
+- Metabase доступен только через SSH‑туннель.
+- Для Metabase нужен read‑only пользователь БД `metabase_ro` (создается админом БД).

@@ -97,3 +97,10 @@ docker logs infra-backend-1 --tail 200
 ```
 docker compose -f infra/docker-compose.metabase.yml up -d
 ```
+
+## QA smoke‑проверка (факт, VPS)
+- Ingest: POST /api/analytics/events — OK (ingested=1, deduped=0).
+- Дедуп: повторный event_id — OK (ingested=0, deduped=1).
+- PII‑санитизация: `email`/`phone` удаляются из properties.
+- В БД есть 1 запись по test event_id.
+- Rollup обновлён через `analytics_rollup`.
