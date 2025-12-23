@@ -19,6 +19,7 @@ os.environ.setdefault("TEST_DATABASE_URL", DEFAULT_SQLITE_DSN)
 os.environ.setdefault("BRACE_DATABASE_URL", os.environ["TEST_DATABASE_URL"])
 
 import pytest
+import brace_backend.domain  # noqa: F401  # ensure all models are registered
 from brace_backend.api.deps import get_current_init_data, get_current_user, get_uow
 from brace_backend.core.database import ensure_async_dsn
 from brace_backend.core.security import TelegramInitData

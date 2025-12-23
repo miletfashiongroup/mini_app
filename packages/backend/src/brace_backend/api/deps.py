@@ -48,6 +48,33 @@ async def get_current_init_data(
         raise
 
 
+async def get_optional_init_data(
+    init_data_header: str | None = Header(default=None, alias="X-Telegram-Init-Data"),
+    init_data_header_alt: str | None = Header(default=None, alias="X-Telegram-WebApp-Data"),
+    auth_header: str | None = Header(default=None, alias="Authorization"),
+    init_data_query: str | None = Query(default=None, alias="tgWebAppData"),
+    init_data_query_alt: str | None = Query(default=None, alias="initData"),
+) -> TelegramInitData | None:
+    init_data = (
+        _extract_init_data_from_auth(auth_header)
+        or init_data_header
+        or init_data_header_alt
+        or init_data_query
+        or init_data_query_alt
+    )
+    if not init_data:
+        return None
+    try:
+        return await validate_request(init_data)
+    except AccessDeniedError as exc:
+        logger.warning(
+            "Rejected optional Telegram init data.",
+            reason=str(exc),
+            has_init_data=bool(init_data),
+        )
+        return None
+
+
 async def get_uow() -> AsyncIterator[UnitOfWork]:
     async with session_manager.session() as session:
         yield UnitOfWork(session)

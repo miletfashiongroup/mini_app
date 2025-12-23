@@ -130,6 +130,61 @@ class Settings(BaseSettings):
         description="Fernet key for PII encryption at rest. REQUIRED in production.",
     )
 
+    analytics_enabled: bool = Field(
+        default=True,
+        description="Enable analytics ingestion and server-side tracking.",
+    )
+    analytics_hash_salt: str = Field(
+        default="",
+        description="HMAC salt for analytics hashing (REQUIRED in production).",
+    )
+    analytics_allow_anonymous: bool = Field(
+        default=True,
+        description="Allow analytics events without Telegram user id.",
+    )
+    analytics_rate_limit: str = Field(
+        default="120/minute",
+        description="Rate limit for analytics ingestion endpoint.",
+    )
+    analytics_max_batch_size: int = Field(
+        default=25,
+        ge=1,
+        le=100,
+        description="Maximum number of analytics events per batch.",
+    )
+    analytics_max_payload_bytes: int = Field(
+        default=64_000,
+        ge=1_000,
+        le=1_000_000,
+        description="Maximum serialized payload size for analytics ingestion.",
+    )
+    analytics_retention_days: int = Field(
+        default=180,
+        ge=30,
+        le=730,
+        description="Retention period for raw analytics events.",
+    )
+    analytics_reports_retention_days: int = Field(
+        default=365,
+        ge=30,
+        le=1095,
+        description="Retention period for stored analytics reports.",
+    )
+    analytics_rollup_retention_days: int = Field(
+        default=1095,
+        ge=90,
+        le=3650,
+        description="Retention period for daily rollups.",
+    )
+    analytics_report_recipient_ids: list[int] = Field(
+        default_factory=list,
+        description="Telegram chat IDs for analytics reports.",
+    )
+    analytics_report_enabled: bool = Field(
+        default=False,
+        description="Enable scheduled analytics reports to Telegram.",
+    )
+
     @property
     def is_production(self) -> bool:
         """Check if running in production environment."""
@@ -191,6 +246,20 @@ class Settings(BaseSettings):
             return [str(origin) for origin in v]
         return v if v else []
 
+    @field_validator("analytics_report_recipient_ids", mode="before")
+    @classmethod
+    def parse_report_recipients(cls, v: Any) -> list[int]:
+        if isinstance(v, str):
+            if not v.strip():
+                return []
+            parts = [part.strip() for part in v.split(",") if part.strip()]
+            return [int(part) for part in parts if part.isdigit()]
+        if isinstance(v, int):
+            return [v]
+        if isinstance(v, list):
+            return [int(item) for item in v]
+        return v if v else []
+
     rate_limit: str = Field(
         default="60/minute",
         description="Rate limit string (e.g., '60/minute', '100/hour')",
@@ -235,6 +304,12 @@ class Settings(BaseSettings):
         # Use object.__setattr__ to bypass validate_assignment and avoid recursion
         if self.telegram_webapp_secret != webapp_secret:
             object.__setattr__(self, "telegram_webapp_secret", webapp_secret or None)
+        return self
+
+    @model_validator(mode="after")
+    def ensure_analytics_salt(self) -> Settings:
+        if self.analytics_enabled and self.is_production and not self.analytics_hash_salt:
+            raise ValueError("Analytics hash salt is required in production.")
         return self
 
     @model_validator(mode="after")
