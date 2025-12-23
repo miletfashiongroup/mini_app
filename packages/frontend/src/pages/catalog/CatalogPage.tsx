@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import CatalogCategoryTabs, { CatalogTabOption } from '@/components/catalog/CatalogCategoryTabs';
 import CatalogProductGrid, { CatalogProduct } from '@/components/catalog/CatalogProductGrid';
@@ -6,6 +6,7 @@ import CatalogSectionTitle from '@/components/catalog/CatalogSectionTitle';
 import { PageTopBar } from '@/components/brace';
 import { AppBottomNav } from '@/components/brace';
 import { useProductsQuery } from '@/shared/api/queries';
+import { trackEvent } from '@/shared/analytics/tracker';
 
 const CATEGORY_TABS: CatalogTabOption[] = [
   { id: 'trunks', label: 'Трусы' },
@@ -26,6 +27,8 @@ const formatPrice = (minorUnits?: number) =>
 export const CatalogPage = () => {
   const { data, isLoading, isError } = useProductsQuery();
   const [activeTab, setActiveTab] = useState<string>('');
+  const trackedCatalog = useRef(false);
+  const previousTab = useRef<string>('');
 
   const products: CatalogProduct[] = useMemo(
     () =>
@@ -45,11 +48,27 @@ export const CatalogPage = () => {
     [data?.items],
   );
 
+  useEffect(() => {
+    if (!isLoading && !isError && data?.items && !trackedCatalog.current) {
+      trackEvent('catalog_view', { items_count: data.items.length, category: activeTab || null }, '/catalog');
+      trackedCatalog.current = true;
+    }
+  }, [activeTab, data?.items, isError, isLoading]);
+
+  const handleTabChange = (nextTab: string) => {
+    const from = previousTab.current;
+    if (from !== nextTab) {
+      trackEvent('catalog_tab_change', { from_category: from || null, to_category: nextTab }, '/catalog');
+      previousTab.current = nextTab;
+    }
+    setActiveTab(nextTab);
+  };
+
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
       <PageTopBar />
       <CatalogSectionTitle title="Заголовок 2.1" />
-      <CatalogCategoryTabs tabs={CATEGORY_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <CatalogCategoryTabs tabs={CATEGORY_TABS} activeTab={activeTab} onChange={handleTabChange} />
       {isLoading ? (
         <p className="px-4 text-[14px]">Загружаем каталог...</p>
       ) : isError ? (

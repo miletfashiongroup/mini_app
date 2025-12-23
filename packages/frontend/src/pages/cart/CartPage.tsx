@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import newBadgeIcon from '@/assets/images/icon-new.svg';
 import { AppBottomNav, PageTopBar } from '@/components/brace';
@@ -7,9 +7,11 @@ import { cartKeys, deleteCartItem, updateCartItem } from '@/entities/cart/api/ca
 import type { CartCollection } from '@/entities/cart/model/types';
 import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
 import { useCartQuery } from '@/shared/api/queries';
+import { trackEvent } from '@/shared/analytics/tracker';
 
 type CartItemView = {
   id: string;
+  productId: string;
   title: string;
   sizeLabel: string;
   quantity: number;
@@ -211,6 +213,7 @@ export const CartPage = () => {
   const { data, isLoading, isError } = useCartQuery();
   const [showOrderSent, setShowOrderSent] = useState(false);
   const createOrderMutation = useCreateOrderMutation();
+  const cartTracked = useRef(false);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, quantity }: { id: string; quantity: number }) => updateCartItem(id, { quantity }),
@@ -225,6 +228,7 @@ export const CartPage = () => {
   const cartItems: CartItemView[] =
     data?.items?.map((item: CartCollection['items'][number], index: number) => ({
       id: String(item.id ?? index),
+      productId: String(item.product_id ?? ''),
       title: item.product_name ?? '—',
       sizeLabel: item.size ? String(item.size) : '—',
       quantity: item.quantity ?? 1,
@@ -240,11 +244,30 @@ export const CartPage = () => {
   const totalPrice = formatRubles(totalMinorUnits);
   const isCheckoutDisabled = cartItems.length === 0 || createOrderMutation.isPending;
 
+  useEffect(() => {
+    if (!cartTracked.current && !isLoading && !isError) {
+      trackEvent('cart_view', {
+        cart_items: cartItems.length,
+        cart_total_minor_units: totalMinorUnits,
+        currency: 'RUB',
+      }, '/cart');
+      cartTracked.current = true;
+    }
+  }, [cartItems.length, isError, isLoading, totalMinorUnits]);
+
   const handleCheckout = () => {
     if (isCheckoutDisabled) return;
+    trackEvent('checkout_start', {
+      cart_items: cartItems.length,
+      cart_total_minor_units: totalMinorUnits,
+      currency: 'RUB',
+    }, '/cart');
     createOrderMutation.mutate(undefined, {
       onSuccess: () => {
         setShowOrderSent(true);
+      },
+      onError: (err: any) => {
+        trackEvent('order_failed', { error_code: err?.type || 'unknown' }, '/cart');
       },
     });
   };
@@ -263,8 +286,29 @@ export const CartPage = () => {
         ) : (
           <CartItemList
             items={cartItems}
-            onChangeQty={(id, qty) => updateMutation.mutate({ id, quantity: qty })}
-            onRemove={(id) => deleteMutation.mutate(id)}
+            onChangeQty={(id, qty) => {
+              const item = cartItems.find((entry) => entry.id === id);
+              if (item) {
+                trackEvent('cart_quantity_change', {
+                  product_id: item.productId,
+                  size: item.sizeLabel,
+                  prev_quantity: item.quantity,
+                  next_quantity: qty,
+                }, '/cart');
+              }
+              updateMutation.mutate({ id, quantity: qty });
+            }}
+            onRemove={(id) => {
+              const item = cartItems.find((entry) => entry.id === id);
+              if (item) {
+                trackEvent('cart_item_remove', {
+                  product_id: item.productId,
+                  size: item.sizeLabel,
+                  quantity: item.quantity,
+                }, '/cart');
+              }
+              deleteMutation.mutate(id);
+            }}
           />
         )}
       </CartItemsSection>
