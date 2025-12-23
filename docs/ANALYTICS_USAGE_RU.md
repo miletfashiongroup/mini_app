@@ -63,12 +63,14 @@ poetry run python -m brace_backend.scripts.analytics_partitions --month 2025-02
 ```
 poetry run python -m brace_backend.scripts.analytics_report --type daily
 poetry run python -m brace_backend.scripts.analytics_report --type weekly
+poetry run python -m brace_backend.scripts.analytics_report --type daily --dry-run
 ```
 
 Cron примеры:
 ```
 15 4 * * * /usr/bin/env BRACE_DATABASE_URL=... BRACE_ANALYTICS_REPORT_ENABLED=true BRACE_ANALYTICS_REPORT_RECIPIENT_IDS=123 poetry run python -m brace_backend.scripts.analytics_report --type daily
 30 4 * * 1 /usr/bin/env BRACE_DATABASE_URL=... BRACE_ANALYTICS_REPORT_ENABLED=true BRACE_ANALYTICS_REPORT_RECIPIENT_IDS=123 poetry run python -m brace_backend.scripts.analytics_report --type weekly
+poetry run python -m brace_backend.scripts.analytics_report --type daily --dry-run
 ```
 
 ## Production checklist
