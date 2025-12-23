@@ -34,7 +34,9 @@ packages/frontend/vite.config.ts.timestamp-*
 volumes/
 
 # analytics infra local secrets
-infra/metabase/
+infra/metabase/*.env
+infra/metabase/*.pass
 wheelhouse/
 packages/wheelhouse/
 wheelhouse-requirements.txt
+packages/backend/requirements.txt

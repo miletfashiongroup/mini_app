@@ -1,7 +1,7 @@
 # BI и дашборды (Metabase)
 
 ## Быстрый старт
-1) Скопировать `infra/metabase/.env.metabase.example` в `infra/metabase/.env.metabase`.
+1) Скопировать `infra/metabase/metabase.env.example` в `/etc/brace/secrets/metabase/metabase.env`.
 2) Поднять Metabase:
 ```
 docker compose -f infra/docker-compose.metabase.yml up -d
@@ -103,3 +103,32 @@ ssh -i ~/.ssh/braceTG -L 3000:127.0.0.1:3000 root@79.174.93.119
 
 ## Временный статус
 - Metabase работает локально, но подключение к Postgres в режиме read-only ожидает выдачи прав на создание ролей.
+
+## Секреты и конфиги (VPS)
+- `admin` пароль: `/etc/brace/secrets/metabase/admin.pass`
+- env для Metabase: `/etc/brace/secrets/metabase/metabase.env`
+- Эти файлы не находятся в репозитории и имеют `chmod 600`.
+
+## Переход на Postgres для Metabase (обязательно для прод)
+1) Выполнить SQL‑скрипт с правами `CREATEROLE`/`CREATEDB`:
+```
+psql -h 79.174.88.146 -p 19051 -d postgres -U <dba_user> -f /root/brace__1/infra/db/create_metabase_roles.sql
+```
+2) Обновить `/etc/brace/secrets/metabase/metabase.env`:
+```
+MB_DB_TYPE=postgres
+MB_DB_HOST=79.174.88.146
+MB_DB_PORT=19051
+MB_DB_DBNAME=metabase_prod
+MB_DB_USER=metabase_app
+MB_DB_PASS=REPLACE_WITH_STRONG_PASSWORD
+MB_PASSWORD_COMPLEXITY=strong
+MB_PASSWORD_LENGTH=12
+```
+3) Перезапустить Metabase:
+```
+docker compose -f infra/docker-compose.metabase.yml up -d
+```
+
+## Read-only подключение к аналитике
+- После создания роли `metabase_ro` подключить БД `brace_prod` в Metabase как read‑only.

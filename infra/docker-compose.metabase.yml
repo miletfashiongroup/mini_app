@@ -7,7 +7,7 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     env_file:
-      - ./metabase/.env.metabase
+      - /etc/brace/secrets/metabase/metabase.env
     volumes:
       - metabase-data:/metabase-data
 

@@ -31,3 +31,17 @@
 - Cron‑задачи на rollup/alerts/report/cleanup присутствуют и выполняются.
 - Metabase доступен только через SSH‑туннель.
 - Для Metabase нужен read‑only пользователь БД `metabase_ro` (создается админом БД).
+
+## Проверка сборки (prod build verification)
+- Подготовить wheelhouse:
+```
+/root/brace__1/scripts/build_wheelhouse.sh /root/brace__1
+```
+- Пересобрать backend:
+```
+docker compose -f infra/docker-compose.prod.yml up -d --build backend
+```
+- Проверить health:
+```
+curl http://localhost:8000/api/analytics/health
+```
