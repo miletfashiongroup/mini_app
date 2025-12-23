@@ -37,3 +37,72 @@ FROM (
 ) AS ages
 GROUP BY age_bucket
 ORDER BY MIN(age_years);
+
+-- Analytics: daily funnel summary (using analytics_events + orders)
+WITH daily_events AS (
+  SELECT
+    DATE(occurred_at) AS day,
+    COUNT(*) FILTER (WHERE name = 'product_view') AS product_view,
+    COUNT(*) FILTER (WHERE name = 'add_to_cart') AS add_to_cart,
+    COUNT(*) FILTER (WHERE name = 'checkout_start') AS checkout_start
+  FROM analytics_events
+  GROUP BY 1
+),
+daily_orders AS (
+  SELECT
+    DATE(created_at) AS day,
+    COUNT(*) AS order_created,
+    COALESCE(SUM(total_amount_minor_units), 0) AS revenue_minor_units
+  FROM orders
+  GROUP BY 1
+)
+SELECT
+  e.day,
+  e.product_view,
+  e.add_to_cart,
+  e.checkout_start,
+  o.order_created,
+  o.revenue_minor_units,
+  ROUND(o.order_created::numeric / NULLIF(e.checkout_start, 0), 4) AS checkout_cr
+FROM daily_events e
+LEFT JOIN daily_orders o ON o.day = e.day
+ORDER BY e.day DESC;
+
+-- Analytics: daily rollup (use analytics_daily_metrics for dashboards)
+SELECT metric_date, metric_key, metric_value
+FROM analytics_daily_metrics
+ORDER BY metric_date DESC, metric_key;
+
+-- Analytics: DAU (sessions as proxy)
+SELECT metric_date, metric_value AS sessions
+FROM analytics_daily_metrics
+WHERE metric_key = 'sessions'
+ORDER BY metric_date DESC;
+
+-- Analytics: product CTR (catalog -> product_view)
+SELECT
+  properties->>'product_id' AS product_id,
+  COUNT(*) AS product_views
+FROM analytics_events
+WHERE name = 'product_view'
+GROUP BY 1
+ORDER BY product_views DESC;
+
+-- Analytics: size selection frequency
+SELECT
+  properties->>'product_id' AS product_id,
+  properties->>'size' AS size,
+  COUNT(*) AS selections
+FROM analytics_events
+WHERE name = 'size_selected'
+GROUP BY 1, 2
+ORDER BY selections DESC;
+
+-- Analytics: search/filter usage (when events are implemented)
+SELECT
+  DATE(occurred_at) AS day,
+  COUNT(*) FILTER (WHERE name = 'search_used') AS search_used,
+  COUNT(*) FILTER (WHERE name = 'filter_applied') AS filter_applied
+FROM analytics_events
+GROUP BY 1
+ORDER BY day DESC;
