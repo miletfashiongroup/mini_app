@@ -33,6 +33,7 @@
 - Для Metabase нужен read‑only пользователь БД `metabase_ro` (создается админом БД).
 
 ## Проверка сборки (prod build verification)
+- Убедиться, что `PIP_OFFLINE=1` задан в `/root/brace__1/.env`.
 - Подготовить wheelhouse:
 ```
 /root/brace__1/scripts/build_wheelhouse.sh /root/brace__1
