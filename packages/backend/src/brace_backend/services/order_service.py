@@ -15,6 +15,13 @@ from brace_backend.services.telegram_notify import notify_manager_order, notify_
 
 
 class OrderService:
+    allowed_admin_statuses = {
+        "pending",
+        "processing",
+        "shipped",
+        "cancelled",
+        "delivered",
+    }
     async def list_orders(
         self, uow: UnitOfWork, user_id: UUID, *, page: int | None, page_size: int | None
     ) -> tuple[list[OrderRead], int]:
@@ -170,6 +177,27 @@ class OrderService:
                 await notify_manager_order_cancel(order, user)
             except Exception as exc:
                 logger.warning("order_cancel_notify_failed", order_id=str(order.id), error=str(exc))
+        return self._to_schema(order)
+
+    async def set_status_admin(self, uow: UnitOfWork, *, order_id: UUID, status: str) -> OrderRead:
+        if status not in self.allowed_admin_statuses:
+            raise ValidationError("Invalid order status.")
+        order = await uow.orders.get_by_id(order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        if order.status == status:
+            return self._to_schema(order)
+        order.status = status
+        await uow.commit()
+        await uow.session.refresh(order, attribute_names=["items", "updated_at", "status"])
+        await audit_service.log(
+            uow,
+            action="order_status_updated",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"status": status},
+            actor_user_id=order.user_id,
+        )
         return self._to_schema(order)
 
     def _compute_idempotency(self, cart_items) -> str:

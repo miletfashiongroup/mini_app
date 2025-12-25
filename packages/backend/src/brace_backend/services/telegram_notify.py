@@ -14,6 +14,39 @@ from brace_backend.domain.user import User
 def _format_money(minor_units: int) -> str:
     return f"{Decimal(minor_units) / Decimal(100):.2f} RUB"
 
+def _admin_targets() -> tuple[str | None, list[int]]:
+    if settings.admin_bot_token and settings.admin_chat_ids:
+        return settings.admin_bot_token, settings.admin_chat_ids
+    if settings.telegram_bot_token and settings.order_manager_telegram_id:
+        return settings.telegram_bot_token, [settings.order_manager_telegram_id]
+    return None, []
+
+def _status_keyboard(order_id: str) -> dict[str, object]:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "Новый", "callback_data": f"status:{order_id}:pending"},
+                {"text": "В обработке", "callback_data": f"status:{order_id}:processing"},
+            ],
+            [
+                {"text": "Отправлен", "callback_data": f"status:{order_id}:shipped"},
+                {"text": "Доставлен", "callback_data": f"status:{order_id}:delivered"},
+            ],
+            [
+                {"text": "Отменён", "callback_data": f"status:{order_id}:cancelled"},
+            ],
+        ]
+    }
+
+async def _send_message(token: str, chat_id: int, text: str, reply_markup: dict | None = None) -> None:
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+        response = await client.post(url, json=payload)
+    response.raise_for_status()
+
 
 def _build_order_message(order: Order, user: User) -> str:
     lines = [
@@ -47,22 +80,20 @@ def _build_order_message(order: Order, user: User) -> str:
 
 
 async def notify_manager_order(order: Order, user: User) -> None:
-    manager_id = settings.order_manager_telegram_id
-    if not manager_id:
-        logger.info("order_notify_skipped", reason="manager_id_missing", order_id=str(order.id))
+    token, chat_ids = _admin_targets()
+    if not chat_ids:
+        logger.info("order_notify_skipped", reason="admin_chat_missing", order_id=str(order.id))
         return
-    if not settings.telegram_bot_token:
+    if not token:
         logger.warning("order_notify_skipped", reason="bot_token_missing", order_id=str(order.id))
         return
 
     message = _build_order_message(order, user)
-    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-    payload = {"chat_id": manager_id, "text": message}
 
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
-            response = await client.post(url, json=payload)
-        response.raise_for_status()
+        reply_markup = _status_keyboard(str(order.id)) if settings.admin_bot_token else None
+        for chat_id in chat_ids:
+            await _send_message(token, chat_id, message, reply_markup=reply_markup)
     except Exception as exc:  # pragma: no cover - external dependency
         logger.warning(
             "order_notify_failed",
@@ -72,11 +103,11 @@ async def notify_manager_order(order: Order, user: User) -> None:
 
 
 async def notify_manager_order_cancel(order: Order, user: User) -> None:
-    manager_id = settings.order_manager_telegram_id
-    if not manager_id:
-        logger.info("order_cancel_notify_skipped", reason="manager_id_missing", order_id=str(order.id))
+    token, chat_ids = _admin_targets()
+    if not chat_ids:
+        logger.info("order_cancel_notify_skipped", reason="admin_chat_missing", order_id=str(order.id))
         return
-    if not settings.telegram_bot_token:
+    if not token:
         logger.warning("order_cancel_notify_skipped", reason="bot_token_missing", order_id=str(order.id))
         return
 
@@ -99,13 +130,9 @@ async def notify_manager_order_cancel(order: Order, user: User) -> None:
             f"{_format_money(item.unit_price_minor_units)}"
         )
     message = "\n".join(lines)
-    url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-    payload = {"chat_id": manager_id, "text": message}
-
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
-            response = await client.post(url, json=payload)
-        response.raise_for_status()
+        for chat_id in chat_ids:
+            await _send_message(token, chat_id, message)
     except Exception as exc:  # pragma: no cover - external dependency
         logger.warning(
             "order_cancel_notify_failed",
