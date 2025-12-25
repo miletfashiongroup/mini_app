@@ -171,6 +171,16 @@ class AdminBot:
         response = await client.post(f"{self.api_base}/editMessageText", json=payload)
         response.raise_for_status()
 
+    async def _delete_message(
+        self,
+        client: httpx.AsyncClient,
+        chat_id: int,
+        message_id: int,
+    ) -> None:
+        payload: dict[str, Any] = {"chat_id": chat_id, "message_id": message_id}
+        response = await client.post(f"{self.api_base}/deleteMessage", json=payload)
+        response.raise_for_status()
+
     async def _answer_callback(self, client: httpx.AsyncClient, callback_id: str, text: str) -> None:
         response = await client.post(
             f"{self.api_base}/answerCallbackQuery",
@@ -336,8 +346,18 @@ class AdminBot:
                 try:
                     await self._delete_order(order_id)
                     await self._answer_callback(client, callback_id, "Заказ удален.")
-                    chat_id = callback.get("message", {}).get("chat", {}).get("id")
-                    if isinstance(chat_id, int):
+                    message = callback.get("message", {})
+                    chat_id = message.get("chat", {}).get("id")
+                    message_id = message.get("message_id")
+                    if isinstance(chat_id, int) and isinstance(message_id, int):
+                        try:
+                            await self._delete_message(client, chat_id, message_id)
+                        except Exception as exc:
+                            logger.warning(
+                                "admin_bot_delete_message_failed",
+                                order_id=str(order_id),
+                                error=str(exc),
+                            )
                         await self._send_message(
                             client,
                             chat_id,
