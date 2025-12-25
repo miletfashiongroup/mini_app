@@ -40,3 +40,8 @@ wheelhouse/
 packages/wheelhouse/
 wheelhouse-requirements.txt
 packages/backend/requirements.txt
+
+# Local artifacts
+brace_patch.tgz
+new_db_brace.xlsx
+products_brace.xlsx
