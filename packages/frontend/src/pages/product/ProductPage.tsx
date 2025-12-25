@@ -7,7 +7,7 @@ import ProductHeader from '@/components/product/ProductHeader';
 import { ProductCharacteristicsModal, ProductDescriptionModal } from '@/components/product/ProductInfoModal';
 import ProductMediaCarousel, { type ProductMediaCarouselHandle } from '@/components/product/ProductMediaCarousel';
 import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSizeSection';
-import ProductReviewsSection from '@/components/product/ProductReviewsSection';
+import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
 import ProductSizeTableModal from '@/components/product/ProductSizeTableModal';
 import { ProductTabId } from '@/components/product/ProductTabs';
@@ -15,7 +15,7 @@ import ProductTags from '@/components/product/ProductTags';
 import ProductThumbnailsStrip from '@/components/product/ProductThumbnailsStrip';
 import ProductTitle from '@/components/product/ProductTitle';
 import { useProductDetails } from '@/pages/product/useProductDetails';
-import { mockProductReviews } from '@/pages/product/mockReviews';
+import { useProductReviewsQuery } from '@/shared/api/queries';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { useRelatedProductsQuery } from '@/shared/api/queries';
 import { useToast } from '@/shared/hooks/useToast';
@@ -64,7 +64,25 @@ export const ProductPage = () => {
   const selectedVariant = selectedSizeId ? variantById.get(selectedSizeId) : primaryVariant;
   const selectedSize = selectedVariant?.size ?? primaryVariant?.size;
   const currency = 'RUB';
-  const reviews = mockProductReviews;
+  const { data: productReviews = [] } = useProductReviewsQuery(productId ?? '');
+  const reviews: ProductReview[] = useMemo(
+    () =>
+      productReviews.map((review) => ({
+        id: review.id,
+        name: review.is_anonymous ? 'Аноним' : review.author_name || 'Покупатель',
+        status: review.purchase_date ? 'Проверенный покупатель' : 'Покупатель',
+        ratingStarsCount: review.rating,
+        sizeLabel: review.size_label || undefined,
+        purchaseDate: review.purchase_date
+          ? new Date(review.purchase_date).toLocaleDateString('ru-RU')
+          : undefined,
+        text: review.text,
+        helpfulCount: review.helpful_count ?? 0,
+        notHelpfulCount: review.not_helpful_count ?? 0,
+        gallery: review.media?.map((media) => media.url) ?? [],
+      })),
+    [productReviews],
+  );
   const complementProducts = [
     ...(related?.items ?? []).map((item) => {
       const variant = item.variants?.[0];
@@ -212,11 +230,7 @@ export const ProductPage = () => {
       />
       <ProductReviewsSection
         reviews={reviews}
-        onMoreReviews={() => {
-          if (productId) {
-            navigate(`/product/${productId}/reviews`);
-          }
-        }}
+        moreLinkTo={productId ? `/product/${productId}/reviews` : undefined}
       />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />

@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 
 import starIcon from '@/assets/images/StarIcon.svg';
 import { Modal } from '@/shared/ui/Modal';
@@ -10,8 +11,8 @@ export type ProductReview = {
   name: string;
   status: string;
   ratingStarsCount?: number;
-  sizeLabel: string;
-  purchaseDate: string;
+  sizeLabel?: string;
+  purchaseDate?: string;
   text: string;
   helpfulCount?: number;
   notHelpfulCount?: number;
@@ -59,11 +60,11 @@ const ReviewMeta = ({ sizeLabel, purchaseDate }: Pick<ProductReview, 'sizeLabel'
   <div className="flex flex-col gap-3 text-[12px] leading-[1.3]">
     <div className="flex flex-col">
       <span className="font-semibold text-[#29292B]">Размер:</span>
-      <span className="text-[#29292B]">{sizeLabel}</span>
+      <span className="text-[#29292B]">{sizeLabel || '—'}</span>
     </div>
     <div className="flex flex-col">
       <span className="font-semibold text-[#29292B]">Дата покупки:</span>
-      <span className="text-[#BABABA]">{purchaseDate}</span>
+      <span className="text-[#BABABA]">{purchaseDate || '—'}</span>
     </div>
   </div>
 );
@@ -149,24 +150,25 @@ const ReviewGallery = ({
   images?: string[];
   onImageClick?: (src: string) => void;
 }) => (
-  <div className="mt-3 flex max-w-full flex-row gap-3 overflow-x-auto pl-[130px] pr-4">
-    {(images.length ? images : Array.from({ length: 5 })).map((src, index) => (
-      <button
-        key={index}
-        type="button"
-        className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-[12px] bg-[#D9D9D9] disabled:cursor-default"
-        disabled={!src}
-        onClick={() => {
-          if (src && onImageClick) {
-            onImageClick(src);
-          }
-        }}
-        aria-label="Открыть фото отзыва"
-      >
-        {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : null}
-      </button>
-    ))}
-  </div>
+  images.length ? (
+    <div className="mt-3 flex max-w-full flex-row gap-3 overflow-x-auto pl-[130px] pr-4">
+      {images.map((src, index) => (
+        <button
+          key={`${src}-${index}`}
+          type="button"
+          className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-[12px] bg-[#D9D9D9]"
+          onClick={() => {
+            if (onImageClick) {
+              onImageClick(src);
+            }
+          }}
+          aria-label="Открыть фото отзыва"
+        >
+          <img src={src} alt="" className="h-full w-full object-cover" />
+        </button>
+      ))}
+    </div>
+  ) : null
 );
 
 const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpfulCount?: number; notHelpfulCount?: number }) => (
@@ -194,7 +196,13 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
       <div className="w-full rounded-[16px] bg-white p-4 text-[#29292B] font-montserrat">
         <ReviewHeader name={review.name} status={review.status} ratingStarsCount={ratingStarsCount} />
         <ReviewMetaAndText review={review} />
-        <ReviewUtpBar label={review.utpLabel ?? 'УТП 1'} segments={review.utpSegments ?? 5} activeIndex={review.utpActiveIndex ?? 0} />
+        {review.utpLabel ? (
+          <ReviewUtpBar
+            label={review.utpLabel}
+            segments={review.utpSegments ?? 5}
+            activeIndex={review.utpActiveIndex ?? 0}
+          />
+        ) : null}
         <ReviewGallery images={galleryImages} onImageClick={onImageClick} />
         <ReviewHelpfulBlock helpfulCount={review.helpfulCount} notHelpfulCount={review.notHelpfulCount} />
       </div>
@@ -202,36 +210,56 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
   );
 };
 
-const ProductReviewsMoreLink = ({ onClick }: { onClick?: () => void }) => (
+const ProductReviewsMoreLink = ({ onClick, to }: { onClick?: () => void; to?: string }) => (
   <div className="px-4 mt-4 mb-4">
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex items-center gap-2 text-[14px] font-medium text-[#29292B] transition duration-150 ease-out hover:text-[#1f1f21] active:scale-[0.97]"
-    >
-      <span>Больше отзывов</span>
-      <ChevronDownIcon />
-    </button>
+    {to ? (
+      <Link
+        to={to}
+        className="relative z-10 inline-flex items-center gap-2 text-[14px] font-medium text-[#29292B] transition duration-150 ease-out hover:text-[#1f1f21] active:scale-[0.97]"
+      >
+        <span>Больше отзывов</span>
+        <ChevronDownIcon />
+      </Link>
+    ) : (
+      <button
+        type="button"
+        onClick={onClick}
+        className="relative z-10 flex items-center gap-2 text-[14px] font-medium text-[#29292B] transition duration-150 ease-out hover:text-[#1f1f21] active:scale-[0.97]"
+      >
+        <span>Больше отзывов</span>
+        <ChevronDownIcon />
+      </button>
+    )}
   </div>
 );
 
 const ProductReviewsSection = ({
   reviews,
   onMoreReviews,
+  moreLinkTo,
   showCta = true,
 }: {
   reviews: ProductReview[];
   onMoreReviews?: () => void;
+  moreLinkTo?: string;
   showCta?: boolean;
 }) => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   return (
     <section className="mt-4">
-      {reviews.map((review) => (
-        <ProductReviewCard key={review.id} review={review} onImageClick={setSelectedImage} />
-      ))}
-      {onMoreReviews ? <ProductReviewsMoreLink onClick={onMoreReviews} /> : null}
+      {reviews.length ? (
+        reviews.map((review) => (
+          <ProductReviewCard key={review.id} review={review} onImageClick={setSelectedImage} />
+        ))
+      ) : (
+        <div className="px-4 mt-4 text-[12px] text-[#8E8E8E]">
+          Отзывов пока нет.
+        </div>
+      )}
+      {onMoreReviews || moreLinkTo ? (
+        <ProductReviewsMoreLink onClick={onMoreReviews} to={moreLinkTo} />
+      ) : null}
       {showCta ? <ProductMainCTA className="mt-4 mb-8" /> : null}
       <Modal
         isOpen={Boolean(selectedImage)}

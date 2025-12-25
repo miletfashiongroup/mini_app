@@ -9,10 +9,12 @@ import { type CartCollection, cartKeys, fetchCart } from '@/entities/cart/api/ca
 import {
   type Product,
   type ProductListResult,
+  type ProductReview,
   fetchProductById,
   fetchProducts,
   productKeys,
   fetchRelatedProducts,
+  fetchProductReviews,
 } from '@/entities/product/api/productApi';
 import { type Order, fetchOrderById, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
@@ -51,6 +53,17 @@ export const useRelatedProductsQuery = (
   useQuery<ProductListResult, ApiError>({
     queryKey: [...productKeys.detail(productId), 'related'],
     queryFn: () => fetchRelatedProducts(productId),
+    enabled: Boolean(productId),
+    ...options,
+  });
+
+export const useProductReviewsQuery = (
+  productId: string,
+  options?: QueryOptions<ProductReview[]>,
+) =>
+  useQuery<ProductReview[], ApiError>({
+    queryKey: [...productKeys.detail(productId), 'reviews'],
+    queryFn: () => fetchProductReviews(productId),
     enabled: Boolean(productId),
     ...options,
   });

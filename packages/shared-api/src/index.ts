@@ -26,6 +26,28 @@ export interface components {
       specs?: string[];
       variants?: components['schemas']['ProductVariant'][];
     };
+    ProductReviewMediaRead: {
+      id: string;
+      url: string;
+      sort_order: number;
+      created_at: string;
+    };
+    ProductReviewRead: {
+      id: string;
+      product_id: string;
+      rating: number;
+      text: string;
+      is_anonymous: boolean;
+      status: string;
+      created_at: string;
+      updated_at: string;
+      author_name: string;
+      helpful_count?: number;
+      not_helpful_count?: number;
+      size_label?: string | null;
+      purchase_date?: string | null;
+      media?: components['schemas']['ProductReviewMediaRead'][];
+    };
     CartItemRead: {
       id: string;
       product_id?: string;
