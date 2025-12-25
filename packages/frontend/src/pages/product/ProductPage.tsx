@@ -69,7 +69,7 @@ export const ProductPage = () => {
     () =>
       productReviews.map((review) => ({
         id: review.id,
-        name: review.is_anonymous ? 'Аноним' : review.author_name || 'Покупатель',
+        name: review.author_name || 'Покупатель',
         status: review.purchase_date ? 'Проверенный покупатель' : 'Покупатель',
         ratingStarsCount: review.rating,
         sizeLabel: review.size_label || undefined,
