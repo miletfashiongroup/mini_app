@@ -100,7 +100,7 @@ const ReviewTextBubble = ({
 }) => (
   <div
     ref={containerRef}
-    className={`w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 ${!isExpanded && canExpand ? 'max-h-[140px] overflow-hidden' : ''} ${className}`}
+    className={`w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 ${!isExpanded ? 'max-h-[140px] overflow-hidden' : ''} ${className}`}
     style={style}
   >
     <p className="break-words text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
@@ -111,7 +111,9 @@ const ReviewTextBubble = ({
         className="mt-2 flex w-full items-center justify-center text-[12px] text-[#29292B]"
         aria-label={isExpanded ? 'Свернуть отзыв' : 'Показать полный отзыв'}
       >
-        <ChevronDownIcon />
+        <span className={`inline-flex transition ${isExpanded ? 'rotate-180' : ''}`}>
+          <ChevronDownIcon />
+        </span>
       </button>
     ) : null}
   </div>

@@ -138,11 +138,13 @@ class OrderService:
         order = await uow.orders.get_for_user(user_id=user_id, order_id=order_id)
         if not order:
             raise NotFoundError("Order not found.")
-        if order.status in ("cancelled", "delivered", "refunded"):
+        if order.status == "cancelled":
+            return self._to_schema(order)
+        if order.status in ("delivered", "refunded"):
             raise ValidationError("Order cannot be cancelled.")
         order.status = "cancelled"
         await uow.commit()
-        await uow.session.refresh(order, attribute_names=["items"])
+        await uow.session.refresh(order, attribute_names=["items", "updated_at", "status"])
         await audit_service.log(
             uow,
             action="order_cancelled",
@@ -151,10 +153,11 @@ class OrderService:
             metadata={"items": len(order.items)},
             actor_user_id=user_id,
         )
+        occurred_at = order.updated_at or order.created_at
         await analytics_service.record_server_event(
             uow,
             name="order_cancelled",
-            occurred_at=order.updated_at,
+            occurred_at=occurred_at,
             user_id=user_id,
             properties={
                 "order_id": str(order.id),
