@@ -113,36 +113,6 @@ const ReviewMetaAndText = ({ review }: { review: ProductReview }) => (
   </div>
 );
 
-const ReviewUtpBar = ({ label = 'УТП 1', segments = 5, activeIndex = 0 }: { label?: string; segments?: number; activeIndex?: number }) => {
-  const safeSegments = Math.max(1, segments);
-  const clampedActive = Math.min(Math.max(activeIndex, 0), safeSegments - 1);
-  const denominator = Math.max(safeSegments - 1, 1);
-  const activePercent = (clampedActive / denominator) * 100;
-
-  return (
-    <div className="mt-4">
-      <span className="text-[12px] font-semibold text-[#29292B]">{label}</span>
-
-      <div className="mt-2">
-        <div className="relative h-3 mb-1">
-          <div className="absolute left-0 w-[120px] top-1/2 h-[1px] -translate-y-1/2 bg-[#D9D9D9]" />
-          <div className="absolute left-0 w-[120px] top-1/2 -translate-y-1/2 flex justify-between px-[4px]">
-            {Array.from({ length: safeSegments }).map((_, index) => (
-              <span key={index} className="h-[3px] w-[10px] rounded-full bg-[#D9D9D9]" />
-            ))}
-          </div>
-          <div className="hidden" />
-        </div>
-
-        <div className="mt-1 flex flex-row items-center gap-3 text-[10px] text-[#BABABA]" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
-          <span style={{ marginLeft: '-5px' , marginTop: '-2px'}}>мин</span>
-          <span style={{ marginLeft: '62px' , marginTop: '-2px'}}>макс</span>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const ReviewGallery = ({
   images = [],
   onImageClick,
@@ -151,7 +121,7 @@ const ReviewGallery = ({
   onImageClick?: (src: string) => void;
 }) => (
   images.length ? (
-    <div className="mt-3 flex max-w-full flex-row gap-3 overflow-x-auto pl-[130px] pr-4">
+    <div className="flex max-w-full flex-row gap-3 overflow-x-auto">
       {images.map((src, index) => (
         <button
           key={`${src}-${index}`}
@@ -172,14 +142,14 @@ const ReviewGallery = ({
 );
 
 const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpfulCount?: number; notHelpfulCount?: number }) => (
-  <div className="mt-4 pl-[130px] pr-4">
-    <p className="text-[12px] font-semibold text-[#29292B]">Вам был полезен этот отзыв?</p>
-    <div className="mt-1 flex flex-row items-center gap-6 text-[12px] text-[#29292B]">
-      <div className="flex flex-row items-center gap-1">
+  <div className="flex flex-wrap items-center gap-3 text-[12px]">
+    <span className="text-[#8E8E8E]">Вам был полезен этот отзыв?</span>
+    <div className="flex items-center gap-2">
+      <div className="inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-white px-2 py-[2px] text-[#29292B]">
         <span>👍</span>
         <span>{helpfulCount}</span>
       </div>
-      <div className="flex flex-row items-center gap-1">
+      <div className="inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-white px-2 py-[2px] text-[#29292B]">
         <span>👎</span>
         <span>{notHelpfulCount}</span>
       </div>
@@ -187,24 +157,31 @@ const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpful
   </div>
 );
 
+const ReviewFooter = ({
+  review,
+  onImageClick,
+}: {
+  review: ProductReview;
+  onImageClick?: (src: string) => void;
+}) => (
+  <div className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-3">
+    <div />
+    <div className="flex min-w-0 flex-col gap-3">
+      <ReviewGallery images={review.gallery ?? []} onImageClick={onImageClick} />
+      <ReviewHelpfulBlock helpfulCount={review.helpfulCount} notHelpfulCount={review.notHelpfulCount} />
+    </div>
+  </div>
+);
+
 const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; onImageClick?: (src: string) => void }) => {
   const ratingStarsCount = review.ratingStarsCount ?? 5;
-  const galleryImages = review.gallery ?? [];
 
   return (
     <article className="px-4 mt-4">
       <div className="w-full rounded-[16px] bg-white p-4 text-[#29292B] font-montserrat">
         <ReviewHeader name={review.name} status={review.status} ratingStarsCount={ratingStarsCount} />
         <ReviewMetaAndText review={review} />
-        {review.utpLabel ? (
-          <ReviewUtpBar
-            label={review.utpLabel}
-            segments={review.utpSegments ?? 5}
-            activeIndex={review.utpActiveIndex ?? 0}
-          />
-        ) : null}
-        <ReviewGallery images={galleryImages} onImageClick={onImageClick} />
-        <ReviewHelpfulBlock helpfulCount={review.helpfulCount} notHelpfulCount={review.notHelpfulCount} />
+        <ReviewFooter review={review} onImageClick={onImageClick} />
       </div>
     </article>
   );

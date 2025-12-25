@@ -83,6 +83,7 @@ export const ProductPage = () => {
       })),
     [productReviews],
   );
+  const previewReviews = useMemo(() => reviews.slice(0, 1), [reviews]);
   const complementProducts = [
     ...(related?.items ?? []).map((item) => {
       const variant = item.variants?.[0];
@@ -229,7 +230,7 @@ export const ProductPage = () => {
         onOpenSpecs={() => setIsCharacteristicsModalOpen(true)}
       />
       <ProductReviewsSection
-        reviews={reviews}
+        reviews={previewReviews}
         moreLinkTo={productId ? `/product/${productId}/reviews` : undefined}
       />
       <ProductComplementSection products={complementProducts} />
