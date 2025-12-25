@@ -7,8 +7,13 @@ export type { Product, ProductVariant } from '../model/types';
 
 export const productKeys = {
   all: ['products'] as const,
-  list: (params?: { page?: number; pageSize?: number }) =>
-    [...productKeys.all, params?.page ?? 'all', params?.pageSize ?? 'all'] as const,
+  list: (params?: { page?: number; pageSize?: number; category?: string }) =>
+    [
+      ...productKeys.all,
+      params?.page ?? 'all',
+      params?.pageSize ?? 'all',
+      params?.category ?? 'all',
+    ] as const,
   detail: (productId: string) => [...productKeys.all, 'detail', productId] as const,
 };
 

@@ -24,8 +24,8 @@ BEGIN
 END $$;
 
 -- Read-only доступ к аналитике
-GRANT CONNECT ON DATABASE brace_prod TO metabase_ro;
-\connect brace_prod
+GRANT CONNECT ON DATABASE brace_tg TO metabase_ro;
+\connect brace_tg
 GRANT USAGE ON SCHEMA public TO metabase_ro;
 GRANT SELECT ON TABLE analytics_events TO metabase_ro;
 GRANT SELECT ON TABLE analytics_daily_metrics TO metabase_ro;

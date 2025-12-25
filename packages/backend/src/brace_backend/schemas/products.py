@@ -17,6 +17,7 @@ class ProductRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
+    product_code: str | None = None
     name: str
     description: str | None = None
     hero_media_url: str | None = None

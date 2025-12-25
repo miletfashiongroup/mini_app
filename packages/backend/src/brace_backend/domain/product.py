@@ -48,6 +48,7 @@ class Product(BaseModel, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     hero_media_url: Mapped[str | None] = mapped_column(String(512))
+    product_code: Mapped[str | None] = mapped_column(String(64), unique=True)
     category: Mapped[str | None] = mapped_column(String(50))
     is_new: Mapped[bool] = mapped_column(Boolean, default=False)
     rating_value: Mapped[float] = mapped_column(Float, default=0)

@@ -35,3 +35,7 @@ export const updateProfile = async (payload: UserProfileUpdate): Promise<UserPro
   const response = await apiClient.put<UserProfile>('/users/me/profile', payload);
   return response.data;
 };
+
+export const deleteProfile = async (): Promise<void> => {
+  await apiClient.delete('/users/me');
+};

@@ -12,6 +12,7 @@ export interface components {
     };
     ProductRead: {
       id: string;
+      product_code?: string | null;
       name: string;
       description?: string | null;
       hero_media_url?: string | null;
@@ -21,6 +22,7 @@ export interface components {
       rating_value?: number | null;
       rating_count?: number | null;
       is_new?: boolean | null;
+      gallery?: string[];
       specs?: string[];
       variants?: components['schemas']['ProductVariant'][];
     };
@@ -46,6 +48,9 @@ export interface components {
     OrderItemRead: {
       id?: string;
       product_id?: string;
+      product_name?: string | null;
+      product_code?: string | null;
+      hero_media_url?: string | null;
       size?: string;
       quantity?: number;
       unit_price_minor_units?: number;

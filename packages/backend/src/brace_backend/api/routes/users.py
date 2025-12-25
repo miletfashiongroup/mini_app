@@ -62,3 +62,12 @@ async def update_profile(
         user_agent=request.headers.get("user-agent"),
     )
     return SuccessResponse[UserProfile](data=UserProfile.model_validate(user))
+
+
+@router.delete("/me", response_model=SuccessResponse[dict[str, str]])
+async def delete_me(
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[dict[str, str]]:
+    await user_service.delete_account(uow, current_user)
+    return SuccessResponse[dict[str, str]](data={"status": "deleted"})

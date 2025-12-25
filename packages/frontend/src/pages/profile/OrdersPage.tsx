@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { AppBottomNav, PageTopBar } from '@/components/brace';
 import type { Order } from '@/entities/order/model/types';
@@ -23,8 +24,12 @@ const formatOrderStage = (status?: string) => {
   return ORDER_STATUS_LABELS[key] || status;
 };
 
-const OrderCard = ({ order }: { order: Order }) => (
-  <div className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 shadow-sm">
+const OrderCard = ({ order, onClick }: { order: Order; onClick: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-left shadow-sm transition duration-150 ease-out hover:shadow-md"
+  >
     <div className="flex items-center justify-between gap-3">
       <span className="text-[14px] font-semibold text-[#29292B]">Заказ #{order.id.slice(0, 8)}</span>
       <span className="rounded-full bg-[#F2F2F6] px-3 py-1 text-[12px] font-semibold text-[#29292B]">
@@ -37,10 +42,11 @@ const OrderCard = ({ order }: { order: Order }) => (
       </span>
       <span className="font-semibold text-[#29292B]">{formatPrice(order.total_minor_units)}</span>
     </div>
-  </div>
+  </button>
 );
 
 export const OrdersPage = () => {
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useOrdersQuery();
   const orders = useMemo(() => data ?? [], [data]);
 
@@ -55,7 +61,7 @@ export const OrdersPage = () => {
       ) : orders.length ? (
         <div className="flex flex-col gap-3">
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={order} onClick={() => navigate(`/profile/orders/${order.id}`)} />
           ))}
         </div>
       ) : (

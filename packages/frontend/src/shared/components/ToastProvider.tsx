@@ -70,7 +70,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
           <div
             aria-live="polite"
             aria-atomic="true"
-            className="pointer-events-none fixed inset-x-0 bottom-0 flex flex-col items-center gap-2 pb-6"
+            className="pointer-events-none fixed inset-x-0 bottom-24 z-50 flex flex-col items-center gap-2 pb-2"
           >
             {toasts.map((toast) => (
               <button

@@ -281,6 +281,30 @@ const ProductCardsCarousel = () => {
     [data?.items],
   );
   const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const loopedItems = useMemo(
+    () => (items.length ? [...items, ...items, ...items] : []),
+    [items],
+  );
+  const itemStride = CARD_WIDTH + GAP_PX;
+
+  useEffect(() => {
+    if (!containerRef.current || items.length === 0) return;
+    // Центруем на средней группе, чтобы можно было «крутить» без видимых краёв.
+    containerRef.current.scrollLeft = itemStride * items.length;
+  }, [itemStride, items.length]);
+
+  const handleScroll = () => {
+    const el = containerRef.current;
+    if (!el || items.length === 0) return;
+    const loopSpan = itemStride * items.length;
+    const maxOffset = loopSpan * 2;
+    if (el.scrollLeft < itemStride * 0.5) {
+      el.scrollLeft += loopSpan;
+    } else if (el.scrollLeft > maxOffset + itemStride * 0.5) {
+      el.scrollLeft -= loopSpan;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -301,12 +325,14 @@ const ProductCardsCarousel = () => {
     <section className="px-4">
       <h2 className="mb-4 text-[21px] font-bold text-text-primary">Популярные модели</h2>
       <div
-        className="w-full overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [-webkit-overflow-scrolling:touch]"
+        className="w-full overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]"
+        ref={containerRef}
+        onScroll={handleScroll}
       >
-        <div className="flex items-stretch gap-6 pr-6">
-          {items.map((item) => (
+        <div className="flex items-stretch gap-6 pr-6" style={{ scrollSnapType: 'x mandatory' }}>
+          {loopedItems.map((item, idx) => (
             <CarouselCard
-              key={item.id}
+              key={`${item.id}-${idx}`}
               isNew={item.isNew}
               imageUrl={item.imageUrl}
               ariaLabel={`Карточка ${item.id}`}

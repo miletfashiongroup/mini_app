@@ -14,7 +14,7 @@ import {
   productKeys,
   fetchRelatedProducts,
 } from '@/entities/product/api/productApi';
-import { type Order, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
+import { type Order, fetchOrderById, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
 import { ApiError } from '@/shared/api/types';
 
@@ -24,7 +24,7 @@ type QueryOptions<TData> = Omit<
 >;
 
 export const useProductsQuery = (
-  params?: { page?: number; pageSize?: number },
+  params?: { page?: number; pageSize?: number; category?: string },
   options?: QueryOptions<ProductListResult>,
 ) =>
   useQuery<ProductListResult, ApiError>({
@@ -81,5 +81,13 @@ export const useOrdersQuery = (options?: QueryOptions<Order[]>) =>
   useQuery<Order[], ApiError>({
     queryKey: orderKeys.list,
     queryFn: fetchOrders,
+    ...options,
+  });
+
+export const useOrderQuery = (orderId: string, options?: QueryOptions<Order>) =>
+  useQuery<Order, ApiError>({
+    queryKey: orderKeys.detail(orderId),
+    queryFn: () => fetchOrderById(orderId),
+    enabled: Boolean(orderId),
     ...options,
   });

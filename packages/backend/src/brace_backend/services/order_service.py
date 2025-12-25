@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from uuid import UUID
 
-from brace_backend.core.exceptions import ValidationError
+from brace_backend.core.exceptions import NotFoundError, ValidationError
 from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.order import Order
@@ -11,7 +11,7 @@ from brace_backend.domain.product import ProductVariant
 from brace_backend.services.audit_service import audit_service
 from brace_backend.services.analytics_service import analytics_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
-from brace_backend.services.telegram_notify import notify_manager_order
+from brace_backend.services.telegram_notify import notify_manager_order, notify_manager_order_cancel
 
 
 class OrderService:
@@ -128,6 +128,44 @@ class OrderService:
             await notify_manager_order(order, user)
         return self._to_schema(order)
 
+    async def get_order(self, uow: UnitOfWork, *, user_id: UUID, order_id: UUID) -> OrderRead:
+        order = await uow.orders.get_for_user(user_id=user_id, order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        return self._to_schema(order)
+
+    async def cancel_order(self, uow: UnitOfWork, *, user_id: UUID, order_id: UUID) -> OrderRead:
+        order = await uow.orders.get_for_user(user_id=user_id, order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        if order.status in ("cancelled", "delivered", "refunded"):
+            raise ValidationError("Order cannot be cancelled.")
+        order.status = "cancelled"
+        await uow.commit()
+        await uow.session.refresh(order, attribute_names=["items"])
+        await audit_service.log(
+            uow,
+            action="order_cancelled",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"items": len(order.items)},
+            actor_user_id=user_id,
+        )
+        await analytics_service.record_server_event(
+            uow,
+            name="order_cancelled",
+            occurred_at=order.updated_at,
+            user_id=user_id,
+            properties={
+                "order_id": str(order.id),
+                "items_count": len(order.items),
+            },
+        )
+        user = await uow.users.get(user_id)
+        if user:
+            await notify_manager_order_cancel(order, user)
+        return self._to_schema(order)
+
     def _compute_idempotency(self, cart_items) -> str:
         digest = hashlib.sha256()
         for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
@@ -149,6 +187,9 @@ class OrderService:
                 {
                     "id": item.id,
                     "product_id": item.product_id,
+                    "product_name": item.product.name if item.product else None,
+                    "product_code": item.product.product_code if item.product else None,
+                    "hero_media_url": item.product.hero_media_url if item.product else None,
                     "size": item.size,
                     "quantity": item.quantity,
                     "unit_price_minor_units": item.unit_price_minor_units,

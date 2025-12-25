@@ -87,3 +87,8 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         )
         result = await self.session.scalars(stmt)
         return result.unique().one_or_none()
+
+    async def get_for_user(self, *, user_id: UUID, order_id: UUID) -> Order | None:
+        stmt = self._base_stmt().where(Order.user_id == user_id, Order.id == order_id)
+        result = await self.session.scalars(stmt)
+        return result.unique().one_or_none()
