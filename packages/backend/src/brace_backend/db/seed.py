@@ -28,7 +28,7 @@ def _resolve_seed_url() -> str:
     override = os.getenv("SEED_DATABASE_URL")
     if override:
         return ensure_sync_dsn(override)
-    return settings.sync_database_url
+    return settings.database_url.replace('postgresql+psycopg_async://','postgresql+psycopg://')
 
 
 def _validate_seed_url(url: str) -> str:
