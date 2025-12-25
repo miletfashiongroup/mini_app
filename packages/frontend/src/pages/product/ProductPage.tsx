@@ -7,15 +7,15 @@ import ProductHeader from '@/components/product/ProductHeader';
 import { ProductCharacteristicsModal, ProductDescriptionModal } from '@/components/product/ProductInfoModal';
 import ProductMediaCarousel, { type ProductMediaCarouselHandle } from '@/components/product/ProductMediaCarousel';
 import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSizeSection';
-import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
+import ProductReviewsSection from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
 import ProductSizeTableModal from '@/components/product/ProductSizeTableModal';
 import { ProductTabId } from '@/components/product/ProductTabs';
 import ProductTags from '@/components/product/ProductTags';
 import ProductThumbnailsStrip from '@/components/product/ProductThumbnailsStrip';
 import ProductTitle from '@/components/product/ProductTitle';
-import reviewPlaceholder from '@/assets/images/shutterstock.svg';
 import { useProductDetails } from '@/pages/product/useProductDetails';
+import { mockProductReviews } from '@/pages/product/mockReviews';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { useRelatedProductsQuery } from '@/shared/api/queries';
 import { useToast } from '@/shared/hooks/useToast';
@@ -64,23 +64,7 @@ export const ProductPage = () => {
   const selectedVariant = selectedSizeId ? variantById.get(selectedSizeId) : primaryVariant;
   const selectedSize = selectedVariant?.size ?? primaryVariant?.size;
   const currency = 'RUB';
-  const reviews: ProductReview[] = [
-    {
-      id: 'rev1',
-      name: 'Имя',
-      status: 'статус',
-      sizeLabel: 'Brace 2 (46)',
-      purchaseDate: '12.10.2023',
-      text:
-        'Отличное качество и посадка. Ткань приятная, швы аккуратные. Размер подошел идеально, буду заказывать еще.',
-      helpfulCount: 3,
-      notHelpfulCount: 0,
-      utpLabel: 'УТП 1',
-      utpSegments: 5,
-      utpActiveIndex: 2,
-      gallery: [reviewPlaceholder],
-    },
-  ];
+  const reviews = mockProductReviews;
   const complementProducts = [
     ...(related?.items ?? []).map((item) => {
       const variant = item.variants?.[0];
@@ -226,7 +210,14 @@ export const ProductPage = () => {
         onOpenDescription={() => setIsDescriptionModalOpen(true)}
         onOpenSpecs={() => setIsCharacteristicsModalOpen(true)}
       />
-      <ProductReviewsSection reviews={reviews} />
+      <ProductReviewsSection
+        reviews={reviews}
+        onMoreReviews={() => {
+          if (productId) {
+            navigate(`/product/${productId}/reviews`);
+          }
+        }}
+      />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
       <ProductBottomBar

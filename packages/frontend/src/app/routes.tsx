@@ -7,6 +7,7 @@ import { Homepage } from '@/pages/Homepage';
 import { PlaceholderPage } from '@/pages/placeholder/PlaceholderPage';
 import { ProductDescriptionPage } from '@/pages/product/ProductDescriptionPage';
 import { ProductPage } from '@/pages/product/ProductPage';
+import { ProductReviewsPage } from '@/pages/product/ProductReviewsPage';
 import { ProductSpecsPage } from '@/pages/product/ProductSpecsPage';
 import { AccountPage } from '@/pages/profile/AccountPage';
 import { OrderDetailsPage } from '@/pages/profile/OrderDetailsPage';
@@ -23,6 +24,7 @@ const routes: RouteObject[] = [
   { path: '/product/:productId', element: <ProductPage /> },
   { path: '/product/:productId/description', element: <ProductDescriptionPage /> },
   { path: '/product/:productId/specs', element: <ProductSpecsPage /> },
+  { path: '/product/:productId/reviews', element: <ProductReviewsPage /> },
   { path: '/cart', element: <CartPage /> },
   { path: '/profile', element: <ProfilePage /> },
   { path: '/profile/account', element: <AccountPage /> },

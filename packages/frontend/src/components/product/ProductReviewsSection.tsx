@@ -1,4 +1,7 @@
+import { useState, type CSSProperties } from 'react';
+
 import starIcon from '@/assets/images/StarIcon.svg';
+import { Modal } from '@/shared/ui/Modal';
 
 import ProductMainCTA from './ProductMainCTA';
 
@@ -80,7 +83,7 @@ const ReviewTextBubble = ({
   text: string;
   onToggle?: () => void;
   className?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }) => (
   <div
     className={`relative z-10 w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 min-h-[140px] ${className}`}
@@ -139,16 +142,29 @@ const ReviewUtpBar = ({ label = 'УТП 1', segments = 5, activeIndex = 0 }: { l
   );
 };
 
-const ReviewGallery = ({ images = [] }: { images?: string[] }) => (
+const ReviewGallery = ({
+  images = [],
+  onImageClick,
+}: {
+  images?: string[];
+  onImageClick?: (src: string) => void;
+}) => (
   <div className="mt-3 flex max-w-full flex-row gap-3 overflow-x-auto pl-[130px] pr-4">
     {(images.length ? images : Array.from({ length: 5 })).map((src, index) => (
-      <div
+      <button
         key={index}
-        className="w-20 aspect-[232/309] flex-shrink-0 overflow-hidden rounded-[25px] bg-[#D9D9D9]"
-        style={{ borderRadius: '10px' }}
+        type="button"
+        className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-[12px] bg-[#D9D9D9] disabled:cursor-default"
+        disabled={!src}
+        onClick={() => {
+          if (src && onImageClick) {
+            onImageClick(src);
+          }
+        }}
+        aria-label="Открыть фото отзыва"
       >
         {src ? <img src={src} alt="" className="h-full w-full object-cover" /> : null}
-      </div>
+      </button>
     ))}
   </div>
 );
@@ -169,7 +185,7 @@ const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpful
   </div>
 );
 
-const ProductReviewCard = ({ review }: { review: ProductReview }) => {
+const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; onImageClick?: (src: string) => void }) => {
   const ratingStarsCount = review.ratingStarsCount ?? 5;
   const galleryImages = review.gallery ?? [];
 
@@ -179,7 +195,7 @@ const ProductReviewCard = ({ review }: { review: ProductReview }) => {
         <ReviewHeader name={review.name} status={review.status} ratingStarsCount={ratingStarsCount} />
         <ReviewMetaAndText review={review} />
         <ReviewUtpBar label={review.utpLabel ?? 'УТП 1'} segments={review.utpSegments ?? 5} activeIndex={review.utpActiveIndex ?? 0} />
-        <ReviewGallery images={galleryImages} />
+        <ReviewGallery images={galleryImages} onImageClick={onImageClick} />
         <ReviewHelpfulBlock helpfulCount={review.helpfulCount} notHelpfulCount={review.notHelpfulCount} />
       </div>
     </article>
@@ -199,14 +215,35 @@ const ProductReviewsMoreLink = ({ onClick }: { onClick?: () => void }) => (
   </div>
 );
 
-const ProductReviewsSection = ({ reviews }: { reviews: ProductReview[] }) => (
-  <section className="mt-4">
-    {reviews.map((review) => (
-      <ProductReviewCard key={review.id} review={review} />
-    ))}
-    <ProductReviewsMoreLink />
-    <ProductMainCTA className="mt-4 mb-8" />
-  </section>
-);
+const ProductReviewsSection = ({
+  reviews,
+  onMoreReviews,
+  showCta = true,
+}: {
+  reviews: ProductReview[];
+  onMoreReviews?: () => void;
+  showCta?: boolean;
+}) => {
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  return (
+    <section className="mt-4">
+      {reviews.map((review) => (
+        <ProductReviewCard key={review.id} review={review} onImageClick={setSelectedImage} />
+      ))}
+      {onMoreReviews ? <ProductReviewsMoreLink onClick={onMoreReviews} /> : null}
+      {showCta ? <ProductMainCTA className="mt-4 mb-8" /> : null}
+      <Modal
+        isOpen={Boolean(selectedImage)}
+        onClose={() => setSelectedImage(null)}
+        title="Фото отзыва"
+      >
+        {selectedImage ? (
+          <img src={selectedImage} alt="" className="w-full max-h-[70vh] object-contain" />
+        ) : null}
+      </Modal>
+    </section>
+  );
+};
 
 export default ProductReviewsSection;
