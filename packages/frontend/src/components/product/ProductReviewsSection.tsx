@@ -77,38 +77,54 @@ const ChevronDownIcon = () => (
 
 const ReviewTextBubble = ({
   text,
+  isExpanded = false,
+  canExpand = false,
   onToggle,
   className = '',
   style,
 }: {
   text: string;
+  isExpanded?: boolean;
+  canExpand?: boolean;
   onToggle?: () => void;
   className?: string;
   style?: CSSProperties;
 }) => (
   <div
-    className={`relative z-10 w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 min-h-[140px] ${className}`}
-    style={{ marginTop: '-27px', ...style }}
+    className={`relative z-10 w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 ${!isExpanded && canExpand ? 'max-h-[140px] overflow-hidden' : ''} ${className}`}
+    style={style}
   >
     <p className="break-words text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
-    <button
-      type="button"
-      onClick={onToggle}
-      className="mt-2 flex w-full items-center justify-center text-[12px] text-[#29292B]"
-      aria-label="Показать полный отзыв"
-    >
-      <ChevronDownIcon />
-    </button>
+    {canExpand ? (
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mt-2 flex w-full items-center justify-center text-[12px] text-[#29292B]"
+        aria-label={isExpanded ? 'Свернуть отзыв' : 'Показать полный отзыв'}
+      >
+        <ChevronDownIcon />
+      </button>
+    ) : null}
   </div>
 );
 
-const ReviewMetaAndText = ({ review }: { review: ProductReview }) => (
+const ReviewMetaAndText = ({
+  review,
+  isExpanded,
+  canExpand,
+  onToggle,
+}: {
+  review: ProductReview;
+  isExpanded: boolean;
+  canExpand: boolean;
+  onToggle: () => void;
+}) => (
   <div className="mt-3 flex items-start gap-3">
     <div className="w-[96px] flex-shrink-0">
       <ReviewMeta sizeLabel={review.sizeLabel} purchaseDate={review.purchaseDate} />
     </div>
     <div className="flex min-w-0 flex-1 flex-col items-start">
-      <ReviewTextBubble text={review.text} />
+      <ReviewTextBubble text={review.text} isExpanded={isExpanded} canExpand={canExpand} onToggle={onToggle} />
     </div>
   </div>
 );
@@ -119,10 +135,11 @@ const ReviewGallery = ({
 }: {
   images?: string[];
   onImageClick?: (src: string) => void;
-}) => (
-  images.length ? (
+}) => {
+  const safeImages = images.filter(Boolean);
+  return safeImages.length ? (
     <div className="flex max-w-full flex-row gap-3 overflow-x-auto">
-      {images.map((src, index) => (
+      {safeImages.map((src, index) => (
         <button
           key={`${src}-${index}`}
           type="button"
@@ -138,50 +155,133 @@ const ReviewGallery = ({
         </button>
       ))}
     </div>
-  ) : null
-);
+  ) : null;
+};
 
-const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpfulCount?: number; notHelpfulCount?: number }) => (
+const ReviewHelpfulBlock = ({
+  helpfulCount = 0,
+  notHelpfulCount = 0,
+  activeVote = 0,
+  onHelpful,
+  onNotHelpful,
+}: {
+  helpfulCount?: number;
+  notHelpfulCount?: number;
+  activeVote?: -1 | 0 | 1;
+  onHelpful?: () => void;
+  onNotHelpful?: () => void;
+}) => (
   <div className="flex flex-wrap items-center gap-3 text-[12px]">
     <span className="text-[#8E8E8E]">Вам был полезен этот отзыв?</span>
     <div className="flex items-center gap-2">
-      <div className="inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-white px-2 py-[2px] text-[#29292B]">
+      <button
+        type="button"
+        onClick={onHelpful}
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-[#29292B] transition ${
+          activeVote === 1 ? 'border-[#29292B] bg-[#F6F6F6]' : 'border-[#E5E5E5] bg-white'
+        }`}
+        aria-pressed={activeVote === 1}
+      >
         <span>👍</span>
         <span>{helpfulCount}</span>
-      </div>
-      <div className="inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-white px-2 py-[2px] text-[#29292B]">
+      </button>
+      <button
+        type="button"
+        onClick={onNotHelpful}
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-[2px] text-[#29292B] transition ${
+          activeVote === -1 ? 'border-[#29292B] bg-[#F6F6F6]' : 'border-[#E5E5E5] bg-white'
+        }`}
+        aria-pressed={activeVote === -1}
+      >
         <span>👎</span>
         <span>{notHelpfulCount}</span>
-      </div>
+      </button>
     </div>
   </div>
 );
 
 const ReviewFooter = ({
   review,
+  activeVote,
+  onHelpful,
+  onNotHelpful,
   onImageClick,
 }: {
   review: ProductReview;
+  activeVote: -1 | 0 | 1;
+  onHelpful: () => void;
+  onNotHelpful: () => void;
   onImageClick?: (src: string) => void;
 }) => (
   <div className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-3">
     <div />
     <div className="flex min-w-0 flex-col gap-3">
       <ReviewGallery images={review.gallery ?? []} onImageClick={onImageClick} />
-      <ReviewHelpfulBlock helpfulCount={review.helpfulCount} notHelpfulCount={review.notHelpfulCount} />
+      <ReviewHelpfulBlock
+        helpfulCount={review.helpfulCount}
+        notHelpfulCount={review.notHelpfulCount}
+        activeVote={activeVote}
+        onHelpful={onHelpful}
+        onNotHelpful={onNotHelpful}
+      />
     </div>
   </div>
 );
 
 const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; onImageClick?: (src: string) => void }) => {
   const ratingStarsCount = review.ratingStarsCount ?? 5;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount ?? 0);
+  const [notHelpfulCount, setNotHelpfulCount] = useState(review.notHelpfulCount ?? 0);
+  const [activeVote, setActiveVote] = useState<-1 | 0 | 1>(0);
+  const canExpand = review.text.length > 220;
+  const handleToggle = () => setIsExpanded((prev) => !prev);
+
+  const handleHelpful = () => {
+    setActiveVote((prev) => {
+      if (prev === 1) {
+        setHelpfulCount((count) => Math.max(0, count - 1));
+        return 0;
+      }
+      if (prev === -1) {
+        setNotHelpfulCount((count) => Math.max(0, count - 1));
+      }
+      setHelpfulCount((count) => count + 1);
+      return 1;
+    });
+  };
+
+  const handleNotHelpful = () => {
+    setActiveVote((prev) => {
+      if (prev === -1) {
+        setNotHelpfulCount((count) => Math.max(0, count - 1));
+        return 0;
+      }
+      if (prev === 1) {
+        setHelpfulCount((count) => Math.max(0, count - 1));
+      }
+      setNotHelpfulCount((count) => count + 1);
+      return -1;
+    });
+  };
 
   return (
     <article className="px-4 mt-4">
       <div className="w-full rounded-[16px] bg-white p-4 text-[#29292B] font-montserrat">
         <ReviewHeader name={review.name} status={review.status} ratingStarsCount={ratingStarsCount} />
-        <ReviewMetaAndText review={review} />
-        <ReviewFooter review={review} onImageClick={onImageClick} />
+        <ReviewMetaAndText
+          review={review}
+          isExpanded={isExpanded}
+          canExpand={canExpand}
+          onToggle={handleToggle}
+        />
+        <ReviewFooter
+          review={{ ...review, helpfulCount, notHelpfulCount }}
+          activeVote={activeVote}
+          onHelpful={handleHelpful}
+          onNotHelpful={handleNotHelpful}
+          onImageClick={onImageClick}
+        />
       </div>
     </article>
   );
