@@ -40,16 +40,6 @@ def _status_keyboard(order_id: str) -> dict[str, Any]:
     }
 
 
-
-
-
-def _start_keyboard() -> dict[str, Any]:
-    return {
-        "keyboard": [[{"text": "Заказы"}]],
-        "resize_keyboard": True,
-        "one_time_keyboard": False,
-    }
-
 def _format_money(minor_units: int) -> str:
     return f"{minor_units / 100:.2f} RUB"
 
@@ -101,26 +91,13 @@ class AdminBot:
         )
         response.raise_for_status()
 
-    async def _list_recent_orders(self, limit: int = 10):
-        async with session_manager.session() as session:
-            uow = UnitOfWork(session)
-            return await uow.orders.list_recent(limit=limit)
-
-    async def _get_order(self, order_id: UUID):
-        async with session_manager.session() as session:
-            uow = UnitOfWork(session)
-            return await uow.orders.get_by_id(order_id=order_id)
-
     async def _set_status(self, order_id: UUID, status: str):
         async with session_manager.session() as session:
             uow = UnitOfWork(session)
             return await order_service.set_status_admin(uow, order_id=order_id, status=status)
 
     async def _handle_command(self, client: httpx.AsyncClient, chat_id: int, text: str) -> None:
-        raw_text = text.strip()
-        if raw_text.lower() == "заказы":
-            raw_text = "/orders"
-        parts = raw_text.split()
+        parts = text.strip().split()
         command = parts[0].lower()
 
         if command in ("/start", "/help"):
@@ -135,17 +112,19 @@ class AdminBot:
             return
 
         if command == "/orders":
-            orders = await self._list_recent_orders()
-            if not orders:
-                await self._send_message(client, chat_id, "Заказов пока нет.")
-                return
-            for order in orders:
-                await self._send_message(
-                    client,
-                    chat_id,
-                    _format_order_message(order),
-                    reply_markup=_status_keyboard(str(order.id)),
-                )
+            async with session_manager.session() as session:
+                uow = UnitOfWork(session)
+                orders = await uow.orders.list_recent(limit=10)
+                if not orders:
+                    await self._send_message(client, chat_id, "Заказов пока нет.")
+                    return
+                for order in orders:
+                    await self._send_message(
+                        client,
+                        chat_id,
+                        _format_order_message(order),
+                        reply_markup=_status_keyboard(str(order.id)),
+                    )
             return
 
         if command == "/order":
@@ -157,16 +136,28 @@ class AdminBot:
             except ValueError:
                 await self._send_message(client, chat_id, "Некорректный id заказа.")
                 return
-            order = await self._get_order(order_id)
-            if not order:
-                await self._send_message(client, chat_id, "Заказ не найден.")
-                return
-            await self._send_message(
-                client,
-                chat_id,
-                _format_order_message(order),
-                reply_markup=_status_keyboard(str(order.id)),
-            )
+            async with session_manager.session() as session:
+                uow = UnitOfWork(session)
+                order = await uow.orders.get_by_id(order_id=order_id)
+                if not order:
+                    await self._send_message(client, chat_id, "Заказ не найден.")
+                    return
+                user = await uow.users.get(order.user_id)
+                message = _format_order_message(order)
+                if user:
+                    contact_lines = [
+                        "Покупатель:",
+                        f"Телеграм ID: {escape(str(user.telegram_id))}",
+                        f"Username: @{escape(user.username)}" if user.username else "Username: —",
+                        f"Телефон: {escape(user.phone)}" if user.phone else "Телефон: —",
+                    ]
+                    message = "\n".join(contact_lines) + "\n\n" + message
+                await self._send_message(
+                    client,
+                    chat_id,
+                    message,
+                    reply_markup=_status_keyboard(str(order.id)),
+                )
             return
 
         await self._send_message(client, chat_id, "Неизвестная команда. /help")
