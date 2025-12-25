@@ -40,6 +40,16 @@ def _status_keyboard(order_id: str) -> dict[str, Any]:
     }
 
 
+
+
+
+def _start_keyboard() -> dict[str, Any]:
+    return {
+        "keyboard": [[{"text": "Заказы"}]],
+        "resize_keyboard": True,
+        "one_time_keyboard": False,
+    }
+
 def _format_money(minor_units: int) -> str:
     return f"{minor_units / 100:.2f} RUB"
 
@@ -107,7 +117,10 @@ class AdminBot:
             return await order_service.set_status_admin(uow, order_id=order_id, status=status)
 
     async def _handle_command(self, client: httpx.AsyncClient, chat_id: int, text: str) -> None:
-        parts = text.strip().split()
+        raw_text = text.strip()
+        if raw_text.lower() == "заказы":
+            raw_text = "/orders"
+        parts = raw_text.split()
         command = parts[0].lower()
 
         if command in ("/start", "/help"):
