@@ -80,14 +80,25 @@ async def notify_manager_order_cancel(order: Order, user: User) -> None:
         logger.warning("order_cancel_notify_skipped", reason="bot_token_missing", order_id=str(order.id))
         return
 
-    message = "\n".join(
-        [
-            "Отмена заказа",
-            f"Заказ: {escape(str(order.id))}",
-            f"Телеграм ID: {escape(str(user.telegram_id))}",
-            f"Username: @{escape(user.username)}" if user.username else "Username: —",
-        ]
-    )
+    lines = [
+        "Отмена заказа",
+        f"Заказ: {escape(str(order.id))}",
+        f"Сумма: {_format_money(order.total_amount_minor_units)}",
+        f"Телеграм ID: {escape(str(user.telegram_id))}",
+        f"Username: @{escape(user.username)}" if user.username else "Username: —",
+        "",
+        "Состав:",
+    ]
+    for item in order.items:
+        product_code = None
+        if item.product is not None:
+            product_code = item.product.product_code
+        lines.append(
+            f"- {escape(product_code) if product_code else escape(str(item.product_id))} | "
+            f"размер {escape(item.size)} | x{item.quantity} | "
+            f"{_format_money(item.unit_price_minor_units)}"
+        )
+    message = "\n".join(lines)
     url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
     payload = {"chat_id": manager_id, "text": message}
 

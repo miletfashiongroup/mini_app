@@ -254,7 +254,7 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
   const [notHelpfulCount, setNotHelpfulCount] = useState(review.notHelpfulCount ?? 0);
   const [activeVote, setActiveVote] = useState<-1 | 0 | 1>(0);
   const textContainerRef = useRef<HTMLDivElement | null>(null);
-  const [canExpand, setCanExpand] = useState(false);
+  const [canExpand, setCanExpand] = useState(review.text.length > 220);
   const handleToggle = () => setIsExpanded((prev) => !prev);
 
   useLayoutEffect(() => {
@@ -263,7 +263,7 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
     }
     const el = textContainerRef.current;
     const hasOverflow = el.scrollHeight - el.clientHeight > 2;
-    setCanExpand(hasOverflow);
+    setCanExpand(hasOverflow || review.text.length > 220);
   }, [review.text, isExpanded]);
 
   const handleHelpful = () => {
