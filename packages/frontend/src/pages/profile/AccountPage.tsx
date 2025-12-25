@@ -107,13 +107,16 @@ export const AccountPage = () => {
   }, [data]);
 
   const openBot = () => {
-    const botLink = `https://t.me/${env.telegramBotUsername}`;
+    const botLink = `https://t.me/${env.telegramBotUsername}?start=phone`;
     if (typeof WebApp?.openTelegramLink === 'function') {
       WebApp.openTelegramLink(botLink);
+      if (typeof WebApp?.close === 'function') {
+        setTimeout(() => WebApp.close(), 250);
+      }
       return;
     }
     if (typeof window !== 'undefined') {
-      window.open(botLink, '_blank');
+      window.location.href = botLink;
     }
   };
 
