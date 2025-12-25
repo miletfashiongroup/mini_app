@@ -21,6 +21,18 @@ STATUS_LABELS = {
     "cancelled": "Отменён",
 }
 
+STATUS_FILTERS: dict[str, str] = {
+    "все заказы": "",
+    "заказы": "",
+    "новые заказы": "pending",
+    "в обработке": "processing",
+    "отправленные заказы": "shipped",
+    "доставленные заказы": "delivered",
+    "полученные заказы": "delivered",
+    "отмененные заказы": "cancelled",
+    "отменённые заказы": "cancelled",
+}
+
 
 def _status_keyboard(order_id: str) -> dict[str, Any]:
     return {
@@ -37,6 +49,19 @@ def _status_keyboard(order_id: str) -> dict[str, Any]:
                 {"text": "Отменён", "callback_data": f"status:{order_id}:cancelled"},
             ],
         ],
+    }
+
+
+def _start_keyboard() -> dict[str, Any]:
+    return {
+        "keyboard": [
+            [{"text": "Все заказы"}, {"text": "Новые заказы"}],
+            [{"text": "В обработке"}, {"text": "Отправленные заказы"}],
+            [{"text": "Доставленные заказы"}, {"text": "Полученные заказы"}],
+            [{"text": "Отмененные заказы"}],
+        ],
+        "resize_keyboard": True,
+        "one_time_keyboard": False,
     }
 
 
@@ -97,7 +122,12 @@ class AdminBot:
             return await order_service.set_status_admin(uow, order_id=order_id, status=status)
 
     async def _handle_command(self, client: httpx.AsyncClient, chat_id: int, text: str) -> None:
-        parts = text.strip().split()
+        raw_text = text.strip()
+        raw_lower = raw_text.lower()
+        if raw_lower in STATUS_FILTERS:
+            status = STATUS_FILTERS[raw_lower]
+            raw_text = "/orders" if not status else f"/orders {status}"
+        parts = raw_text.split()
         command = parts[0].lower()
 
         if command in ("/start", "/help"):
@@ -108,13 +138,15 @@ class AdminBot:
                 "Команды:\n"
                 "/orders — последние заказы\n"
                 "/order <id> — детали заказа\n",
+                reply_markup=_start_keyboard(),
             )
             return
 
         if command == "/orders":
+            status = parts[1].lower() if len(parts) > 1 else None
             async with session_manager.session() as session:
                 uow = UnitOfWork(session)
-                orders = await uow.orders.list_recent(limit=10)
+                orders = await uow.orders.list_recent(limit=10, status=status)
                 if not orders:
                     await self._send_message(client, chat_id, "Заказов пока нет.")
                     return
