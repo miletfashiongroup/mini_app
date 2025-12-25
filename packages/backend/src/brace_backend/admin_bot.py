@@ -60,6 +60,7 @@ def _status_keyboard(order_id: str) -> dict[str, Any]:
             ],
             [
                 {"text": "Отменён", "callback_data": f"status:{order_id}:cancelled"},
+                {"text": "Назад", "callback_data": f"actions:{order_id}"},
             ],
         ],
     }
@@ -70,7 +71,7 @@ def _delete_confirm_keyboard(order_id: str) -> dict[str, Any]:
         "inline_keyboard": [
             [
                 {"text": "Да, удалить", "callback_data": f"delete:{order_id}"},
-                {"text": "Отмена", "callback_data": f"delete_cancel:{order_id}"},
+                {"text": "Назад", "callback_data": f"actions:{order_id}"},
             ]
         ],
     }
@@ -141,6 +142,19 @@ class AdminBot:
         if reply_markup:
             payload["reply_markup"] = reply_markup
         response = await client.post(f"{self.api_base}/sendMessage", json=payload)
+        response.raise_for_status()
+
+    async def _edit_message_markup(
+        self,
+        client: httpx.AsyncClient,
+        chat_id: int,
+        message_id: int,
+        reply_markup: dict | None,
+    ) -> None:
+        payload: dict[str, Any] = {"chat_id": chat_id, "message_id": message_id}
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        response = await client.post(f"{self.api_base}/editMessageReplyMarkup", json=payload)
         response.raise_for_status()
 
     async def _answer_callback(self, client: httpx.AsyncClient, callback_id: str, text: str) -> None:
@@ -244,13 +258,15 @@ class AdminBot:
                 except ValueError:
                     await self._answer_callback(client, callback_id, "Некорректный заказ.")
                     return
-                chat_id = callback.get("message", {}).get("chat", {}).get("id")
-                if isinstance(chat_id, int):
-                    await self._send_message(
+                message = callback.get("message", {})
+                chat_id = message.get("chat", {}).get("id")
+                message_id = message.get("message_id")
+                if isinstance(chat_id, int) and isinstance(message_id, int):
+                    await self._edit_message_markup(
                         client,
                         chat_id,
-                        "Выберите новый статус:",
-                        reply_markup=_status_keyboard(str(order_id)),
+                        message_id,
+                        _status_keyboard(str(order_id)),
                     )
                 await self._answer_callback(client, callback_id, "Выберите статус.")
                 return
@@ -261,18 +277,31 @@ class AdminBot:
                 except ValueError:
                     await self._answer_callback(client, callback_id, "Некорректный заказ.")
                     return
-                chat_id = callback.get("message", {}).get("chat", {}).get("id")
-                if isinstance(chat_id, int):
-                    await self._send_message(
+                message = callback.get("message", {})
+                chat_id = message.get("chat", {}).get("id")
+                message_id = message.get("message_id")
+                if isinstance(chat_id, int) and isinstance(message_id, int):
+                    await self._edit_message_markup(
                         client,
                         chat_id,
-                        "Подтвердите удаление заказа:",
-                        reply_markup=_delete_confirm_keyboard(order_id_str),
+                        message_id,
+                        _delete_confirm_keyboard(order_id_str),
                     )
                 await self._answer_callback(client, callback_id, "Подтвердите удаление.")
                 return
-            if data.startswith("delete_cancel:"):
-                await self._answer_callback(client, callback_id, "Удаление отменено.")
+            if data.startswith("actions:"):
+                order_id_str = data.split(":", 1)[1]
+                message = callback.get("message", {})
+                chat_id = message.get("chat", {}).get("id")
+                message_id = message.get("message_id")
+                if isinstance(chat_id, int) and isinstance(message_id, int):
+                    await self._edit_message_markup(
+                        client,
+                        chat_id,
+                        message_id,
+                        _order_actions_keyboard(order_id_str),
+                    )
+                await self._answer_callback(client, callback_id, "Готово.")
                 return
             if data.startswith("delete:"):
                 order_id_str = data.split(":", 1)[1]
@@ -306,6 +335,16 @@ class AdminBot:
         try:
             await self._set_status(order_id, status)
             await self._answer_callback(client, callback_id, f"Статус: {STATUS_LABELS.get(status, status)}")
+            message = callback.get("message", {})
+            chat_id = message.get("chat", {}).get("id")
+            message_id = message.get("message_id")
+            if isinstance(chat_id, int) and isinstance(message_id, int):
+                await self._edit_message_markup(
+                    client,
+                    chat_id,
+                    message_id,
+                    _order_actions_keyboard(order_id_str),
+                )
         except Exception as exc:
             logger.warning("admin_bot_status_failed", order_id=str(order_id), error=str(exc))
             await self._answer_callback(client, callback_id, "Не удалось обновить статус.")
