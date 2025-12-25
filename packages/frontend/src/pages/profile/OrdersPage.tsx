@@ -6,6 +6,7 @@ import type { Order } from '@/entities/order/model/types';
 import { useOrdersQuery } from '@/shared/api/queries';
 import { formatPrice } from '@/shared/lib/money';
 import { PageBlock } from '@/shared/ui';
+import type { ApiError } from '@/shared/api/types';
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   created: 'оформление',
@@ -47,8 +48,9 @@ const OrderCard = ({ order, onClick }: { order: Order; onClick: () => void }) =>
 
 export const OrdersPage = () => {
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useOrdersQuery();
+  const { data, isLoading, isError, error } = useOrdersQuery();
   const orders = useMemo(() => data ?? [], [data]);
+  const emptyError = isError && ((error as ApiError | undefined)?.status === 404 || (error as ApiError | undefined)?.type === 'not_found');
 
   const blocks = [
     {
@@ -56,7 +58,7 @@ export const OrdersPage = () => {
       title: 'Мои заказы',
       content: isLoading ? (
         <div className="text-[14px]">Загружаем заказы...</div>
-      ) : isError ? (
+      ) : isError && !emptyError ? (
         <div className="text-[14px]">Не удалось загрузить заказы.</div>
       ) : orders.length ? (
         <div className="flex flex-col gap-3">
@@ -65,7 +67,16 @@ export const OrdersPage = () => {
           ))}
         </div>
       ) : (
-        <div className="text-[14px] text-[#5A5A5C]">У вас пока нет заказов.</div>
+        <div className="flex flex-col gap-3 text-[14px] text-[#5A5A5C]">
+          <span>У вас пока нет заказов.</span>
+          <button
+            type="button"
+            className="w-full rounded-2xl border border-[#000043] px-4 py-3 text-sm font-semibold text-[#000043]"
+            onClick={() => navigate('/catalog')}
+          >
+            Перейти в каталог
+          </button>
+        </div>
       ),
     },
   ];

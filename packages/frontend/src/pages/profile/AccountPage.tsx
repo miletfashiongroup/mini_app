@@ -203,49 +203,7 @@ export const AccountPage = () => {
             >
               Редактировать данные
             </button>
-            <button
-              type="button"
-              className="h-12 w-full rounded-2xl bg-[#D74242] text-[15px] font-semibold text-white transition duration-150 ease-out hover:bg-[#C53737] active:brightness-95"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Удалить аккаунт
-            </button>
           </div>
-          {showDeleteConfirm ? (
-            <div className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-[13px] text-[#29292B]">
-              <div className="font-semibold">Удаление аккаунта</div>
-              <div className="mt-1 text-[#5A5A5C]">
-                Все данные будут удалены без возможности восстановления, включая заказы и историю.
-              </div>
-              <label className="mt-3 flex items-start gap-2 text-[12px] text-[#29292B]/80">
-                <input
-                  type="checkbox"
-                  checked={deleteConfirmed}
-                  onChange={(e) => setDeleteConfirmed(e.target.checked)}
-                  className="mt-1"
-                />
-                <span>Я понимаю последствия и хочу удалить аккаунт</span>
-              </label>
-              <button
-                type="button"
-                className="mt-3 h-9 w-full rounded-xl bg-[#D74242] text-[13px] font-semibold text-white disabled:opacity-60"
-                onClick={() => deleteMutation.mutate()}
-                disabled={!deleteConfirmed || deleteMutation.isPending}
-              >
-                Удалить навсегда
-              </button>
-              <button
-                type="button"
-                className="mt-2 h-9 w-full rounded-xl border border-[#000043] text-[13px] font-semibold text-[#000043]"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteConfirmed(false);
-                }}
-              >
-                Отмена
-              </button>
-            </div>
-          ) : null}
         </div>
       ),
     },
@@ -283,6 +241,52 @@ export const AccountPage = () => {
           ))}
         </div>
       )}
+      {!isLoading && !isError ? (
+        <div className="mt-auto px-4 pb-6">
+          <button
+            type="button"
+            className="h-12 w-full rounded-2xl bg-[#D74242] text-[15px] font-semibold text-white transition duration-150 ease-out hover:bg-[#C53737] active:brightness-95"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Удалить аккаунт
+          </button>
+          {showDeleteConfirm ? (
+            <div className="mt-4 rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-[13px] text-[#29292B]">
+              <div className="font-semibold">Удаление аккаунта</div>
+              <div className="mt-1 text-[#5A5A5C]">
+                Все данные будут удалены без возможности восстановления, включая заказы и историю.
+              </div>
+              <label className="mt-3 flex items-start gap-2 text-[12px] text-[#29292B]/80">
+                <input
+                  type="checkbox"
+                  checked={deleteConfirmed}
+                  onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>Я понимаю последствия и хочу удалить аккаунт</span>
+              </label>
+              <button
+                type="button"
+                className="mt-3 h-9 w-full rounded-xl bg-[#D74242] text-[13px] font-semibold text-white disabled:opacity-60"
+                onClick={() => deleteMutation.mutate()}
+                disabled={!deleteConfirmed || deleteMutation.isPending}
+              >
+                Удалить навсегда
+              </button>
+              <button
+                type="button"
+                className="mt-2 h-9 w-full rounded-xl border border-[#000043] text-[13px] font-semibold text-[#000043]"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmed(false);
+                }}
+              >
+                Отмена
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {showEditForm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 text-[#29292B] shadow-2xl">
