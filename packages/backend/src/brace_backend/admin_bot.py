@@ -157,6 +157,20 @@ class AdminBot:
         response = await client.post(f"{self.api_base}/editMessageReplyMarkup", json=payload)
         response.raise_for_status()
 
+    async def _edit_message_text(
+        self,
+        client: httpx.AsyncClient,
+        chat_id: int,
+        message_id: int,
+        text: str,
+        reply_markup: dict | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"chat_id": chat_id, "message_id": message_id, "text": text}
+        if reply_markup is not None:
+            payload["reply_markup"] = reply_markup
+        response = await client.post(f"{self.api_base}/editMessageText", json=payload)
+        response.raise_for_status()
+
     async def _answer_callback(self, client: httpx.AsyncClient, callback_id: str, text: str) -> None:
         response = await client.post(
             f"{self.api_base}/answerCallbackQuery",
@@ -168,6 +182,15 @@ class AdminBot:
         async with session_manager.session() as session:
             uow = UnitOfWork(session)
             return await order_service.set_status_admin(uow, order_id=order_id, status=status)
+
+    async def _get_order_message(self, order_id: UUID) -> str:
+        async with session_manager.session() as session:
+            uow = UnitOfWork(session)
+            order = await uow.orders.get_by_id(order_id=order_id)
+            if not order:
+                return "Заказ не найден."
+            user = order.user or await uow.users.get(order.user_id)
+            return _format_order_message(order, user)
 
     async def _delete_order(self, order_id: UUID) -> None:
         async with session_manager.session() as session:
@@ -339,11 +362,13 @@ class AdminBot:
             chat_id = message.get("chat", {}).get("id")
             message_id = message.get("message_id")
             if isinstance(chat_id, int) and isinstance(message_id, int):
-                await self._edit_message_markup(
+                updated_text = await self._get_order_message(order_id)
+                await self._edit_message_text(
                     client,
                     chat_id,
                     message_id,
-                    _order_actions_keyboard(order_id_str),
+                    updated_text,
+                    reply_markup=_order_actions_keyboard(order_id_str),
                 )
         except Exception as exc:
             logger.warning("admin_bot_status_failed", order_id=str(order_id), error=str(exc))
