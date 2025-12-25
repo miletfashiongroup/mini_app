@@ -100,37 +100,26 @@ const ReviewTextBubble = ({
 }) => (
   <div
     ref={containerRef}
-    className={`relative w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 ${!isExpanded ? 'max-h-[140px] overflow-hidden pb-10' : 'pb-4'} ${className}`}
+    className={`relative w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 ${className}`}
     style={style}
   >
-    <p className="break-words text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
+    <div className={`relative ${!isExpanded ? 'max-h-[140px] overflow-hidden' : ''}`}>
+      <p className="break-words text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
+      {!isExpanded && canExpand ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white to-white/0" />
+      ) : null}
+    </div>
     {canExpand ? (
-      isExpanded ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          className="mt-2 flex w-full items-center justify-center text-[12px] text-[#29292B]"
-          aria-label="Свернуть отзыв"
-        >
-          <span className="inline-flex transition rotate-180">
-            <ChevronDownIcon />
-          </span>
-        </button>
-      ) : (
-        <>
-          <div className="pointer-events-none absolute inset-x-0 bottom-8 h-10 bg-gradient-to-t from-white to-white/0" />
-          <button
-            type="button"
-            onClick={onToggle}
-            className="absolute inset-x-0 bottom-2 flex items-center justify-center text-[12px] text-[#29292B]"
-            aria-label="Показать полный отзыв"
-          >
-            <span className="inline-flex transition">
-              <ChevronDownIcon />
-            </span>
-          </button>
-        </>
-      )
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mt-2 flex w-full items-center justify-center text-[12px] text-[#29292B]"
+        aria-label={isExpanded ? 'Свернуть отзыв' : 'Показать полный отзыв'}
+      >
+        <span className={`inline-flex transition ${isExpanded ? 'rotate-180' : ''}`}>
+          <ChevronDownIcon />
+        </span>
+      </button>
     ) : null}
   </div>
 );
