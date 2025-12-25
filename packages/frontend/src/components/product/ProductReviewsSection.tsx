@@ -83,10 +83,10 @@ const ReviewTextBubble = ({
   style?: React.CSSProperties;
 }) => (
   <div
-    className={`relative z-10 inline-block self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 min-h-[140px] ${className}`}
-    style={{ width: '305px', marginTop: '-27px', marginLeft: '25px', ...style }}
+    className={`relative z-10 w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 min-h-[140px] ${className}`}
+    style={{ marginTop: '-27px', ...style }}
   >
-    <p className="text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
+    <p className="break-words text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
     <button
       type="button"
       onClick={onToggle}
@@ -103,7 +103,7 @@ const ReviewMetaAndText = ({ review }: { review: ProductReview }) => (
     <div className="w-[96px] flex-shrink-0">
       <ReviewMeta sizeLabel={review.sizeLabel} purchaseDate={review.purchaseDate} />
     </div>
-    <div className="flex flex-1 flex-col items-start">
+    <div className="flex min-w-0 flex-1 flex-col items-start">
       <ReviewTextBubble text={review.text} />
     </div>
   </div>
@@ -140,7 +140,7 @@ const ReviewUtpBar = ({ label = 'УТП 1', segments = 5, activeIndex = 0 }: { l
 };
 
 const ReviewGallery = ({ images = [] }: { images?: string[] }) => (
-  <div className="flex flex-row gap-3 overflow-x-auto" style={{ marginLeft: '130px', marginTop: '-60px' }}>
+  <div className="mt-3 flex max-w-full flex-row gap-3 overflow-x-auto pl-[130px] pr-4">
     {(images.length ? images : Array.from({ length: 5 })).map((src, index) => (
       <div
         key={index}
@@ -154,7 +154,7 @@ const ReviewGallery = ({ images = [] }: { images?: string[] }) => (
 );
 
 const ReviewHelpfulBlock = ({ helpfulCount = 0, notHelpfulCount = 0 }: { helpfulCount?: number; notHelpfulCount?: number }) => (
-  <div className="mt-4" style={{ marginLeft: '130px' }}>
+  <div className="mt-4 pl-[130px] pr-4">
     <p className="text-[12px] font-semibold text-[#29292B]">Вам был полезен этот отзыв?</p>
     <div className="mt-1 flex flex-row items-center gap-6 text-[12px] text-[#29292B]">
       <div className="flex flex-row items-center gap-1">
