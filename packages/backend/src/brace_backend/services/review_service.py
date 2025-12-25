@@ -33,7 +33,7 @@ class ReviewService:
         for review in reviews:
             size_label, purchase_date = review_meta.get(review.id, (None, None))
             helpful_count, not_helpful_count = votes_map.get(review.id, (0, 0))
-            author_name = "Аноним" if review.is_anonymous else "Покупатель"
+            author_name = "Покупатель"
             result.append(
                 ProductReviewRead(
                     id=review.id,
