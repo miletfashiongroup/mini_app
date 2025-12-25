@@ -16,9 +16,10 @@ class OrderRepository(SQLAlchemyRepository[Order]):
 
     def _base_stmt(self):
         return select(Order).options(
+            selectinload(Order.user),
             selectinload(Order.items)
             .selectinload(OrderItem.product)
-            .selectinload(Product.gallery)
+            .selectinload(Product.gallery),
         )
 
     async def list_for_user(

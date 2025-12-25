@@ -34,6 +34,19 @@ STATUS_FILTERS: dict[str, str] = {
 }
 
 
+def _order_actions_keyboard(order_id: str) -> dict[str, Any]:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "Изменить статус", "callback_data": f"status_menu:{order_id}"},
+            ],
+            [
+                {"text": "Удалить заказ", "callback_data": f"delete_confirm:{order_id}"},
+            ],
+        ],
+    }
+
+
 def _status_keyboard(order_id: str) -> dict[str, Any]:
     return {
         "inline_keyboard": [
@@ -48,6 +61,17 @@ def _status_keyboard(order_id: str) -> dict[str, Any]:
             [
                 {"text": "Отменён", "callback_data": f"status:{order_id}:cancelled"},
             ],
+        ],
+    }
+
+
+def _delete_confirm_keyboard(order_id: str) -> dict[str, Any]:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "Да, удалить", "callback_data": f"delete:{order_id}"},
+                {"text": "Отмена", "callback_data": f"delete_cancel:{order_id}"},
+            ]
         ],
     }
 
@@ -69,7 +93,17 @@ def _format_money(minor_units: int) -> str:
     return f"{minor_units / 100:.2f} RUB"
 
 
-def _format_order_message(order) -> str:
+def _format_order_message(order, user=None) -> str:
+    contact_lines = []
+    if user:
+        contact_lines = [
+            "Покупатель:",
+            f"User ID: {escape(str(user.id))}",
+            f"Telegram ID: {escape(str(user.telegram_id))}" if user.telegram_id else "Telegram ID: —",
+            f"Username: @{escape(user.username)}" if user.username else "Username: —",
+            f"Телефон: {escape(user.phone)}" if user.phone else "Телефон: —",
+            "",
+        ]
     lines = [
         "Заказ",
         f"ID: {escape(str(order.id))}",
@@ -87,7 +121,7 @@ def _format_order_message(order) -> str:
             f"размер {escape(item.size)} | x{item.quantity} | "
             f"{_format_money(item.unit_price_minor_units)}"
         )
-    return "\n".join(lines)
+    return "\n".join(contact_lines + lines)
 
 
 class AdminBot:
@@ -121,6 +155,11 @@ class AdminBot:
             uow = UnitOfWork(session)
             return await order_service.set_status_admin(uow, order_id=order_id, status=status)
 
+    async def _delete_order(self, order_id: UUID) -> None:
+        async with session_manager.session() as session:
+            uow = UnitOfWork(session)
+            await order_service.delete_order_admin(uow, order_id=order_id)
+
     async def _handle_command(self, client: httpx.AsyncClient, chat_id: int, text: str) -> None:
         raw_text = text.strip()
         raw_lower = raw_text.lower()
@@ -151,11 +190,12 @@ class AdminBot:
                     await self._send_message(client, chat_id, "Заказов пока нет.")
                     return
                 for order in orders:
+                    user = order.user or await uow.users.get(order.user_id)
                     await self._send_message(
                         client,
                         chat_id,
-                        _format_order_message(order),
-                        reply_markup=_status_keyboard(str(order.id)),
+                        _format_order_message(order, user),
+                        reply_markup=_order_actions_keyboard(str(order.id)),
                     )
             return
 
@@ -175,20 +215,12 @@ class AdminBot:
                     await self._send_message(client, chat_id, "Заказ не найден.")
                     return
                 user = await uow.users.get(order.user_id)
-                message = _format_order_message(order)
-                if user:
-                    contact_lines = [
-                        "Покупатель:",
-                        f"Телеграм ID: {escape(str(user.telegram_id))}",
-                        f"Username: @{escape(user.username)}" if user.username else "Username: —",
-                        f"Телефон: {escape(user.phone)}" if user.phone else "Телефон: —",
-                    ]
-                    message = "\n".join(contact_lines) + "\n\n" + message
+                message = _format_order_message(order, user)
                 await self._send_message(
                     client,
                     chat_id,
                     message,
-                    reply_markup=_status_keyboard(str(order.id)),
+                    reply_markup=_order_actions_keyboard(str(order.id)),
                 )
             return
 
@@ -205,6 +237,64 @@ class AdminBot:
             await self._answer_callback(client, callback_id, "Нет доступа.")
             return
         if not data.startswith("status:"):
+            if data.startswith("status_menu:"):
+                order_id_str = data.split(":", 1)[1]
+                try:
+                    order_id = UUID(order_id_str)
+                except ValueError:
+                    await self._answer_callback(client, callback_id, "Некорректный заказ.")
+                    return
+                chat_id = callback.get("message", {}).get("chat", {}).get("id")
+                if isinstance(chat_id, int):
+                    await self._send_message(
+                        client,
+                        chat_id,
+                        "Выберите новый статус:",
+                        reply_markup=_status_keyboard(str(order_id)),
+                    )
+                await self._answer_callback(client, callback_id, "Выберите статус.")
+                return
+            if data.startswith("delete_confirm:"):
+                order_id_str = data.split(":", 1)[1]
+                try:
+                    UUID(order_id_str)
+                except ValueError:
+                    await self._answer_callback(client, callback_id, "Некорректный заказ.")
+                    return
+                chat_id = callback.get("message", {}).get("chat", {}).get("id")
+                if isinstance(chat_id, int):
+                    await self._send_message(
+                        client,
+                        chat_id,
+                        "Подтвердите удаление заказа:",
+                        reply_markup=_delete_confirm_keyboard(order_id_str),
+                    )
+                await self._answer_callback(client, callback_id, "Подтвердите удаление.")
+                return
+            if data.startswith("delete_cancel:"):
+                await self._answer_callback(client, callback_id, "Удаление отменено.")
+                return
+            if data.startswith("delete:"):
+                order_id_str = data.split(":", 1)[1]
+                try:
+                    order_id = UUID(order_id_str)
+                except ValueError:
+                    await self._answer_callback(client, callback_id, "Некорректный заказ.")
+                    return
+                try:
+                    await self._delete_order(order_id)
+                    await self._answer_callback(client, callback_id, "Заказ удален.")
+                    chat_id = callback.get("message", {}).get("chat", {}).get("id")
+                    if isinstance(chat_id, int):
+                        await self._send_message(
+                            client,
+                            chat_id,
+                            f"Заказ {order_id} удален.",
+                        )
+                except Exception as exc:
+                    logger.warning("admin_bot_delete_failed", order_id=str(order_id), error=str(exc))
+                    await self._answer_callback(client, callback_id, "Не удалось удалить заказ.")
+                return
             await self._answer_callback(client, callback_id, "Неизвестное действие.")
             return
         _, order_id_str, status = data.split(":", 2)

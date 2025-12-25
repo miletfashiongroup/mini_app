@@ -200,6 +200,22 @@ class OrderService:
         )
         return self._to_schema(order)
 
+    async def delete_order_admin(self, uow: UnitOfWork, *, order_id: UUID) -> None:
+        order = await uow.orders.get_by_id(order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        await uow.orders.delete(order)
+        await uow.commit()
+        await audit_service.log(
+            uow,
+            action="order_deleted",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"status": order.status},
+            actor_user_id=order.user_id,
+        )
+        logger.info("order_deleted_admin", order_id=str(order.id))
+
     def _compute_idempotency(self, cart_items) -> str:
         digest = hashlib.sha256()
         for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
