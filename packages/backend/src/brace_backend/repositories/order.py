@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from brace_backend.domain.order import Order, OrderItem
+from brace_backend.domain.product import Product
 from brace_backend.repositories.base import SQLAlchemyRepository
 
 
@@ -15,7 +16,9 @@ class OrderRepository(SQLAlchemyRepository[Order]):
 
     def _base_stmt(self):
         return select(Order).options(
-            selectinload(Order.items).selectinload(OrderItem.product)
+            selectinload(Order.items)
+            .selectinload(OrderItem.product)
+            .selectinload(Product.gallery)
         )
 
     async def list_for_user(

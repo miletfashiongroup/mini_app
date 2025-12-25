@@ -49,16 +49,33 @@ export const OrderDetailsPage = () => {
             <div className="flex flex-col gap-3">
               {items.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-[14px] font-semibold text-[#29292B]">
-                      {item.product_name || item.product_code || item.product_id}
-                    </span>
-                    <span className="text-[13px] font-semibold text-[#29292B]">
-                      {formatPrice((item.unit_price_minor_units ?? 0) * (item.quantity ?? 0))}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-[13px] text-[#5A5A5C]">
-                    Размер {item.size ?? '—'} · {item.quantity ?? 0} шт.
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => item.product_id && navigate(`/product/${item.product_id}`)}
+                      className={`h-14 w-14 rounded-xl border border-[#EFEFF2] bg-cover bg-center ${
+                        item.hero_media_url ? '' : 'bg-[#F2F2F4]'
+                      }`}
+                      style={item.hero_media_url ? { backgroundImage: `url(${item.hero_media_url})` } : undefined}
+                      aria-label="Открыть товар"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => item.product_id && navigate(`/product/${item.product_id}`)}
+                          className="text-left text-[14px] font-semibold text-[#29292B]"
+                        >
+                          {item.product_name || item.product_code || item.product_id}
+                        </button>
+                        <span className="text-[13px] font-semibold text-[#29292B]">
+                          {formatPrice((item.unit_price_minor_units ?? 0) * (item.quantity ?? 0))}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-[13px] text-[#5A5A5C]">
+                        Размер {item.size ?? '—'} · {item.quantity ?? 0} шт.
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}

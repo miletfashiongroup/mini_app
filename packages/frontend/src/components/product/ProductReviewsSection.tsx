@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 
 import starIcon from '@/assets/images/StarIcon.svg';
@@ -22,15 +22,21 @@ export type ProductReview = {
   gallery?: string[];
 };
 
-const StarIconImg = () => <img src={starIcon} alt="" className="h-3 w-3" />;
-
-const ReviewRatingStars = ({ count = 5 }: { count?: number }) => (
-  <div className="flex flex-row items-center gap-[2px]">
-    {Array.from({ length: count }).map((_, idx) => (
-      <StarIconImg key={idx} />
-    ))}
-  </div>
+const StarIconImg = ({ filled }: { filled: boolean }) => (
+  <img src={starIcon} alt="" className={`h-3 w-3 ${filled ? '' : 'opacity-25'}`} />
 );
+
+const ReviewRatingStars = ({ count = 5, total = 5 }: { count?: number; total?: number }) => {
+  const safeTotal = Math.max(1, total);
+  const safeCount = Math.min(Math.max(count, 0), safeTotal);
+  return (
+    <div className="flex flex-row items-center gap-[2px]">
+      {Array.from({ length: safeTotal }).map((_, idx) => (
+        <StarIconImg key={idx} filled={idx < safeCount} />
+      ))}
+    </div>
+  );
+};
 
 const ReviewAvatar = () => (
   <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#D9D9D9]">
@@ -44,14 +50,14 @@ const ReviewAvatar = () => (
 const ReviewHeader = ({ name, status, ratingStarsCount = 5 }: Pick<ProductReview, 'name' | 'status'> & { ratingStarsCount?: number }) => (
   <div className="flex flex-row items-start gap-3">
     <ReviewAvatar />
-    <div className="flex flex-col flex-1">
-      <div className="flex flex-row items-center gap-2">
-        <span className="text-[14px] font-semibold text-[#29292B]">{name}</span>
-        <div style={{ marginLeft: '30px' }}>
+    <div className="flex flex-1 flex-col gap-1 min-w-0">
+      <div className="grid grid-cols-[minmax(0,1fr)_72px] items-start gap-2">
+        <span className="text-[14px] font-semibold text-[#29292B] truncate">{name}</span>
+        <div className="flex justify-start">
           <ReviewRatingStars count={ratingStarsCount} />
         </div>
       </div>
-      <span className="mt-[2px] text-[12px] text-[#BABABA]">{status}</span>
+      <span className="text-[12px] text-[#BABABA]">{status}</span>
     </div>
   </div>
 );
@@ -82,6 +88,7 @@ const ReviewTextBubble = ({
   onToggle,
   className = '',
   style,
+  containerRef,
 }: {
   text: string;
   isExpanded?: boolean;
@@ -89,9 +96,11 @@ const ReviewTextBubble = ({
   onToggle?: () => void;
   className?: string;
   style?: CSSProperties;
+  containerRef?: React.Ref<HTMLDivElement>;
 }) => (
   <div
-    className={`relative z-10 w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 ${!isExpanded && canExpand ? 'max-h-[140px] overflow-hidden' : ''} ${className}`}
+    ref={containerRef}
+    className={`w-full max-w-full self-start rounded-[16px] border border-[#E5E5E5] bg-white px-4 pt-3 pb-4 ${!isExpanded && canExpand ? 'max-h-[140px] overflow-hidden' : ''} ${className}`}
     style={style}
   >
     <p className="break-words text-[12px] leading-[1.4] text-[#29292B]">{text}</p>
@@ -113,18 +122,26 @@ const ReviewMetaAndText = ({
   isExpanded,
   canExpand,
   onToggle,
+  textContainerRef,
 }: {
   review: ProductReview;
   isExpanded: boolean;
   canExpand: boolean;
   onToggle: () => void;
+  textContainerRef?: React.Ref<HTMLDivElement>;
 }) => (
-  <div className="mt-3 flex items-start gap-3">
-    <div className="w-[96px] flex-shrink-0">
+  <div className="mt-4 grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3">
+    <div className="w-[96px]">
       <ReviewMeta sizeLabel={review.sizeLabel} purchaseDate={review.purchaseDate} />
     </div>
-    <div className="flex min-w-0 flex-1 flex-col items-start">
-      <ReviewTextBubble text={review.text} isExpanded={isExpanded} canExpand={canExpand} onToggle={onToggle} />
+    <div className="min-w-0">
+      <ReviewTextBubble
+        text={review.text}
+        isExpanded={isExpanded}
+        canExpand={canExpand}
+        onToggle={onToggle}
+        containerRef={textContainerRef}
+      />
     </div>
   </div>
 );
@@ -234,8 +251,18 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
   const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount ?? 0);
   const [notHelpfulCount, setNotHelpfulCount] = useState(review.notHelpfulCount ?? 0);
   const [activeVote, setActiveVote] = useState<-1 | 0 | 1>(0);
-  const canExpand = review.text.length > 220;
+  const textContainerRef = useRef<HTMLDivElement | null>(null);
+  const [canExpand, setCanExpand] = useState(false);
   const handleToggle = () => setIsExpanded((prev) => !prev);
+
+  useLayoutEffect(() => {
+    if (isExpanded || !textContainerRef.current) {
+      return;
+    }
+    const el = textContainerRef.current;
+    const hasOverflow = el.scrollHeight - el.clientHeight > 2;
+    setCanExpand(hasOverflow);
+  }, [review.text, isExpanded]);
 
   const handleHelpful = () => {
     setActiveVote((prev) => {
@@ -274,6 +301,7 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
           isExpanded={isExpanded}
           canExpand={canExpand}
           onToggle={handleToggle}
+          textContainerRef={textContainerRef}
         />
         <ReviewFooter
           review={{ ...review, helpfulCount, notHelpfulCount }}

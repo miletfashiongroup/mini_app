@@ -163,7 +163,10 @@ class OrderService:
         )
         user = await uow.users.get(user_id)
         if user:
-            await notify_manager_order_cancel(order, user)
+            try:
+                await notify_manager_order_cancel(order, user)
+            except Exception as exc:
+                logger.warning("order_cancel_notify_failed", order_id=str(order.id), error=str(exc))
         return self._to_schema(order)
 
     def _compute_idempotency(self, cart_items) -> str:
@@ -189,7 +192,11 @@ class OrderService:
                     "product_id": item.product_id,
                     "product_name": item.product.name if item.product else None,
                     "product_code": item.product.product_code if item.product else None,
-                    "hero_media_url": item.product.hero_media_url if item.product else None,
+                    "hero_media_url": (
+                        item.product.hero_media_url
+                        if item.product and item.product.hero_media_url
+                        else (item.product.gallery[0].url if item.product and item.product.gallery else None)
+                    ),
                     "size": item.size,
                     "quantity": item.quantity,
                     "unit_price_minor_units": item.unit_price_minor_units,
