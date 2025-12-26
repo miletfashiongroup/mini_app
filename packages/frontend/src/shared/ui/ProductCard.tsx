@@ -45,11 +45,11 @@ export const ProductCard = ({
       )}
     </button>
 
-    <div className="mt-2 flex flex-nowrap gap-x-1.5 gap-y-1.5 overflow-hidden">
+    <div className="mt-2 flex gap-x-1.5 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-nowrap"
+          className="shrink-0 rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary"
         >
           {tag}
         </span>
