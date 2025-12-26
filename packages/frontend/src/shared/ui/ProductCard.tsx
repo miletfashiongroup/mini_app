@@ -43,7 +43,7 @@ export const ProductCard = ({
         </div>
       )}
       {isNew && (
-        <img src={newIcon} alt="Новинка" className="absolute left-3 top-3 h-5 w-auto" />
+        <img src={newIcon} alt="Новинка" className="absolute left-3 top-2 h-5 w-auto" />
       )}
     </button>
 
