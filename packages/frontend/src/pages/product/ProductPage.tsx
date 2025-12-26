@@ -46,6 +46,7 @@ export const ProductPage = () => {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   });
+  const countFormatter = new Intl.NumberFormat('ru-RU');
   const formatPrice = (minorUnits?: number) =>
     typeof minorUnits === 'number' ? rubleFormatter.format(minorUnits / 100) : '—';
   const variants = product?.variants ?? [];
@@ -80,6 +81,12 @@ export const ProductPage = () => {
   const selectedVariant = selectedSizeId ? variantById.get(selectedSizeId) : primaryVariant;
   const selectedSize = selectedVariant?.size ?? primaryVariant?.size;
   const currency = 'RUB';
+  const ratingCountLabel =
+    typeof product?.rating_count === 'number' ? countFormatter.format(product.rating_count) : '—';
+  const ratingValueLabel =
+    typeof product?.rating_value === 'number'
+      ? product.rating_value.toFixed(1).replace('.', ',')
+      : '—';
   const { data: productReviews = [] } = useProductReviewsQuery(productId ?? '');
   const reviews: ProductReview[] = useMemo(
     () =>
@@ -226,8 +233,8 @@ export const ProductPage = () => {
       <ProductTags tags={tags} />
       <ProductPriceAndSizeSection
         price={priceLabel}
-        ratingCount="11 794"
-        ratingValue="4,9"
+        ratingCount={ratingCountLabel}
+        ratingValue={ratingValueLabel}
         sizeOptions={sizeOptions}
         initialSizeId={selectedSizeId || sizeOptions[0]?.id || ''}
         onSelectSize={(id) => {
