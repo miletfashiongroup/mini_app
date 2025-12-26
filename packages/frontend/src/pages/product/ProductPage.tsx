@@ -255,10 +255,14 @@ export const ProductPage = () => {
       <ProductReviewsSection
         reviews={previewReviews}
         moreLinkTo={productId ? `/product/${productId}/reviews` : undefined}
+        showCta={false}
       />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
-      {null}
+      <ProductBottomBar
+        onAddToCart={() => handleAddToCart(false)}
+        onBuyNow={() => handleAddToCart(true)}
+      />
       {/* Остальные блоки будут добавлены по новому дизайну */}
       <ProductDescriptionModal
         isOpen={isDescriptionModalOpen}
