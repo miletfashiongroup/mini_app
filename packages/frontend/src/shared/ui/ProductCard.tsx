@@ -1,4 +1,5 @@
 import cartIcon from '@/assets/images/icon-cart.svg';
+import { pluralize } from '@/shared/lib/pluralize';
 import { Button } from '@/shared/ui/Button';
 
 export type ProductCardProps = {
@@ -24,8 +25,10 @@ export const ProductCard = ({
   onAddToCart,
   defaultSize,
   imageUrl,
-}: ProductCardProps) => (
-  <div className="flex flex-col">
+}: ProductCardProps) => {
+  const ratingLabel = pluralize(ratingCount, 'оценка', 'оценки', 'оценок');
+  return (
+    <div className="flex flex-col">
     <button
       type="button"
       className="relative w-full aspect-[232/309] rounded-[16px] bg-gray-100 transition duration-150 ease-out active:scale-[0.98] overflow-hidden"
@@ -59,7 +62,9 @@ export const ProductCard = ({
     <div className="mt-2 flex items-center justify-between gap-2 min-w-0">
       <span className="text-[18px] font-bold leading-none text-text-primary whitespace-nowrap">{price}</span>
       <div className="flex items-center gap-2 text-[12px] leading-none whitespace-nowrap">
-        <span className="font-medium text-text-secondary">{ratingCount} оценки</span>
+        <span className="font-medium text-text-secondary">
+          {ratingCount} {ratingLabel}
+        </span>
         <div className="flex items-center gap-1 whitespace-nowrap">
           <span className="font-semibold text-text-primary">{ratingValue}</span>
           <svg aria-hidden className="h-3 w-3 shrink-0" viewBox="0 0 16 16" fill="#FFC700" xmlns="http://www.w3.org/2000/svg">
@@ -81,5 +86,6 @@ export const ProductCard = ({
       <img src={cartIcon} alt="" className="h-5 w-5 invert" />
       <span className="leading-none">{defaultSize ? 'в корзину' : 'нет размера'}</span>
     </Button>
-  </div>
-);
+    </div>
+  );
+};

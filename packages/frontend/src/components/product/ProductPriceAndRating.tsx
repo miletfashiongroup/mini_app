@@ -1,3 +1,5 @@
+import { pluralize } from '@/shared/lib/pluralize';
+
 type ProductPriceAndRatingProps = {
   price: string;
   ratingCount: string;
@@ -5,11 +7,14 @@ type ProductPriceAndRatingProps = {
 };
 
 const ProductPriceAndRating = ({ price, ratingCount, ratingValue }: ProductPriceAndRatingProps) => {
+  const ratingLabel = pluralize(ratingCount, 'оценка', 'оценки', 'оценок');
   return (
     <div className="px-4 mt-4 flex items-center justify-between">
       <span className="text-[20px] font-bold text-[#29292B]">{price}</span>
       <div className="flex items-center gap-2 text-[12px] leading-none">
-        <span className="font-medium text-[#BABABA]">{ratingCount} оценок</span>
+        <span className="font-medium text-[#BABABA]">
+          {ratingCount} {ratingLabel}
+        </span>
         <div className="flex items-center gap-1">
           <span className="font-semibold text-[#29292B]">{ratingValue}</span>
           <svg
