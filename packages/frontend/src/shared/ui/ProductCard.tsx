@@ -45,11 +45,11 @@ export const ProductCard = ({
       )}
     </button>
 
-    <div className="mt-2 flex flex-nowrap gap-x-1.5 gap-y-1.5 overflow-hidden">
+    <div className="mt-2 flex flex-wrap gap-x-1.5 gap-y-1.5">
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-nowrap"
+          className="rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-normal break-all"
         >
           {tag}
         </span>
