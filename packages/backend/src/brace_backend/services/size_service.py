@@ -36,43 +36,20 @@ class SizeService:
         return SizeCalculationResponse(size=size)
 
     def _determine_size(self, waist: float, hip: float) -> str:
-        waist_index = self._match_index(waist, "waist")
-        hip_index = self._match_index(hip, "hip")
+        waist_index = self._index_for_value(waist, "waist")
+        hip_index = self._index_for_value(hip, "hip")
+        return self._SIZE_TABLE[max(waist_index, hip_index)]["size"]
 
-        if waist_index is not None and hip_index is not None:
-            # выбираем больший размер, чтобы не пережимало
-            return self._SIZE_TABLE[max(waist_index, hip_index)]["size"]
-        if waist_index is not None:
-            return self._SIZE_TABLE[waist_index]["size"]
-        if hip_index is not None:
-            return self._SIZE_TABLE[hip_index]["size"]
-        return self._fallback_size(waist, hip)
-
-    def _match_index(self, value: float, key: str) -> int | None:
-        match: int | None = None
+    def _index_for_value(self, value: float, key: str) -> int:
+        if value <= self._SIZE_TABLE[0][key][0]:
+            return 0
+        if value >= self._SIZE_TABLE[-1][key][1]:
+            return len(self._SIZE_TABLE) - 1
         for idx, row in enumerate(self._SIZE_TABLE):
-            min_val, max_val = row[key]
-            if min_val <= value <= max_val:
-                match = idx
-        return match
-
-    def _fallback_size(self, waist: float, hip: float) -> str:
-        # если значение вне диапазона, возвращаем ближайший край
-        waist_min = self._SIZE_TABLE[0]["waist"][0]
-        waist_max = self._SIZE_TABLE[-1]["waist"][1]
-        hip_min = self._SIZE_TABLE[0]["hip"][0]
-        hip_max = self._SIZE_TABLE[-1]["hip"][1]
-
-        if waist <= waist_min or hip <= hip_min:
-            return self._SIZE_TABLE[0]["size"]
-        if waist >= waist_max or hip >= hip_max:
-            return self._SIZE_TABLE[-1]["size"]
-        # если внутри, но без совпадения, выбираем по ближайшему талии
-        closest = min(
-            self._SIZE_TABLE,
-            key=lambda row: min(abs(waist - row["waist"][0]), abs(waist - row["waist"][1])),
-        )
-        return closest["size"]
+            _, max_val = row[key]
+            if value <= max_val:
+                return idx
+        return len(self._SIZE_TABLE) - 1
 
     def _bucket_value(self, value: float) -> str:
         bucket = int(value // 5) * 5
