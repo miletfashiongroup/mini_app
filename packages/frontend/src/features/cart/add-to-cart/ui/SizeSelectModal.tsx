@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Button } from '@/shared/ui/Button';
 import { Modal } from '@/shared/ui/Modal';
@@ -22,18 +22,31 @@ export const SizeSelectModal = ({
   onConfirm,
   isSubmitting = false,
 }: SizeSelectModalProps) => {
+  const sortedSizes = useMemo(() => {
+    return [...sizes].sort((a, b) => {
+      const aNum = Number(a);
+      const bNum = Number(b);
+      if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
+        return aNum - bNum;
+      }
+      if (Number.isFinite(aNum)) return -1;
+      if (Number.isFinite(bNum)) return 1;
+      return String(a).localeCompare(String(b), 'ru');
+    });
+  }, [sizes]);
+
   useEffect(() => {
     if (!isOpen) return;
-    if (!selectedSize && sizes.length) {
-      onSelectSize(sizes[0]);
+    if ((!selectedSize || !sortedSizes.includes(selectedSize)) && sortedSizes.length) {
+      onSelectSize(sortedSizes[0]);
     }
-  }, [isOpen, onSelectSize, selectedSize, sizes]);
+  }, [isOpen, onSelectSize, selectedSize, sortedSizes]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Выберите размер">
-      {sizes.length ? (
+      {sortedSizes.length ? (
         <div className="flex flex-wrap gap-2">
-          {sizes.map((size) => {
+          {sortedSizes.map((size) => {
             const isActive = size === selectedSize;
             return (
               <button
@@ -55,9 +68,9 @@ export const SizeSelectModal = ({
       <div className="mt-4">
         <Button
           variant="primary"
-          className="w-full"
+          className="w-full h-12 text-[16px]"
           onClick={onConfirm}
-          disabled={!sizes.length || !selectedSize || isSubmitting}
+          disabled={!sortedSizes.length || !selectedSize || isSubmitting}
         >
           Добавить в корзину
         </Button>
