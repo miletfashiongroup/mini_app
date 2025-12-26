@@ -49,12 +49,13 @@ export const ProductPage = () => {
   const formatPrice = (minorUnits?: number) =>
     typeof minorUnits === 'number' ? rubleFormatter.format(minorUnits / 100) : '—';
   const variants = product?.variants ?? [];
+  const sizeSubLabels = ['44', '46', '48', '50', '52', '54', '56', '58', '60', '62', '64', '66', '68', '70'];
   const sizeOptions = useMemo(
     () =>
-      variants.map((variant) => ({
+      variants.map((variant, index) => ({
         id: variant.id,
         label: variant.size,
-        subLabel: variant.size,
+        subLabel: sizeSubLabels[index] ?? variant.size,
       })),
     [variants],
   );
