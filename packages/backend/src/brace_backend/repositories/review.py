@@ -58,3 +58,23 @@ class ProductReviewRepository(SQLAlchemyRepository[ProductReview]):
         )
         result = await self.session.execute(stmt)
         return [(row[0], int(row[1] or 0), int(row[2] or 0)) for row in result.all()]
+
+    async def list_product_rating_stats(self, product_ids: Sequence[UUID]) -> dict[UUID, tuple[float, int]]:
+        if not product_ids:
+            return {}
+        stmt = (
+            select(
+                ProductReview.product_id,
+                func.avg(ProductReview.rating).label("avg_rating"),
+                func.count(ProductReview.id).label("review_count"),
+            )
+            .where(ProductReview.product_id.in_(product_ids), ProductReview.status == "published")
+            .group_by(ProductReview.product_id)
+        )
+        result = await self.session.execute(stmt)
+        stats: dict[UUID, tuple[float, int]] = {}
+        for row in result.all():
+            avg_rating = float(row[1]) if row[1] is not None else 0.0
+            count = int(row[2] or 0)
+            stats[row[0]] = (avg_rating, count)
+        return stats
