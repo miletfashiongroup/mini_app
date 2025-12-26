@@ -47,6 +47,8 @@ const GAP_PX = 24;
 
 const DEFAULT_BANNER_RATIO = 656 / 300;
 
+const SHOW_VIDEO_SECTION = false;
+
 const HeaderHome = () => (
   <header className="px-4 py-6">
     <img src={logoBrace} alt="Логотип BRACE" className="h-10 w-auto" />
@@ -415,7 +417,7 @@ export const Homepage = () => (
     <HeaderHome />
     <main className="flex flex-col gap-10">
       <TitleBannerSection />
-      <VideoSection />
+      {SHOW_VIDEO_SECTION ? (<VideoSection />) : null}
       <ProductCardsCarousel />
       <SizeCalculatorSection />
     </main>
