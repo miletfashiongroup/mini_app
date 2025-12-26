@@ -5,6 +5,7 @@ from brace_backend.domain.banner import Banner
 from brace_backend.domain.cart import CartItem
 from brace_backend.domain.order import Order, OrderItem
 from brace_backend.domain.product import Product, ProductMedia, ProductPrice, ProductVariant
+from brace_backend.domain.review import ProductReview, ProductReviewMedia, ProductReviewVote
 from brace_backend.domain.user import User
 
 __all__ = [
@@ -20,5 +21,8 @@ __all__ = [
     "ProductMedia",
     "ProductPrice",
     "ProductVariant",
+    "ProductReview",
+    "ProductReviewMedia",
+    "ProductReviewVote",
     "User",
 ]

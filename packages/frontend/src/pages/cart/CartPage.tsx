@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import newBadgeIcon from '@/assets/images/icon-new.svg';
 import { AppBottomNav, PageTopBar } from '@/components/brace';
@@ -18,6 +19,7 @@ type CartItemView = {
   unitPriceMinorUnits: number;
   isNew?: boolean;
   stockWarning?: string | null;
+  heroMediaUrl?: string | null;
 };
 
 const rubleFormatter = new Intl.NumberFormat('ru-RU', {
@@ -48,10 +50,26 @@ const CartItemsSection = ({ children }: { children: React.ReactNode }) => (
   <section className="w-full bg-[#D9D9D9] px-4 py-2">{children}</section>
 );
 
-const CartItemImagePlaceholder = ({ isNew }: { isNew?: boolean }) => (
-  <div className="relative aspect-[3/4] w-full max-h-[280px] rounded-[12px] border border-black bg-white">
+const CartItemImage = ({
+  src,
+  isNew,
+  onClick,
+}: {
+  src?: string | null;
+  isNew?: boolean;
+  onClick?: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`relative aspect-[3/4] w-full max-h-[280px] rounded-[12px] border border-black bg-white ${
+      src ? 'bg-cover bg-center' : ''
+    }`}
+    style={src ? { backgroundImage: `url(${src})` } : undefined}
+    aria-label="Открыть товар"
+  >
     {isNew ? <img src={newBadgeIcon} alt="Новинка" className="absolute left-2 top-2 h-4 w-auto" /> : null}
-  </div>
+  </button>
 );
 
 const CartItemInfo = ({ title, sizeLabel }: { title: string; sizeLabel: string }) => (
@@ -103,10 +121,12 @@ const CartItemCard = ({
   item,
   onChangeQty,
   onRemove,
+  onOpenProduct,
 }: {
   item: CartItemView;
   onChangeQty: (nextQty: number) => void;
   onRemove: () => void;
+  onOpenProduct: () => void;
 }) => {
   const itemTotalMinorUnits = item.unitPriceMinorUnits * item.quantity;
   const itemTotalPrice = formatRubles(itemTotalMinorUnits);
@@ -115,9 +135,11 @@ const CartItemCard = ({
   return (
     <article className="w-full rounded-[12px] bg-white p-3.5">
       <div className="grid grid-cols-[200px_minmax(0,1fr)] gap-4">
-        <CartItemImagePlaceholder isNew={item.isNew} />
+        <CartItemImage src={item.heroMediaUrl} isNew={item.isNew} onClick={onOpenProduct} />
         <div className="flex h-full flex-col gap-2">
-          <CartItemInfo title={item.title} sizeLabel={item.sizeLabel} />
+          <button type="button" onClick={onOpenProduct} className="text-left">
+            <CartItemInfo title={item.title} sizeLabel={item.sizeLabel} />
+          </button>
           <CartItemQuantityControls
             quantity={item.quantity}
             onDecrement={canDecrease ? () => onChangeQty(item.quantity - 1) : undefined}
@@ -148,10 +170,12 @@ const CartItemList = ({
   items,
   onChangeQty,
   onRemove,
+  onOpenProduct,
 }: {
   items: CartItemView[];
   onChangeQty: (id: string, nextQty: number) => void;
   onRemove: (id: string) => void;
+  onOpenProduct: (productId: string) => void;
 }) => (
   <div className="space-y-3">
     {items.map((item) => (
@@ -160,6 +184,7 @@ const CartItemList = ({
         item={item}
         onChangeQty={(qty) => onChangeQty(item.id, qty)}
         onRemove={() => onRemove(item.id)}
+        onOpenProduct={() => onOpenProduct(item.productId)}
       />
     ))}
   </div>
@@ -210,6 +235,7 @@ const CartSummarySection = ({
 
 export const CartPage = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useCartQuery();
   const [showOrderSent, setShowOrderSent] = useState(false);
   const createOrderMutation = useCreateOrderMutation();
@@ -235,6 +261,7 @@ export const CartPage = () => {
       unitPriceMinorUnits: item.unit_price_minor_units ?? 0,
       isNew: true,
       stockWarning: item.stock_left === 1 ? 'Осталась 1 шт.' : null,
+      heroMediaUrl: item.hero_media_url ?? null,
     })) ?? [];
 
   const totalMinorUnits = cartItems.reduce(
@@ -270,6 +297,11 @@ export const CartPage = () => {
         trackEvent('order_failed', { error_code: err?.type || 'unknown' }, '/cart');
       },
     });
+  };
+
+  const handleOpenProduct = (productId: string) => {
+    if (!productId) return;
+    navigate(`/product/${productId}`);
   };
 
   return (
@@ -309,6 +341,7 @@ export const CartPage = () => {
               }
               deleteMutation.mutate(id);
             }}
+            onOpenProduct={handleOpenProduct}
           />
         )}
       </CartItemsSection>

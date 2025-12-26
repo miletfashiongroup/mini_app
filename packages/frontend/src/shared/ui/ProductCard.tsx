@@ -11,6 +11,7 @@ export type ProductCardProps = {
   onClick?: () => void;
   onAddToCart?: () => void;
   defaultSize?: string;
+  imageUrl?: string | null;
 };
 
 export const ProductCard = ({
@@ -22,13 +23,21 @@ export const ProductCard = ({
   onClick,
   onAddToCart,
   defaultSize,
+  imageUrl,
 }: ProductCardProps) => (
   <div className="flex flex-col">
     <button
       type="button"
-      className="relative w-full aspect-[232/309] rounded-[16px] bg-gray-100 transition duration-150 ease-out active:scale-[0.98]"
+      className="relative w-full aspect-[232/309] rounded-[16px] bg-gray-100 transition duration-150 ease-out active:scale-[0.98] overflow-hidden"
       onClick={onClick}
     >
+      {imageUrl ? (
+        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-[12px] text-[#9C9CA3]">
+          Нет фото
+        </div>
+      )}
       {isNew && (
         <span className="absolute left-3 top-3 rounded-full bg-accent px-2.5 py-1 text-[11px] font-semibold font-mono leading-none text-white">
           new
@@ -36,11 +45,11 @@ export const ProductCard = ({
       )}
     </button>
 
-    <div className="mt-2 flex flex-nowrap gap-x-1.5 gap-y-1.5">
+    <div className="mt-2 flex flex-nowrap gap-x-1.5 gap-y-1.5 overflow-hidden">
       {tags.map((tag) => (
         <span
           key={tag}
-          className="whitespace-nowrap rounded-full bg-gray-50 px-2 py-1 text-[10px] font-medium leading-tight text-text-primary"
+          className="rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-nowrap"
         >
           {tag}
         </span>

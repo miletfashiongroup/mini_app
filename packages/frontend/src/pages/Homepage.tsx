@@ -30,6 +30,7 @@ type VideoSectionProps = {
 
 type CarouselCardProps = {
   isNew?: boolean;
+  imageUrl?: string | null;
   ariaLabel: string;
   onClick?: () => void;
 };
@@ -37,11 +38,14 @@ type CarouselCardProps = {
 type CarouselItem = {
   id: string;
   isNew?: boolean;
+  imageUrl?: string | null;
 };
 
 const CARD_WIDTH = 232;
 const CARD_HEIGHT = 309;
 const GAP_PX = 24;
+
+const DEFAULT_BANNER_RATIO = 656 / 300;
 
 const HeaderHome = () => (
   <header className="px-4 py-6">
@@ -49,24 +53,48 @@ const HeaderHome = () => (
   </header>
 );
 
-const BannerPlaceholder = ({ children }: { children?: React.ReactNode }) => (
+const BannerPlaceholder = ({
+  children,
+  showLabel = true,
+  aspectRatio,
+  hasImage = false,
+}: {
+  children?: React.ReactNode;
+  showLabel?: boolean;
+  aspectRatio?: number;
+  hasImage?: boolean;
+}) => (
   <div
-    className="relative flex w-full items-center justify-center overflow-hidden rounded-[16px] bg-[#D9D9D9]"
-    style={{ aspectRatio: '1.7 / 1', minHeight: '210px' }}
+    className={`relative flex w-full items-center justify-center overflow-hidden rounded-[16px] ${hasImage ? 'bg-transparent' : 'bg-[#D9D9D9]'}`}
+    style={{
+      aspectRatio: aspectRatio ?? DEFAULT_BANNER_RATIO,
+      minHeight: hasImage ? undefined : '210px',
+    }}
   >
-    <span className="text-[16px] font-semibold text-[#BABABA]">Баннер</span>
-    {children ? <div className="absolute bottom-3 left-0 right-0">{children}</div> : null}
+    {showLabel ? <span className="text-[16px] font-semibold text-[#BABABA]">Баннер</span> : null}
+    {children}
   </div>
 );
 
 const BannerCarousel = () => {
   const { data, isLoading, isError } = useBannersQuery();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [failedUrls, setFailedUrls] = useState<Record<string, boolean>>({});
+  const [aspectRatios, setAspectRatios] = useState<Record<string, number>>({});
+  const touchStartX = useRef<number | null>(null);
+  const touchDeltaX = useRef(0);
   const banners = data?.banners ?? [];
 
   useEffect(() => {
     setActiveIndex(data?.active_index ?? 0);
   }, [data?.active_index]);
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const timer = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % banners.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [banners.length]);
 
   if (isLoading) {
     return <p className="text-[14px] font-medium text-[#BABABA]">Загружаем баннеры...</p>;
@@ -79,24 +107,78 @@ const BannerCarousel = () => {
   }
 
   const activeBanner = banners[Math.min(activeIndex, banners.length - 1)];
+  const hasImage =
+    Boolean(activeBanner?.image_url) && !failedUrls[activeBanner.image_url];
+  const activeRatio = activeBanner?.image_url
+    ? aspectRatios[activeBanner.image_url]
+    : undefined;
 
   return (
     <div className="relative">
-      <BannerPlaceholder>
-        {activeBanner?.image_url ? (
-          <img
-            src={activeBanner.image_url}
-            alt="Баннер"
-            className="block h-full w-full object-cover"
-            style={{ borderRadius: 16, maxHeight: 320 }}
+      <BannerPlaceholder showLabel={!hasImage} aspectRatio={activeRatio} hasImage={hasImage}>
+        <div
+          className="relative h-full w-full"
+          onTouchStart={(event) => {
+            touchStartX.current = event.touches[0]?.clientX ?? null;
+            touchDeltaX.current = 0;
+          }}
+          onTouchMove={(event) => {
+            if (touchStartX.current === null) return;
+            touchDeltaX.current = (event.touches[0]?.clientX ?? 0) - touchStartX.current;
+          }}
+          onTouchEnd={() => {
+            if (touchStartX.current === null) return;
+            const delta = touchDeltaX.current;
+            touchStartX.current = null;
+            touchDeltaX.current = 0;
+            if (Math.abs(delta) < 40) return;
+            if (delta > 0) {
+              setActiveIndex((prev) => (prev - 1 + banners.length) % banners.length);
+            } else {
+              setActiveIndex((prev) => (prev + 1) % banners.length);
+            }
+          }}
+        >
+          {banners.map((banner, index) => {
+            if (!banner.image_url) {
+              return null;
+            }
+            const isActive = index === activeIndex;
+            if (failedUrls[banner.image_url]) {
+              return null;
+            }
+            return (
+              <img
+                key={banner.id}
+                src={banner.image_url}
+                alt="Баннер"
+                className={`absolute inset-0 h-full w-full object-contain transition-opacity duration-500 ${
+                  isActive ? 'opacity-100' : 'opacity-0'
+                }`}
+                style={{ borderRadius: 16 }}
+                onLoad={(event) => {
+                  const img = event.currentTarget;
+                  if (!img.naturalWidth || !img.naturalHeight) return;
+                  const ratio = img.naturalWidth / img.naturalHeight;
+                  setAspectRatios((prev) =>
+                    prev[banner.image_url] ? prev : { ...prev, [banner.image_url]: ratio },
+                  );
+                }}
+                onError={() =>
+                  setFailedUrls((prev) => ({ ...prev, [banner.image_url]: true }))
+                }
+              />
+            );
+          })}
+        </div>
+        <div className="absolute bottom-3 left-0 right-0">
+          <BannerIndicators
+            count={banners.length}
+            activeIndex={activeIndex}
+            onSelect={(index) => setActiveIndex(index)}
+            className="mt-0"
           />
-        ) : null}
-        <BannerIndicators
-          count={banners.length}
-          activeIndex={activeIndex}
-          onSelect={(index) => setActiveIndex(index)}
-          className="mt-0"
-        />
+        </div>
       </BannerPlaceholder>
     </div>
   );
@@ -124,7 +206,7 @@ const BannerIndicators = ({ count = 3, activeIndex = 0, onSelect, className }: B
 
 const TitleBannerSection = () => (
   <section className="px-4 mt-2">
-    <h2 className="text-[21px] font-bold text-text-primary">Заголовок 1.1</h2>
+    <h2 className="text-[21px] font-bold text-text-primary">Главные новинки</h2>
     <div className="mt-4">
       <BannerCarousel />
     </div>
@@ -164,15 +246,20 @@ const VideoSection = ({ onPlay, onPrev, onNext }: VideoSectionProps) => (
   </section>
 );
 
-const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, ariaLabel, onClick }, ref) => (
+const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, imageUrl, ariaLabel, onClick }, ref) => (
   <button
     ref={ref}
     type="button"
     aria-label={ariaLabel}
-    className="relative flex shrink-0 items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98]"
+    className="relative flex shrink-0 items-center justify-center rounded-[16px] bg-[#D9D9D9] transition duration-150 ease-out active:scale-[0.98] overflow-hidden"
     onClick={onClick}
     style={{ width: `${CARD_WIDTH}px`, height: `${CARD_HEIGHT}px` }}
   >
+    {imageUrl ? (
+      <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+    ) : (
+      <span className="text-[12px] font-medium text-[#9C9CA3]">Нет фото</span>
+    )}
     {isNew && (
       <img src={newIcon} alt="Новинка" className="absolute left-3 top-3 h-5 w-auto" />
     )}
@@ -185,7 +272,12 @@ CarouselCard.displayName = 'CarouselCard';
 const ProductCardsCarousel = () => {
   const { data, isLoading, isError } = useProductsQuery({ pageSize: 5 });
   const items: CarouselItem[] = useMemo(
-    () => (data?.items ?? []).slice(0, 3).map((product) => ({ id: product.id, isNew: Boolean(product.is_new) })),
+    () =>
+      (data?.items ?? []).slice(0, 3).map((product) => ({
+        id: product.id,
+        isNew: Boolean(product.is_new),
+        imageUrl: product.hero_media_url || product.gallery?.[0] || null,
+      })),
     [data?.items],
   );
   const navigate = useNavigate();
@@ -231,7 +323,7 @@ const ProductCardsCarousel = () => {
 
   return (
     <section className="px-4">
-      <h2 className="mb-4 text-[21px] font-bold text-text-primary">Заголовок 1.2</h2>
+      <h2 className="mb-4 text-[21px] font-bold text-text-primary">Популярные модели</h2>
       <div
         className="w-full overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]"
         ref={containerRef}
@@ -242,6 +334,7 @@ const ProductCardsCarousel = () => {
             <CarouselCard
               key={`${item.id}-${idx}`}
               isNew={item.isNew}
+              imageUrl={item.imageUrl}
               ariaLabel={`Карточка ${item.id}`}
               onClick={() => navigate(`/product/${item.id}`)}
             />

@@ -84,7 +84,10 @@ async def get_current_user(
     init_data: TelegramInitData = Depends(get_current_init_data),
     uow: UnitOfWork = Depends(get_uow),
 ) -> User:
-    return await user_service.sync_from_telegram(uow, init_data)
+    user = await user_service.sync_from_telegram(uow, init_data)
+    if not user.consent_given_at:
+        raise AccessDeniedError("Consent required. Please confirm in bot.")
+    return user
 
 
 async def require_admin(user: User = Depends(get_current_user)) -> User:

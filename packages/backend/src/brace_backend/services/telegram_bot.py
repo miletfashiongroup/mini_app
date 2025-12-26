@@ -52,6 +52,8 @@ def _parse_email(value: str) -> str:
 
 
 def _next_step(user: User) -> str | None:
+    if not user.consent_given_at:
+        return "consent"
     if not user.phone:
         return "phone"
     if user.profile_completed_at:
@@ -163,6 +165,20 @@ class TelegramBotService:
         step = _next_step(user)
         if step is None:
             await self._send_message(chat_id, "Спасибо! Данные сохранены.")
+            return
+        if step == "consent":
+            await self._send_message(
+                chat_id,
+                "Согласны ли вы на обработку персональных данных?",
+                reply_markup={
+                    "inline_keyboard": [
+                        [
+                            {"text": "Согласен(а)", "callback_data": "consent_yes"},
+                            {"text": "Не согласен(а)", "callback_data": "consent_no"},
+                        ]
+                    ]
+                },
+            )
             return
         if step == "phone":
             await self._send_message(

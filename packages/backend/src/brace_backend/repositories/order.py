@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from brace_backend.domain.order import Order, OrderItem
+from brace_backend.domain.product import Product
 from brace_backend.repositories.base import SQLAlchemyRepository
 
 
@@ -15,7 +16,10 @@ class OrderRepository(SQLAlchemyRepository[Order]):
 
     def _base_stmt(self):
         return select(Order).options(
-            selectinload(Order.items).selectinload(OrderItem.product)
+            selectinload(Order.user),
+            selectinload(Order.items)
+            .selectinload(OrderItem.product)
+            .selectinload(Product.gallery),
         )
 
     async def list_for_user(
@@ -41,6 +45,18 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         )
         total = await self.session.scalar(total_stmt)
         return orders, int(total or 0)
+
+    async def list_recent(self, *, limit: int = 10, status: str | None = None) -> Sequence[Order]:
+        stmt = self._base_stmt().order_by(Order.created_at.desc()).limit(limit)
+        if status:
+            stmt = stmt.where(Order.status == status)
+        result = await self.session.scalars(stmt)
+        return result.unique().all()
+
+    async def get_by_id(self, *, order_id: UUID) -> Order | None:
+        stmt = self._base_stmt().where(Order.id == order_id)
+        result = await self.session.scalars(stmt)
+        return result.unique().one_or_none()
 
     async def create(
         self,
@@ -85,5 +101,10 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         stmt = self._base_stmt().where(
             Order.user_id == user_id, Order.idempotency_key == idempotency_key
         )
+        result = await self.session.scalars(stmt)
+        return result.unique().one_or_none()
+
+    async def get_for_user(self, *, user_id: UUID, order_id: UUID) -> Order | None:
+        stmt = self._base_stmt().where(Order.user_id == user_id, Order.id == order_id)
         result = await self.session.scalars(stmt)
         return result.unique().one_or_none()

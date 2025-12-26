@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import ProductPriceAndRating from './ProductPriceAndRating';
 import ProductSizeSelector, { ProductSizeOption } from './ProductSizeSelector';
@@ -35,6 +35,16 @@ const ProductPriceAndSizeSection = ({
   onOpenSpecs,
 }: ProductPriceAndSizeSectionProps) => {
   const [selectedSize, setSelectedSize] = useState<string>(initialSizeId ?? sizeOptions[0]?.id ?? '');
+
+  useEffect(() => {
+    if (initialSizeId) {
+      setSelectedSize(initialSizeId);
+      return;
+    }
+    if (sizeOptions[0]?.id) {
+      setSelectedSize(sizeOptions[0].id);
+    }
+  }, [initialSizeId, sizeOptions]);
 
   const handleSelectSize = (id: string) => {
     setSelectedSize(id);

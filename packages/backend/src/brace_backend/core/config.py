@@ -110,6 +110,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("BRACE_ORDER_MANAGER_TELEGRAM_ID", "ORDER_MANAGER_TELEGRAM_ID"),
         description="Telegram chat ID for order notifications (manager).",
     )
+    admin_bot_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_ADMIN_BOT_TOKEN", "ADMIN_BOT_TOKEN"),
+        description="Telegram bot token for admin order management bot.",
+    )
+    admin_chat_ids: list[int] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("BRACE_ADMIN_CHAT_IDS", "ADMIN_CHAT_IDS"),
+        description="Telegram chat IDs allowed to access admin bot.",
+    )
     telegram_dev_mode: bool = False
     telegram_dev_fallback_token: str = Field(
         default="",
@@ -253,6 +263,28 @@ class Settings(BaseSettings):
             if not v.strip():
                 return []
             parts = [part.strip() for part in v.split(",") if part.strip()]
+            return [int(part) for part in parts if part.isdigit()]
+        if isinstance(v, int):
+            return [v]
+        if isinstance(v, list):
+            return [int(item) for item in v]
+        return v if v else []
+
+    @field_validator("admin_chat_ids", mode="before")
+    @classmethod
+    def parse_admin_chat_ids(cls, v: Any) -> list[int]:
+        if isinstance(v, str):
+            raw = v.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        return [int(item) for item in parsed]
+                except json.JSONDecodeError:
+                    pass
+            parts = [part.strip() for part in raw.split(",") if part.strip()]
             return [int(part) for part in parts if part.isdigit()]
         if isinstance(v, int):
             return [v]

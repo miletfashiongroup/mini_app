@@ -12,6 +12,7 @@ export interface components {
     };
     ProductRead: {
       id: string;
+      product_code?: string | null;
       name: string;
       description?: string | null;
       hero_media_url?: string | null;
@@ -21,8 +22,31 @@ export interface components {
       rating_value?: number | null;
       rating_count?: number | null;
       is_new?: boolean | null;
+      gallery?: string[];
       specs?: string[];
       variants?: components['schemas']['ProductVariant'][];
+    };
+    ProductReviewMediaRead: {
+      id: string;
+      url: string;
+      sort_order: number;
+      created_at: string;
+    };
+    ProductReviewRead: {
+      id: string;
+      product_id: string;
+      rating: number;
+      text: string;
+      is_anonymous: boolean;
+      status: string;
+      created_at: string;
+      updated_at: string;
+      author_name: string;
+      helpful_count?: number;
+      not_helpful_count?: number;
+      size_label?: string | null;
+      purchase_date?: string | null;
+      media?: components['schemas']['ProductReviewMediaRead'][];
     };
     CartItemRead: {
       id: string;
@@ -46,6 +70,9 @@ export interface components {
     OrderItemRead: {
       id?: string;
       product_id?: string;
+      product_name?: string | null;
+      product_code?: string | null;
+      hero_media_url?: string | null;
       size?: string;
       quantity?: number;
       unit_price_minor_units?: number;

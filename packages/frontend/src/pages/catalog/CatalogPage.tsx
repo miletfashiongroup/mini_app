@@ -7,11 +7,12 @@ import { PageTopBar } from '@/components/brace';
 import { AppBottomNav } from '@/components/brace';
 import { useProductsQuery } from '@/shared/api/queries';
 import { trackEvent } from '@/shared/analytics/tracker';
+import { formatTag } from '@/shared/lib/tags';
 
 const CATEGORY_TABS: CatalogTabOption[] = [
-  { id: 'trunks', label: 'Трусы' },
-  { id: 'longjohns', label: 'Кальсоны' },
-  { id: 'tees', label: 'Майки' },
+  { id: 'Трусы', label: 'Трусы' },
+  { id: 'Кальсоны', label: 'Кальсоны' },
+  { id: 'Майки', label: 'Майки' },
 ];
 
 const rubleFormatter = new Intl.NumberFormat('ru-RU', {
@@ -25,8 +26,8 @@ const formatPrice = (minorUnits?: number) =>
   typeof minorUnits === 'number' ? rubleFormatter.format(minorUnits / 100) : '—';
 
 export const CatalogPage = () => {
-  const { data, isLoading, isError } = useProductsQuery();
-  const [activeTab, setActiveTab] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<string>(CATEGORY_TABS[0]?.id ?? '');
+  const { data, isLoading, isError } = useProductsQuery({ category: activeTab || undefined });
   const trackedCatalog = useRef(false);
   const previousTab = useRef<string>('');
 
@@ -37,12 +38,16 @@ export const CatalogPage = () => {
         return {
           id: product.id,
           isNew: Boolean(product.is_new),
-          tags: (product.tags ?? []).map((tag: string) => `#${tag}`),
+          tags: (product.tags ?? []).map(formatTag).filter(Boolean),
           price: formatPrice(primaryVariant?.price_minor_units),
           ratingCount: typeof product.rating_count === 'number' ? product.rating_count.toString() : '—',
           ratingValue:
             typeof product.rating_value === 'number' ? product.rating_value.toFixed(1) : '—',
           defaultSize: primaryVariant?.size,
+          imageUrl: product.hero_media_url || product.gallery?.[0] || null,
+          sizes: Array.from(
+            new Set((product.variants ?? []).map((variant) => variant.size).filter(Boolean)),
+          ),
         };
       }),
     [data?.items],
@@ -67,7 +72,7 @@ export const CatalogPage = () => {
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary">
       <PageTopBar />
-      <CatalogSectionTitle title="Заголовок 2.1" />
+      <CatalogSectionTitle title="Каталог товаров" />
       <CatalogCategoryTabs tabs={CATEGORY_TABS} activeTab={activeTab} onChange={handleTabChange} />
       {isLoading ? (
         <p className="px-4 text-[14px]">Загружаем каталог...</p>

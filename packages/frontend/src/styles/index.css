@@ -10,11 +10,24 @@
   font-family: 'Montserrat', sans-serif;
 }
 
+html,
+body,
+#root {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   font-family: 'Montserrat', sans-serif;
   background-color: #ffffff;
   color: #29292b;
+}
+
+input,
+textarea {
+  color: #29292b;
+  caret-color: #29292b;
 }
 
 .page-transition {

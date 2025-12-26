@@ -117,6 +117,11 @@ class CartService:
         logger.info("cart_item_removed", user_id=str(user_id), cart_item_id=str(item_id))
 
     def _to_schema(self, item: CartItem) -> CartItemRead:
+        hero_media_url = None
+        if item.product:
+            hero_media_url = item.product.hero_media_url
+            if not hero_media_url and item.product.gallery:
+                hero_media_url = item.product.gallery[0].url
         return CartItemRead(
             id=item.id,
             product_id=item.product_id,
@@ -124,7 +129,7 @@ class CartService:
             size=item.size,
             quantity=item.quantity,
             unit_price_minor_units=item.unit_price_minor_units,
-            hero_media_url=item.product.hero_media_url if item.product else None,
+            hero_media_url=hero_media_url,
             stock_left=item.variant.stock if item.variant else None,
         )
 

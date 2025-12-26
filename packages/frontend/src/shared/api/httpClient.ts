@@ -1,4 +1,5 @@
 import axios, { AxiosError, type AxiosRequestConfig } from 'axios';
+import WebApp from '@twa-dev/sdk';
 
 import { resolveTelegramInitDataAsync, withTelegramInitData } from '@/shared/api/telegram';
 import { env } from '@/shared/config/env';
@@ -23,6 +24,21 @@ instance.interceptors.response.use(
     if (status === 401 || status === 403) {
       const payload = error.response?.data;
       const authRelated = payload?.error?.type === 'access_denied' || payload?.error?.type === 'unauthorized';
+      const consentRequired =
+        payload?.error?.type === 'access_denied' &&
+        typeof payload?.error?.message === 'string' &&
+        payload.error.message.toLowerCase().includes('consent required');
+      if (consentRequired && typeof window !== 'undefined') {
+        const botLink = `https://t.me/${env.telegramBotUsername}?start=consent`;
+        if (typeof WebApp?.openTelegramLink === 'function') {
+          WebApp.openTelegramLink(botLink);
+          if (typeof WebApp?.close === 'function') {
+            setTimeout(() => WebApp.close(), 250);
+          }
+        } else {
+          window.location.href = botLink;
+        }
+      }
       if (!originalConfig?.__braceRetried) {
         const refreshedInitData = await resolveTelegramInitDataAsync(4000);
         if (refreshedInitData) {
@@ -91,6 +107,8 @@ export const apiClient = {
   get: <T>(url: string, config?: AxiosRequestConfig) => request<T>({ method: 'GET', url, ...config }),
   post: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     request<T>({ method: 'POST', url, data, ...config }),
+  put: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
+    request<T>({ method: 'PUT', url, data, ...config }),
   patch: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     request<T>({ method: 'PATCH', url, data, ...config }),
   delete: <T>(url: string, config?: AxiosRequestConfig) =>

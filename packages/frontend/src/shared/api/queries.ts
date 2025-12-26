@@ -9,12 +9,14 @@ import { type CartCollection, cartKeys, fetchCart } from '@/entities/cart/api/ca
 import {
   type Product,
   type ProductListResult,
+  type ProductReview,
   fetchProductById,
   fetchProducts,
   productKeys,
   fetchRelatedProducts,
+  fetchProductReviews,
 } from '@/entities/product/api/productApi';
-import { type Order, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
+import { type Order, fetchOrderById, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
 import { ApiError } from '@/shared/api/types';
 
@@ -24,7 +26,7 @@ type QueryOptions<TData> = Omit<
 >;
 
 export const useProductsQuery = (
-  params?: { page?: number; pageSize?: number },
+  params?: { page?: number; pageSize?: number; category?: string },
   options?: QueryOptions<ProductListResult>,
 ) =>
   useQuery<ProductListResult, ApiError>({
@@ -55,6 +57,17 @@ export const useRelatedProductsQuery = (
     ...options,
   });
 
+export const useProductReviewsQuery = (
+  productId: string,
+  options?: QueryOptions<ProductReview[]>,
+) =>
+  useQuery<ProductReview[], ApiError>({
+    queryKey: [...productKeys.detail(productId), 'reviews'],
+    queryFn: () => fetchProductReviews(productId),
+    enabled: Boolean(productId),
+    ...options,
+  });
+
 export const useBannersQuery = (options?: QueryOptions<BannerCarouselResponse>) =>
   useQuery<BannerCarouselResponse, ApiError>({
     queryKey: bannerKeys.list(),
@@ -81,5 +94,13 @@ export const useOrdersQuery = (options?: QueryOptions<Order[]>) =>
   useQuery<Order[], ApiError>({
     queryKey: orderKeys.list,
     queryFn: fetchOrders,
+    ...options,
+  });
+
+export const useOrderQuery = (orderId: string, options?: QueryOptions<Order>) =>
+  useQuery<Order, ApiError>({
+    queryKey: orderKeys.detail(orderId),
+    queryFn: () => fetchOrderById(orderId),
+    enabled: Boolean(orderId),
     ...options,
   });

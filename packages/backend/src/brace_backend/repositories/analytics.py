@@ -53,9 +53,12 @@ class AnalyticsRepository:
         if dialect == "postgresql":
             stmt = pg_insert(AnalyticsEvent).values(rows)
             stmt = stmt.on_conflict_do_nothing(index_elements=["event_id"])
+            stmt = stmt.returning(AnalyticsEvent.event_id)
         elif dialect == "sqlite":
             stmt = insert(AnalyticsEvent).values(rows).prefix_with("OR IGNORE")
         else:
             stmt = insert(AnalyticsEvent).values(rows)
         result = await self.session.execute(stmt)
+        if dialect == "postgresql":
+            return len(result.fetchall())
         return int(result.rowcount or 0)

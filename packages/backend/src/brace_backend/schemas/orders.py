@@ -9,6 +9,9 @@ class OrderItemRead(BaseModel):
 
     id: UUID
     product_id: UUID
+    product_name: str | None = None
+    product_code: str | None = None
+    hero_media_url: str | None = None
     size: str
     quantity: int
     unit_price_minor_units: int

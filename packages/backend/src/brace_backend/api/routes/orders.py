@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from uuid import UUID
 
 from brace_backend.api.deps import get_current_user, get_uow
 from brace_backend.api.params import PaginationParams
@@ -45,4 +46,28 @@ async def create_order(
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[OrderRead]:
     order = await order_service.create_order(uow, user_id=current_user.id, payload=payload)
+    return SuccessResponse[OrderRead](data=order)
+
+
+@router.get("/{order_id}", response_model=SuccessResponse[OrderRead])
+@limiter.limit("20/minute")
+async def get_order(
+    request: Request,
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[OrderRead]:
+    order = await order_service.get_order(uow, user_id=current_user.id, order_id=order_id)
+    return SuccessResponse[OrderRead](data=order)
+
+
+@router.post("/{order_id}/cancel", response_model=SuccessResponse[OrderRead])
+@limiter.limit("10/minute")
+async def cancel_order(
+    request: Request,
+    order_id: UUID,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[OrderRead]:
+    order = await order_service.cancel_order(uow, user_id=current_user.id, order_id=order_id)
     return SuccessResponse[OrderRead](data=order)

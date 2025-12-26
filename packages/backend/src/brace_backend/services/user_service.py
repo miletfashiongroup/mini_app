@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from sqlalchemy import delete
+
 from brace_backend.core.exceptions import ValidationError
 from brace_backend.core.security import TelegramInitData
 from brace_backend.db.uow import UnitOfWork
+from brace_backend.domain.audit import AuditLog
 from brace_backend.domain.user import User
 from brace_backend.schemas.users import UserProfileUpdate
 from brace_backend.services.audit_service import audit_service
@@ -96,6 +99,13 @@ class UserService:
         await uow.commit()
         await uow.refresh(user)
         return user
+
+    async def delete_account(self, uow: UnitOfWork, user: User) -> None:
+        await uow.session.execute(
+            delete(AuditLog).where(AuditLog.actor_user_id == user.id)
+        )
+        await uow.session.delete(user)
+        await uow.commit()
 
 
 user_service = UserService()

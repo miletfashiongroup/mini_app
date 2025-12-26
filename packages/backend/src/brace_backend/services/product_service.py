@@ -38,6 +38,7 @@ class ProductService:
                 raise ValidationError("Active price is missing for a product variant.")
         return ProductRead(
             id=product.id,
+            product_code=product.product_code,
             name=product.name,
             description=product.description,
             hero_media_url=product.hero_media_url,

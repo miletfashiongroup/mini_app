@@ -1,14 +1,20 @@
 import { apiClient } from '@/shared/api/httpClient';
 import type { Pagination } from '@/shared/api/types';
 
-import type { Product, ProductVariant } from '../model/types';
+import type { Product, ProductReview, ProductVariant } from '../model/types';
 
 export type { Product, ProductVariant } from '../model/types';
+export type { ProductReview } from '../model/types';
 
 export const productKeys = {
   all: ['products'] as const,
-  list: (params?: { page?: number; pageSize?: number }) =>
-    [...productKeys.all, params?.page ?? 'all', params?.pageSize ?? 'all'] as const,
+  list: (params?: { page?: number; pageSize?: number; category?: string }) =>
+    [
+      ...productKeys.all,
+      params?.page ?? 'all',
+      params?.pageSize ?? 'all',
+      params?.category ?? 'all',
+    ] as const,
   detail: (productId: string) => [...productKeys.all, 'detail', productId] as const,
 };
 
@@ -44,4 +50,9 @@ export const fetchRelatedProducts = async (productId: string): Promise<ProductLi
     items: response.data,
     pagination: null,
   };
+};
+
+export const fetchProductReviews = async (productId: string): Promise<ProductReview[]> => {
+  const response = await apiClient.get<ProductReview[]>(`/products/${productId}/reviews`);
+  return response.data;
 };

@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from uuid import UUID
 
-from brace_backend.core.exceptions import ValidationError
+from brace_backend.core.exceptions import NotFoundError, ValidationError
 from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.order import Order
@@ -11,10 +11,17 @@ from brace_backend.domain.product import ProductVariant
 from brace_backend.services.audit_service import audit_service
 from brace_backend.services.analytics_service import analytics_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
-from brace_backend.services.telegram_notify import notify_manager_order
+from brace_backend.services.telegram_notify import notify_manager_order, notify_manager_order_cancel
 
 
 class OrderService:
+    allowed_admin_statuses = {
+        "pending",
+        "processing",
+        "shipped",
+        "cancelled",
+        "delivered",
+    }
     async def list_orders(
         self, uow: UnitOfWork, user_id: UUID, *, page: int | None, page_size: int | None
     ) -> tuple[list[OrderRead], int]:
@@ -128,6 +135,87 @@ class OrderService:
             await notify_manager_order(order, user)
         return self._to_schema(order)
 
+    async def get_order(self, uow: UnitOfWork, *, user_id: UUID, order_id: UUID) -> OrderRead:
+        order = await uow.orders.get_for_user(user_id=user_id, order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        return self._to_schema(order)
+
+    async def cancel_order(self, uow: UnitOfWork, *, user_id: UUID, order_id: UUID) -> OrderRead:
+        order = await uow.orders.get_for_user(user_id=user_id, order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        if order.status == "cancelled":
+            return self._to_schema(order)
+        if order.status in ("delivered", "refunded"):
+            raise ValidationError("Order cannot be cancelled.")
+        order.status = "cancelled"
+        await uow.commit()
+        await uow.session.refresh(order, attribute_names=["items", "updated_at", "status"])
+        await audit_service.log(
+            uow,
+            action="order_cancelled",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"items": len(order.items)},
+            actor_user_id=user_id,
+        )
+        occurred_at = order.updated_at or order.created_at
+        await analytics_service.record_server_event(
+            uow,
+            name="order_cancelled",
+            occurred_at=occurred_at,
+            user_id=user_id,
+            properties={
+                "order_id": str(order.id),
+                "items_count": len(order.items),
+            },
+        )
+        user = await uow.users.get(user_id)
+        if user:
+            try:
+                await notify_manager_order_cancel(order, user)
+            except Exception as exc:
+                logger.warning("order_cancel_notify_failed", order_id=str(order.id), error=str(exc))
+        return self._to_schema(order)
+
+    async def set_status_admin(self, uow: UnitOfWork, *, order_id: UUID, status: str) -> OrderRead:
+        if status not in self.allowed_admin_statuses:
+            raise ValidationError("Invalid order status.")
+        order = await uow.orders.get_by_id(order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        if order.status == status:
+            return self._to_schema(order)
+        order.status = status
+        await uow.commit()
+        await uow.session.refresh(order, attribute_names=["items", "updated_at", "status"])
+        await audit_service.log(
+            uow,
+            action="order_status_updated",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"status": status},
+            actor_user_id=order.user_id,
+        )
+        return self._to_schema(order)
+
+    async def delete_order_admin(self, uow: UnitOfWork, *, order_id: UUID) -> None:
+        order = await uow.orders.get_by_id(order_id=order_id)
+        if not order:
+            raise NotFoundError("Order not found.")
+        await uow.orders.delete(order)
+        await uow.commit()
+        await audit_service.log(
+            uow,
+            action="order_deleted",
+            entity_type="order",
+            entity_id=str(order.id),
+            metadata={"status": order.status},
+            actor_user_id=order.user_id,
+        )
+        logger.info("order_deleted_admin", order_id=str(order.id))
+
     def _compute_idempotency(self, cart_items) -> str:
         digest = hashlib.sha256()
         for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
@@ -149,6 +237,13 @@ class OrderService:
                 {
                     "id": item.id,
                     "product_id": item.product_id,
+                    "product_name": item.product.name if item.product else None,
+                    "product_code": item.product.product_code if item.product else None,
+                    "hero_media_url": (
+                        item.product.hero_media_url
+                        if item.product and item.product.hero_media_url
+                        else (item.product.gallery[0].url if item.product and item.product.gallery else None)
+                    ),
                     "size": item.size,
                     "quantity": item.quantity,
                     "unit_price_minor_units": item.unit_price_minor_units,

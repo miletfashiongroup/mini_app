@@ -24,3 +24,28 @@
 ## Ретеншн и обслуживание
 - Запуск очистки: `python -m brace_backend.scripts.analytics_cleanup`
 - Проверка размеров таблиц: `SELECT pg_size_pretty(pg_total_relation_size('analytics_events'));`
+<<<<<<< HEAD
+=======
+
+## Финальные прод‑проверки
+- `/api/analytics/health` возвращает метрики, `ingest_errors=0`.
+- Метрики rollup обновляются (`analytics_daily_metrics`).
+- Cron‑задачи на rollup/alerts/report/cleanup присутствуют и выполняются.
+- Metabase доступен только через SSH‑туннель.
+- Для Metabase нужен read‑only пользователь БД `metabase_ro` (создается админом БД).
+
+## Проверка сборки (prod build verification)
+- Убедиться, что `PIP_OFFLINE=1` задан в `/root/brace__1/.env`.
+- Подготовить wheelhouse:
+```
+/root/brace__1/scripts/build_wheelhouse.sh /root/brace__1
+```
+- Пересобрать backend:
+```
+docker compose -f infra/docker-compose.prod.yml up -d --build backend
+```
+- Проверить health:
+```
+curl http://localhost:8000/api/analytics/health
+```
+>>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d

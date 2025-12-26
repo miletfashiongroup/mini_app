@@ -16,7 +16,10 @@ export const RemoveCartItemButton = ({ itemId }: Props) => {
   return (
     <button
       type="button"
-      onClick={() => mutation.mutate()}
+      onClick={(event) => {
+        event.stopPropagation();
+        mutation.mutate();
+      }}
       className="text-slate-400 text-sm"
       disabled={mutation.isPending}
     >

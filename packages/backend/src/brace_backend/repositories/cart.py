@@ -21,7 +21,7 @@ class CartRepository(SQLAlchemyRepository[CartItem]):
             .join(ProductVariant, CartItem.variant_id == ProductVariant.id)
             .where(Product.is_deleted.is_(False), ProductVariant.is_deleted.is_(False))
             .options(
-                selectinload(CartItem.product),
+                selectinload(CartItem.product).selectinload(Product.gallery),
                 selectinload(CartItem.variant),
             )
         )

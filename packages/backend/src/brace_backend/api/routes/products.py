@@ -7,7 +7,9 @@ from brace_backend.api.params import PaginationParams
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.schemas.common import Pagination, SuccessResponse
 from brace_backend.schemas.products import ProductRead
+from brace_backend.schemas.reviews import ProductReviewRead
 from brace_backend.services.product_service import product_service
+from brace_backend.services.review_service import review_service
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -61,3 +63,12 @@ async def related_products(
 ) -> SuccessResponse[list[ProductRead]]:
     items = await product_service.list_related(uow, product_id=product_id)
     return SuccessResponse[list[ProductRead]](data=items)
+
+
+@router.get("/{product_id}/reviews", response_model=SuccessResponse[list[ProductReviewRead]])
+async def product_reviews(
+    product_id: UUID,
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[list[ProductReviewRead]]:
+    reviews = await review_service.list_product_reviews(uow, product_id)
+    return SuccessResponse[list[ProductReviewRead]](data=reviews)

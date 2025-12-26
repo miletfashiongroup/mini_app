@@ -1,13 +1,27 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import WebApp from '@twa-dev/sdk';
 
 import { AppBottomNav, PageTopBar } from '@/components/brace';
 import { useUserProfileQuery } from '@/shared/api/queries';
+import { env } from '@/shared/config/env';
 import { PageBlock } from '@/shared/ui';
+import { deleteProfile, submitConsent, updateProfile } from '@/entities/user/api/userApi';
 
 type ProfileField = {
   label: string;
   value: string;
 };
+
+const CONSENT_TEXT = 'Я соглашаюсь на обработку персональных данных.';
+const SKIP_KEY = 'brace_profile_skip';
+const ANALYTICS_KEYS = [
+  'brace:analytics:device_id',
+  'brace:analytics:anon_id',
+  'brace:analytics:session_id',
+  'brace:analytics:queue',
+  'brace:analytics:first_open',
+];
 
 const Avatar = ({ name, username }: { name: string; username?: string }) => {
   const initials = useMemo(() => {
@@ -59,9 +73,17 @@ const buildProfileFields = (profile: any, name: string): ProfileField[] => {
 };
 
 export const AccountPage = () => {
+  const queryClient = useQueryClient();
   const { data, isLoading, isError } = useUserProfileQuery();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showEditHint, setShowEditHint] = useState(false);
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [fullName, setFullName] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | ''>('');
+  const [email, setEmail] = useState('');
+  const [consent, setConsent] = useState(false);
 
   const profileName =
     data?.full_name ||
@@ -74,6 +96,91 @@ export const AccountPage = () => {
     const widthCh = Math.min(22, Math.max(10, maxLen));
     return `${widthCh}ch`;
   }, [fields]);
+
+  useEffect(() => {
+    if (!data) return;
+    setFullName(data.full_name || [data.first_name, data.last_name].filter(Boolean).join(' ').trim() || '');
+    setBirthDate(data.birth_date ? String(data.birth_date) : '');
+    setGender((data.gender as 'male' | 'female' | undefined) || '');
+    setEmail(data.email || '');
+    setConsent(Boolean(data.consent_given_at));
+  }, [data]);
+
+  const openBot = () => {
+    const botLink = `https://t.me/${env.telegramBotUsername}?start=phone`;
+    if (typeof WebApp?.openTelegramLink === 'function') {
+      WebApp.openTelegramLink(botLink);
+      if (typeof WebApp?.close === 'function') {
+        setTimeout(() => WebApp.close(), 250);
+      }
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.location.href = botLink;
+    }
+  };
+
+  const consentMutation = useMutation({
+    mutationFn: () => submitConsent({ consent: true, consent_text: CONSENT_TEXT }),
+  });
+
+  const profileMutation = useMutation({
+    mutationFn: () =>
+      updateProfile({
+        full_name: fullName,
+        phone: data?.phone ?? '',
+        email: email.trim() ? email.trim() : null,
+        birth_date: birthDate,
+        gender: gender || 'male',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+      setEditError(null);
+      setShowEditForm(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProfile(),
+    onSuccess: () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(SKIP_KEY);
+        ANALYTICS_KEYS.forEach((key) => localStorage.removeItem(key));
+        sessionStorage.removeItem('brace:analytics:session_id');
+        const botLink = `https://t.me/${env.telegramBotUsername}?start=restart`;
+        if (WebApp?.openTelegramLink && WebApp?.close) {
+          WebApp.openTelegramLink(botLink);
+          setTimeout(() => WebApp.close(), 250);
+          return;
+        }
+        window.location.href = botLink;
+      }
+    },
+  });
+
+  const handleEditSubmit = async () => {
+    setEditError(null);
+    if (!consent) {
+      setEditError('Нужно согласиться на обработку данных.');
+      return;
+    }
+    if (!data?.phone) {
+      setEditError('Сначала поделитесь номером телефона в боте.');
+      return;
+    }
+    if (!fullName.trim() || !birthDate || !gender) {
+      setEditError('Заполните все обязательные поля.');
+      return;
+    }
+    try {
+      if (!data?.consent_given_at) {
+        await consentMutation.mutateAsync();
+      }
+      await profileMutation.mutateAsync();
+    } catch (err: any) {
+      setEditError(err?.message || 'Не удалось сохранить профиль.');
+    }
+  };
 
   const blocks = [
     {
@@ -95,48 +202,11 @@ export const AccountPage = () => {
             <button
               type="button"
               className="h-12 w-full rounded-2xl bg-[#000043] text-[15px] font-semibold text-white transition duration-150 ease-out hover:bg-[#00005A] active:brightness-95"
-              onClick={() => setShowEditHint(true)}
+              onClick={() => setShowEditForm(true)}
             >
               Редактировать данные
             </button>
-            <button
-              type="button"
-              className="h-12 w-full rounded-2xl bg-[#D74242] text-[15px] font-semibold text-white transition duration-150 ease-out hover:bg-[#C53737] active:brightness-95"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Удалить аккаунт
-            </button>
           </div>
-          {showDeleteConfirm ? (
-            <div className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-[13px] text-[#29292B]">
-              <div className="font-semibold">Удаление аккаунта</div>
-              <div className="mt-1 text-[#5A5A5C]">
-                Чтобы удалить аккаунт, напишите в поддержку через Telegram бот.
-              </div>
-              <button
-                type="button"
-                className="mt-3 h-9 w-full rounded-xl bg-[#000043] text-[13px] font-semibold text-white"
-                onClick={() => setShowDeleteConfirm(false)}
-              >
-                Понятно
-              </button>
-            </div>
-          ) : null}
-          {showEditHint ? (
-            <div className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-[13px] text-[#29292B]">
-              <div className="font-semibold">Редактирование данных</div>
-              <div className="mt-1 text-[#5A5A5C]">
-                Для изменения профиля напишите в поддержку через Telegram бот.
-              </div>
-              <button
-                type="button"
-                className="mt-3 h-9 w-full rounded-xl bg-[#000043] text-[13px] font-semibold text-white"
-                onClick={() => setShowEditHint(false)}
-              >
-                Понятно
-              </button>
-            </div>
-          ) : null}
         </div>
       ),
     },
@@ -174,6 +244,159 @@ export const AccountPage = () => {
           ))}
         </div>
       )}
+      {!isLoading && !isError ? (
+        <div className="mt-auto px-4 pb-6">
+          <button
+            type="button"
+            className="h-12 w-full rounded-2xl bg-[#D74242] text-[15px] font-semibold text-white transition duration-150 ease-out hover:bg-[#C53737] active:brightness-95"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Удалить аккаунт
+          </button>
+          {showDeleteConfirm ? (
+            <div className="mt-4 rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-[13px] text-[#29292B]">
+              <div className="font-semibold">Удаление аккаунта</div>
+              <div className="mt-1 text-[#5A5A5C]">
+                Все данные будут удалены без возможности восстановления, включая заказы и историю.
+              </div>
+              <label className="mt-3 flex items-start gap-2 text-[12px] text-[#29292B]/80">
+                <input
+                  type="checkbox"
+                  checked={deleteConfirmed}
+                  onChange={(e) => setDeleteConfirmed(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>Я понимаю последствия и хочу удалить аккаунт</span>
+              </label>
+              <button
+                type="button"
+                className="mt-3 h-9 w-full rounded-xl bg-[#D74242] text-[13px] font-semibold text-white disabled:opacity-60"
+                onClick={() => deleteMutation.mutate()}
+                disabled={!deleteConfirmed || deleteMutation.isPending}
+              >
+                Удалить навсегда
+              </button>
+              <button
+                type="button"
+                className="mt-2 h-9 w-full rounded-xl border border-[#000043] text-[13px] font-semibold text-[#000043]"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeleteConfirmed(false);
+                }}
+              >
+                Отмена
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      {showEditForm ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 text-[#29292B] shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold">Редактирование профиля</h2>
+                <p className="mt-1 text-sm text-[#29292B]/70">
+                  Телефон меняется только через бота. Остальные данные можно обновить здесь.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Закрыть"
+                onClick={() => setShowEditForm(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#000043]/10 text-[#000043] transition hover:bg-[#000043]/20"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-3 text-sm">
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold text-[#29292B]/70">Телефон</span>
+                <input
+                  type="text"
+                  value={data?.phone || ''}
+                  readOnly
+                  className="h-11 rounded-xl border border-[#E2E2E2] bg-[#F7F7F7] px-3 text-[14px]"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold text-[#29292B]/70">ФИО *</span>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="h-11 rounded-xl border border-[#E2E2E2] px-3 text-[14px]"
+                  placeholder="Иванов Иван Иванович"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold text-[#29292B]/70">Дата рождения *</span>
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="h-11 rounded-xl border border-[#E2E2E2] px-3 text-[14px]"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold text-[#29292B]/70">Пол *</span>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as 'male' | 'female' | '')}
+                  className="h-11 rounded-xl border border-[#E2E2E2] px-3 text-[14px]"
+                >
+                  <option value="">Выберите</option>
+                  <option value="male">Мужской</option>
+                  <option value="female">Женский</option>
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[12px] font-semibold text-[#29292B]/70">Email (необязательно)</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 rounded-xl border border-[#E2E2E2] px-3 text-[14px]"
+                  placeholder="mail@example.com"
+                />
+              </label>
+              {!data?.consent_given_at ? (
+                <label className="flex items-start gap-2 text-[13px] text-[#29292B]/80">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    onChange={(e) => setConsent(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>{CONSENT_TEXT}</span>
+                </label>
+              ) : null}
+              {editError ? (
+                <div className="rounded-xl bg-red-100 px-3 py-2 text-[13px] text-red-700">{editError}</div>
+              ) : null}
+            </div>
+
+            <div className="mt-6 flex flex-col gap-3">
+              <button
+                type="button"
+                className="w-full rounded-2xl bg-[#000043] px-4 py-3 text-sm font-semibold text-white"
+                onClick={handleEditSubmit}
+                disabled={profileMutation.isPending || consentMutation.isPending}
+              >
+                Сохранить
+              </button>
+              <button
+                type="button"
+                className="w-full rounded-2xl border border-[#000043] px-4 py-3 text-sm font-semibold text-[#000043]"
+                onClick={openBot}
+              >
+                Обновить телефон через бота
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <AppBottomNav activeId="profile" />
     </div>
   );

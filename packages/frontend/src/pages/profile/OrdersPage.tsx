@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { AppBottomNav, PageTopBar } from '@/components/brace';
 import type { Order } from '@/entities/order/model/types';
 import { useOrdersQuery } from '@/shared/api/queries';
 import { formatPrice } from '@/shared/lib/money';
 import { PageBlock } from '@/shared/ui';
+import type { ApiError } from '@/shared/api/types';
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   created: 'оформление',
@@ -23,8 +25,12 @@ const formatOrderStage = (status?: string) => {
   return ORDER_STATUS_LABELS[key] || status;
 };
 
-const OrderCard = ({ order }: { order: Order }) => (
-  <div className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 shadow-sm">
+const OrderCard = ({ order, onClick }: { order: Order; onClick: () => void }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="rounded-2xl border border-[#E6E6E9] bg-white px-4 py-3 text-left shadow-sm transition duration-150 ease-out hover:shadow-md"
+  >
     <div className="flex items-center justify-between gap-3">
       <span className="text-[14px] font-semibold text-[#29292B]">Заказ #{order.id.slice(0, 8)}</span>
       <span className="rounded-full bg-[#F2F2F6] px-3 py-1 text-[12px] font-semibold text-[#29292B]">
@@ -37,12 +43,14 @@ const OrderCard = ({ order }: { order: Order }) => (
       </span>
       <span className="font-semibold text-[#29292B]">{formatPrice(order.total_minor_units)}</span>
     </div>
-  </div>
+  </button>
 );
 
 export const OrdersPage = () => {
-  const { data, isLoading, isError } = useOrdersQuery();
+  const navigate = useNavigate();
+  const { data, isLoading, isError, error } = useOrdersQuery();
   const orders = useMemo(() => data ?? [], [data]);
+  const emptyError = isError && ((error as ApiError | undefined)?.status === 404 || (error as ApiError | undefined)?.type === 'not_found');
 
   const blocks = [
     {
@@ -50,16 +58,25 @@ export const OrdersPage = () => {
       title: 'Мои заказы',
       content: isLoading ? (
         <div className="text-[14px]">Загружаем заказы...</div>
-      ) : isError ? (
+      ) : isError && !emptyError ? (
         <div className="text-[14px]">Не удалось загрузить заказы.</div>
       ) : orders.length ? (
         <div className="flex flex-col gap-3">
           {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
+            <OrderCard key={order.id} order={order} onClick={() => navigate(`/profile/orders/${order.id}`)} />
           ))}
         </div>
       ) : (
-        <div className="text-[14px] text-[#5A5A5C]">У вас пока нет заказов.</div>
+        <div className="flex flex-col gap-3 text-[14px] text-[#5A5A5C]">
+          <span>У вас пока нет заказов.</span>
+          <button
+            type="button"
+            className="w-full rounded-2xl border border-[#000043] px-4 py-3 text-sm font-semibold text-[#000043]"
+            onClick={() => navigate('/catalog')}
+          >
+            Перейти в каталог
+          </button>
+        </div>
       ),
     },
   ];
