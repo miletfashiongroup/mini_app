@@ -49,22 +49,31 @@ export const ProductPage = () => {
   const formatPrice = (minorUnits?: number) =>
     typeof minorUnits === 'number' ? rubleFormatter.format(minorUnits / 100) : '—';
   const variants = product?.variants ?? [];
-  const sizeOptions = useMemo(
-    () =>
-      variants.map((variant) => {
-        const numericSize = Number(variant.size);
-        const subLabel =
-          Number.isFinite(numericSize) && numericSize >= 1
-            ? String(44 + (numericSize - 1) * 2)
-            : variant.size;
-        return {
-          id: variant.id,
-          label: variant.size,
-          subLabel,
-        };
-      }),
-    [variants],
-  );
+  const sizeOptions = useMemo(() => {
+    const sortedVariants = [...variants].sort((a, b) => {
+      const aNum = Number(a.size);
+      const bNum = Number(b.size);
+      if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
+        return aNum - bNum;
+      }
+      if (Number.isFinite(aNum)) return -1;
+      if (Number.isFinite(bNum)) return 1;
+      return String(a.size).localeCompare(String(b.size), 'ru');
+    });
+
+    return sortedVariants.map((variant) => {
+      const numericSize = Number(variant.size);
+      const subLabel =
+        Number.isFinite(numericSize) && numericSize >= 1
+          ? String(44 + (numericSize - 1) * 2)
+          : variant.size;
+      return {
+        id: variant.id,
+        label: variant.size,
+        subLabel,
+      };
+    });
+  }, [variants]);
   const variantById = useMemo(() => new Map(variants.map((variant) => [variant.id, variant])), [variants]);
   const primaryVariant = variants[0];
   const priceLabel = formatPrice(primaryVariant?.price_minor_units);
