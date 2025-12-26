@@ -50,6 +50,7 @@ export const ProductCard = ({
         <span
           key={tag}
           className="shrink-0 rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-nowrap overflow-visible text-clip max-w-none"
+          style={{ overflow: visible, textOverflow: clip }}
         >
           {tag}
         </span>
