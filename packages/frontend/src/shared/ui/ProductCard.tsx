@@ -1,4 +1,5 @@
 import cartIcon from '@/assets/images/icon-cart.svg';
+import newIcon from '@/assets/images/icon-new.svg';
 import { pluralize } from '@/shared/lib/pluralize';
 import { Button } from '@/shared/ui/Button';
 
@@ -42,9 +43,7 @@ export const ProductCard = ({
         </div>
       )}
       {isNew && (
-        <span className="absolute left-3 top-3 rounded-full bg-[#fd010e] px-2.5 py-1 text-[11px] font-semibold font-mono leading-none text-white">
-          new
-        </span>
+        <img src={newIcon} alt="Новинка" className="absolute left-3 top-3 h-5 w-auto" />
       )}
     </button>
 
