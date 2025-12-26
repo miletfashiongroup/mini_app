@@ -11,6 +11,7 @@ from brace_backend.domain.audit import AuditLog
 from brace_backend.domain.user import User
 from brace_backend.schemas.users import UserProfileUpdate
 from brace_backend.services.audit_service import audit_service
+from brace_backend.services.telegram_notify import notify_manager_account_deleted
 
 
 class UserService:
@@ -101,11 +102,18 @@ class UserService:
         return user
 
     async def delete_account(self, uow: UnitOfWork, user: User) -> None:
+        orders, _ = await uow.orders.list_for_user(user.id)
+        order_ids = [str(order.id) for order in orders]
+        for order in orders:
+            if order.status != "cancelled":
+                order.status = "cancelled"
+            await uow.orders.delete(order)
         await uow.session.execute(
             delete(AuditLog).where(AuditLog.actor_user_id == user.id)
         )
         await uow.session.delete(user)
         await uow.commit()
+        await notify_manager_account_deleted(user, order_ids)
 
 
 user_service = UserService()

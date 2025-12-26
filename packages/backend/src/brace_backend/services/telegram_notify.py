@@ -141,6 +141,40 @@ async def notify_manager_order_cancel(order: Order, user: User) -> None:
         )
 
 
+async def notify_manager_account_deleted(user: User, order_ids: list[str]) -> None:
+    token, chat_ids = _admin_targets()
+    if not chat_ids:
+        logger.info("account_delete_notify_skipped", reason="admin_chat_missing", user_id=str(user.id))
+        return
+    if not token:
+        logger.warning("account_delete_notify_skipped", reason="bot_token_missing", user_id=str(user.id))
+        return
+
+    lines = [
+        "Аккаунт удалён",
+        f"Пользователь: {escape(str(user.id))}",
+        f"Телеграм ID: {escape(str(user.telegram_id))}",
+        f"Username: @{escape(user.username)}" if user.username else "Username: —",
+        "",
+    ]
+    if order_ids:
+        lines.append("Отменённые заказы:")
+        lines.extend([f"- {escape(order_id)}" for order_id in order_ids])
+    else:
+        lines.append("Отменённые заказы: —")
+    message = "\n".join(lines)
+
+    try:
+        for chat_id in chat_ids:
+            await _send_message(token, chat_id, message)
+    except Exception as exc:  # pragma: no cover - external dependency
+        logger.warning(
+            "account_delete_notify_failed",
+            user_id=str(user.id),
+            error=str(exc),
+        )
+
+
 async def send_analytics_report(message: str, *, report_type: str, retries: int = 2) -> bool:
     if not settings.analytics_report_recipient_ids:
         logger.info("analytics_report_skipped", reason="recipients_missing", report_type=report_type)
