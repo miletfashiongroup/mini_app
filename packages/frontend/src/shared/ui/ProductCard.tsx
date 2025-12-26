@@ -49,7 +49,7 @@ export const ProductCard = ({
       {tags.map((tag) => (
         <span
           key={tag}
-          className="rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-nowrap"
+          className="shrink-0 rounded-full bg-gray-50 px-2.5 py-1 text-[12px] font-medium leading-tight text-text-primary whitespace-nowrap"
         >
           {tag}
         </span>
