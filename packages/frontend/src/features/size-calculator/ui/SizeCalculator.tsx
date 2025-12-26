@@ -16,12 +16,47 @@ const calculatorSchema = z.object({
 
 type CalculatorForm = z.infer<typeof calculatorSchema>;
 
+const SIZE_TABLE = [
+  { size: '1', waist: [74, 78], hip: [92, 96] },
+  { size: '2', waist: [78, 82], hip: [96, 109] },
+  { size: '3', waist: [82, 86], hip: [100, 104] },
+  { size: '4', waist: [86, 90], hip: [104, 108] },
+  { size: '5', waist: [90, 94], hip: [108, 112] },
+  { size: '6', waist: [94, 98], hip: [112, 116] },
+  { size: '7', waist: [98, 103], hip: [116, 120] },
+  { size: '8', waist: [103, 107], hip: [120, 124] },
+  { size: '9', waist: [107, 112], hip: [124, 128] },
+  { size: '10', waist: [112, 117], hip: [128, 132] },
+  { size: '11', waist: [117, 121], hip: [132, 136] },
+  { size: '12', waist: [121, 126], hip: [136, 140] },
+  { size: '13', waist: [126, 130], hip: [140, 144] },
+  { size: '14', waist: [130, 134], hip: [144, 148] },
+];
+
+const matchIndex = (value: number, key: 'waist' | 'hip') => {
+  let match: number | null = null;
+  SIZE_TABLE.forEach((row, index) => {
+    const [minVal, maxVal] = row[key];
+    if (value >= minVal && value <= maxVal) {
+      match = index;
+    }
+  });
+  return match;
+};
+
 const calcSize = (waist: number, hips: number) => {
-  const score = (waist + hips) / 2;
-  if (score < 80) return 'S';
-  if (score < 90) return 'M';
-  if (score < 100) return 'L';
-  return 'XL';
+  const waistIndex = matchIndex(waist, 'waist');
+  const hipIndex = matchIndex(hips, 'hip');
+
+  if (waistIndex !== null && hipIndex !== null) {
+    return SIZE_TABLE[Math.max(waistIndex, hipIndex)].size;
+  }
+  if (waistIndex !== null) return SIZE_TABLE[waistIndex].size;
+  if (hipIndex !== null) return SIZE_TABLE[hipIndex].size;
+  if (waist <= SIZE_TABLE[0].waist[0] || hips <= SIZE_TABLE[0].hip[0]) return SIZE_TABLE[0].size;
+  if (waist >= SIZE_TABLE[SIZE_TABLE.length - 1].waist[1] || hips >= SIZE_TABLE[SIZE_TABLE.length - 1].hip[1])
+    return SIZE_TABLE[SIZE_TABLE.length - 1].size;
+  return SIZE_TABLE[SIZE_TABLE.length - 1].size;
 };
 
 export const SizeCalculator = () => {
