@@ -274,9 +274,17 @@ class Settings(BaseSettings):
     @classmethod
     def parse_admin_chat_ids(cls, v: Any) -> list[int]:
         if isinstance(v, str):
-            if not v.strip():
+            raw = v.strip()
+            if not raw:
                 return []
-            parts = [part.strip() for part in v.split(",") if part.strip()]
+            if raw.startswith("["):
+                try:
+                    parsed = json.loads(raw)
+                    if isinstance(parsed, list):
+                        return [int(item) for item in parsed]
+                except json.JSONDecodeError:
+                    pass
+            parts = [part.strip() for part in raw.split(",") if part.strip()]
             return [int(part) for part in parts if part.isdigit()]
         if isinstance(v, int):
             return [v]

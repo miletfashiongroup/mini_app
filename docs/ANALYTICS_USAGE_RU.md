@@ -63,14 +63,20 @@ poetry run python -m brace_backend.scripts.analytics_partitions --month 2025-02
 ```
 poetry run python -m brace_backend.scripts.analytics_report --type daily
 poetry run python -m brace_backend.scripts.analytics_report --type weekly
+<<<<<<< HEAD
+=======
 poetry run python -m brace_backend.scripts.analytics_report --type daily --dry-run
+>>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
 ```
 
 Cron примеры:
 ```
 15 4 * * * /usr/bin/env BRACE_DATABASE_URL=... BRACE_ANALYTICS_REPORT_ENABLED=true BRACE_ANALYTICS_REPORT_RECIPIENT_IDS=123 poetry run python -m brace_backend.scripts.analytics_report --type daily
 30 4 * * 1 /usr/bin/env BRACE_DATABASE_URL=... BRACE_ANALYTICS_REPORT_ENABLED=true BRACE_ANALYTICS_REPORT_RECIPIENT_IDS=123 poetry run python -m brace_backend.scripts.analytics_report --type weekly
+<<<<<<< HEAD
+=======
 poetry run python -m brace_backend.scripts.analytics_report --type daily --dry-run
+>>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
 ```
 
 ## Production checklist
@@ -99,6 +105,8 @@ docker logs infra-backend-1 --tail 200
 ```
 docker compose -f infra/docker-compose.metabase.yml up -d
 ```
+<<<<<<< HEAD
+=======
 
 ## QA smoke‑проверка (факт, VPS)
 - Ingest: POST /api/analytics/events — OK (ingested=1, deduped=0).
@@ -106,3 +114,4 @@ docker compose -f infra/docker-compose.metabase.yml up -d
 - PII‑санитизация: `email`/`phone` удаляются из properties.
 - В БД есть 1 запись по test event_id.
 - Rollup обновлён через `analytics_rollup`.
+>>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d

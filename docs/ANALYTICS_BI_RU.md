@@ -1,7 +1,11 @@
 # BI и дашборды (Metabase)
 
 ## Быстрый старт
+<<<<<<< HEAD
+1) Скопировать `infra/metabase/.env.metabase.example` в `infra/metabase/.env.metabase`.
+=======
 1) Скопировать `infra/metabase/metabase.env.example` в `/etc/brace/secrets/metabase/metabase.env`.
+>>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
 2) Поднять Metabase:
 ```
 docker compose -f infra/docker-compose.metabase.yml up -d
@@ -78,6 +82,8 @@ ORDER BY day DESC;
 ## Производительность
 - Для дашбордов используйте `analytics_daily_metrics`, если нужен тренд по дням.
 - Для ad‑hoc запросов по событиям используйте фильтр по `occurred_at`.
+<<<<<<< HEAD
+=======
 
 ## Продакшн-доступ и безопасность
 - Metabase слушает только `127.0.0.1:3000`.
@@ -132,3 +138,4 @@ docker compose -f infra/docker-compose.metabase.yml up -d
 
 ## Read-only подключение к аналитике
 - После создания роли `metabase_ro` подключить БД `brace_prod` в Metabase как read‑only.
+>>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
