@@ -258,10 +258,7 @@ export const ProductPage = () => {
       />
       <ProductComplementSection products={complementProducts} />
       <ProductRichContent />
-      <ProductBottomBar
-        onAddToCart={() => handleAddToCart(false)}
-        onBuyNow={() => handleAddToCart(true)}
-      />
+      {null}
       {/* Остальные блоки будут добавлены по новому дизайну */}
       <ProductDescriptionModal
         isOpen={isDescriptionModalOpen}
