@@ -325,6 +325,8 @@ const SizeCalculatorSection = () => {
   const [waist, setWaist] = useState<string>('');
   const [hip, setHip] = useState<string>('');
   const [result, setResult] = useState<string | null>(null);
+  const [showChecks, setShowChecks] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { mutate, isPending } = useMutation({
@@ -333,14 +335,40 @@ const SizeCalculatorSection = () => {
     onError: () => setResult(null),
   });
 
+  const isValidMeasurement = (value: number) => Number.isInteger(value) && value >= 40 && value <= 160;
+  const sanitizeNumberInput = (value: string) => value.replace(/[^\d]/g, '');
+
+  const updateValidation = (nextWaist: string, nextHip: string) => {
+    const waistNum = Number(nextWaist);
+    const hipNum = Number(nextHip);
+    const waistProvided = nextWaist.trim() !== '';
+    const hipProvided = nextHip.trim() !== '';
+    const waistValid = waistProvided && isValidMeasurement(waistNum);
+    const hipValid = hipProvided && isValidMeasurement(hipNum);
+
+    if (!waistProvided && !hipProvided) {
+      setValidationError(null);
+      return { waistValid, hipValid };
+    }
+
+    if (!waistValid || !hipValid) {
+      setValidationError('Введите корректные значения от 40 до 160 см.');
+    } else {
+      setValidationError(null);
+    }
+
+    return { waistValid, hipValid };
+  };
+
   const handleCalculate = () => {
-    const waistNum = Number(waist);
-    const hipNum = Number(hip);
-    if (!waistNum || !hipNum) {
+    const { waistValid, hipValid } = updateValidation(waist, hip);
+    if (!waistValid || !hipValid) {
       setResult(null);
+      setShowChecks(false);
       return;
     }
-    mutate({ waist: waistNum, hip: hipNum });
+    setShowChecks(true);
+    mutate({ waist: Number(waist), hip: Number(hip) });
   };
 
   return (
@@ -354,12 +382,23 @@ const SizeCalculatorSection = () => {
             <div className="mb-1 flex flex-row items-center gap-2">
               <input
                 type="number"
-                inputMode="decimal"
+                inputMode="numeric"
+                min="40"
+                max="160"
+                step="1"
                 value={waist}
-                onChange={(e) => setWaist(e.target.value)}
+                onChange={(e) => {
+                  const nextValue = sanitizeNumberInput(e.target.value);
+                  setWaist(nextValue);
+                  setShowChecks(false);
+                  setResult(null);
+                  updateValidation(nextValue, hip);
+                }}
                 className="h-9 w-[50%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
               />
-              <img src={checkIcon} alt="" className="w-6 h-6" />
+              {showChecks ? (
+                <img src={checkIcon} alt="" className="w-6 h-6" />
+              ) : null}
             </div>
           </div>
 
@@ -368,14 +407,29 @@ const SizeCalculatorSection = () => {
             <div className="mb-4 flex flex-row items-center gap-2">
               <input
                 type="number"
-                inputMode="decimal"
+                inputMode="numeric"
+                min="40"
+                max="160"
+                step="1"
                 value={hip}
-                onChange={(e) => setHip(e.target.value)}
+                onChange={(e) => {
+                  const nextValue = sanitizeNumberInput(e.target.value);
+                  setHip(nextValue);
+                  setShowChecks(false);
+                  setResult(null);
+                  updateValidation(waist, nextValue);
+                }}
                 className="h-9 w-[50%] rounded-[12px] bg-white px-3 text-[12px] text-[#29292B] outline-none border-none"
               />
-              <img src={checkIcon} alt="" className="w-6 h-6" />
+              {showChecks ? (
+                <img src={checkIcon} alt="" className="w-6 h-6" />
+              ) : null}
             </div>
           </div>
+
+          {validationError ? (
+            <p className="-mt-2 mb-2 text-[11px] text-[#8B0000]">{validationError}</p>
+          ) : null}
 
           <button
             type="button"
