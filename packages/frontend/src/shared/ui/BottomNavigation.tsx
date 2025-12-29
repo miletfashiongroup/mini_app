@@ -15,8 +15,8 @@ export const BottomNavigation = <T extends string = string>({
   activeId,
   onSelect,
 }: BottomNavigationProps<T>) => (
-  <nav className="fixed bottom-4 left-0 right-0 z-10 flex justify-center">
-    <div className="flex h-[88px] w-full max-w-[1000px] items-center justify-between rounded-2xl bg-gray-100 px-4 py-3 shadow-subtle">
+  <nav className="fixed bottom-3 left-0 right-0 z-10 flex justify-center">
+    <div className="flex h-[68px] w-full max-w-[960px] items-center justify-between rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-lg">
       {items.map((item) => {
         const isActive = item.id === activeId;
         return (
@@ -25,11 +25,11 @@ export const BottomNavigation = <T extends string = string>({
             type="button"
             aria-label={item.label}
             onClick={() => onSelect?.(item.id)}
-            className={`flex h-16 w-16 items-center justify-center rounded-[16px] bg-white transition duration-150 ease-out hover:brightness-105 active:scale-[0.97] ${
+            className={`flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/80 transition duration-150 ease-out hover:brightness-105 active:scale-[0.97] ${
               isActive ? 'ring-1 ring-text-primary/20' : ''
             }`}
           >
-            <img src={item.icon} alt="" className="h-10 w-10" />
+            <img src={item.icon} alt="" className="h-7 w-7" />
           </button>
         );
       })}

@@ -5,6 +5,7 @@ import { ProductCard, type ProductCardProps } from '@/shared/ui/ProductCard';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
 import { SizeSelectModal } from '@/features/cart/add-to-cart/ui/SizeSelectModal';
 import { useToast } from '@/shared/hooks/useToast';
+import { useFavoritesStore } from '@/shared/state/favoritesStore';
 
 type ProductComplementSectionProps = {
   title?: string;
@@ -15,9 +16,15 @@ const ProductComplementSection = ({ title = 'Дополни образ', product
   const navigate = useNavigate();
   const toast = useToast();
   const addToCart = useAddToCartMutation();
+  const favorites = useFavoritesStore((state) => state.items);
+  const addFavorite = useFavoritesStore((state) => state.addFavorite);
+  const removeFavorite = useFavoritesStore((state) => state.removeFavorite);
   const [activeProduct, setActiveProduct] = useState<(ProductCardProps & { sizes: string[] }) | null>(null);
   const [selectedSize, setSelectedSize] = useState('');
+  const [favoriteProduct, setFavoriteProduct] = useState<(ProductCardProps & { sizes: string[] }) | null>(null);
+  const [favoriteSize, setFavoriteSize] = useState('');
   const availableSizes = useMemo(() => activeProduct?.sizes ?? [], [activeProduct]);
+  const favoriteSizes = useMemo(() => favoriteProduct?.sizes ?? [], [favoriteProduct]);
 
   const openSizeModal = (product: ProductCardProps & { sizes: string[] }) => {
     if (!product.sizes.length) {
@@ -32,6 +39,26 @@ const ProductComplementSection = ({ title = 'Дополни образ', product
     setActiveProduct(null);
     setSelectedSize('');
   };
+
+  const isFavorite = (productId: string) => favorites.some((item) => item.id === productId);
+
+  const openFavoriteModal = (product: ProductCardProps & { sizes: string[] }) => {
+    if (isFavorite(product.id)) {
+      removeFavorite(product.id);
+      return;
+    }
+    if (!product.sizes.length) {
+      toast.error('Нет доступного размера для добавления.');
+      return;
+    }
+    setFavoriteProduct(product);
+    setFavoriteSize(product.sizes[0] ?? '');
+  };
+
+  const closeFavoriteModal = () => {
+    setFavoriteProduct(null);
+    setFavoriteSize('');
+  };
   return (
     <>
       <section className="px-4 mt-6">
@@ -43,6 +70,8 @@ const ProductComplementSection = ({ title = 'Дополни образ', product
               {...product}
               onClick={() => navigate(`/product/${product.id}`)}
               onAddToCart={() => openSizeModal(product)}
+              onToggleFavorite={() => openFavoriteModal(product)}
+              isFavorite={isFavorite(product.id)}
             />
           ))}
         </div>
@@ -70,6 +99,33 @@ const ProductComplementSection = ({ title = 'Дополни образ', product
           );
         }}
         isSubmitting={addToCart.isPending}
+      />
+      <SizeSelectModal
+        isOpen={Boolean(favoriteProduct)}
+        sizes={favoriteSizes}
+        selectedSize={favoriteSize}
+        onSelectSize={setFavoriteSize}
+        onClose={closeFavoriteModal}
+        title="Выберите размер для избранного"
+        confirmLabel="Добавить в любимые"
+        onConfirm={() => {
+          if (!favoriteProduct || !favoriteSize) {
+            toast.error('Выберите размер.');
+            return;
+          }
+          addFavorite({
+            id: favoriteProduct.id,
+            tags: favoriteProduct.tags,
+            price: favoriteProduct.price,
+            ratingCount: favoriteProduct.ratingCount,
+            ratingValue: favoriteProduct.ratingValue,
+            isNew: favoriteProduct.isNew,
+            imageUrl: favoriteProduct.imageUrl,
+            defaultSize: favoriteProduct.defaultSize,
+            size: favoriteSize,
+          });
+          closeFavoriteModal();
+        }}
       />
     </>
   );

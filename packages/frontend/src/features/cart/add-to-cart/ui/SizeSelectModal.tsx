@@ -11,6 +11,8 @@ type SizeSelectModalProps = {
   onClose: () => void;
   onConfirm: () => void;
   isSubmitting?: boolean;
+  title?: string;
+  confirmLabel?: string;
 };
 
 export const SizeSelectModal = ({
@@ -21,6 +23,8 @@ export const SizeSelectModal = ({
   onClose,
   onConfirm,
   isSubmitting = false,
+  title = 'Выберите размер',
+  confirmLabel = 'Добавить в корзину',
 }: SizeSelectModalProps) => {
   const sortedSizes = useMemo(() => {
     return [...sizes].sort((a, b) => {
@@ -43,7 +47,7 @@ export const SizeSelectModal = ({
   }, [isOpen, onSelectSize, selectedSize, sortedSizes]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Выберите размер">
+    <Modal isOpen={isOpen} onClose={onClose} title={title}>
       {sortedSizes.length ? (
         <div className="flex flex-wrap gap-2">
           {sortedSizes.map((size) => {
@@ -72,7 +76,7 @@ export const SizeSelectModal = ({
           onClick={onConfirm}
           disabled={!sortedSizes.length || !selectedSize || isSubmitting}
         >
-          Добавить в корзину
+          {confirmLabel}
         </Button>
       </div>
     </Modal>

@@ -6,14 +6,18 @@ import { useNavigate } from 'react-router-dom';
 import figureBody from '@/assets/images/figure-body.svg';
 import arrowLeft from '@/assets/images/icon-arrow-left.svg';
 import arrowRight from '@/assets/images/icon-arrow-right.svg';
-import cartIcon from '@/assets/images/icon-cart.svg';
 import checkIcon from '@/assets/images/icon-check.svg';
 import newIcon from '@/assets/images/icon-new.svg';
 import playIcon from '@/assets/images/icon-play.svg';
 import logoBrace from '@/assets/images/logo-brace.svg';
 import { AppBottomNav } from '@/components/brace';
+import { SizeSelectModal } from '@/features/cart/add-to-cart/ui/SizeSelectModal';
 import { calculateSize } from '@/features/size-calculator/api/sizeCalcApi';
 import { useBannersQuery, useProductsQuery } from '@/shared/api/queries';
+import { useToast } from '@/shared/hooks/useToast';
+import { formatTag } from '@/shared/lib/tags';
+import { formatPrice } from '@/shared/lib/money';
+import { useFavoritesStore } from '@/shared/state/favoritesStore';
 
 type BannerIndicatorsProps = {
   count?: number;
@@ -33,12 +37,20 @@ type CarouselCardProps = {
   imageUrl?: string | null;
   ariaLabel: string;
   onClick?: () => void;
+  onToggleFavorite?: () => void;
+  isFavorite?: boolean;
 };
 
 type CarouselItem = {
   id: string;
   isNew?: boolean;
   imageUrl?: string | null;
+  tags?: string[];
+  price: string;
+  ratingCount?: string;
+  ratingValue?: string;
+  defaultSize?: string;
+  sizes: string[];
 };
 
 const CARD_WIDTH = 232;
@@ -248,7 +260,14 @@ const VideoSection = ({ onPlay, onPrev, onNext }: VideoSectionProps) => (
   </section>
 );
 
-const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, imageUrl, ariaLabel, onClick }, ref) => (
+const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({
+  isNew,
+  imageUrl,
+  ariaLabel,
+  onClick,
+  onToggleFavorite,
+  isFavorite = false,
+}, ref) => (
   <button
     ref={ref}
     type="button"
@@ -265,7 +284,37 @@ const CarouselCard = forwardRef<HTMLButtonElement, CarouselCardProps>(({ isNew, 
     {isNew && (
       <img src={newIcon} alt="Новинка" className="absolute left-3 top-3 h-5 w-auto" />
     )}
-    <img src={cartIcon} alt="Иконка корзины" className="absolute right-3 top-3 h-4 w-4" />
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={isFavorite ? 'Убрать из любимых' : 'Добавить в любимые'}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggleFavorite?.();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        event.stopPropagation();
+        onToggleFavorite?.();
+      }}
+      className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full border ${
+        isFavorite ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white/90'
+      }`}
+    >
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        className="h-4 w-4"
+        fill={isFavorite ? '#E11D48' : 'none'}
+        stroke={isFavorite ? '#E11D48' : '#9CA3AF'}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 0 0-7.1 7.1l1.7 1.7L12 21l7.1-6.6 1.7-1.7a5 5 0 0 0 0-7.1Z" />
+      </svg>
+    </div>
   </button>
 ));
 
@@ -273,16 +322,52 @@ CarouselCard.displayName = 'CarouselCard';
 
 const ProductCardsCarousel = () => {
   const { data, isLoading, isError } = useProductsQuery({ pageSize: 5 });
+  const navigate = useNavigate();
+  const toast = useToast();
+  const favorites = useFavoritesStore((state) => state.items);
+  const addFavorite = useFavoritesStore((state) => state.addFavorite);
+  const removeFavorite = useFavoritesStore((state) => state.removeFavorite);
+  const [favoriteProduct, setFavoriteProduct] = useState<CarouselItem | null>(null);
+  const [favoriteSize, setFavoriteSize] = useState('');
+
   const items: CarouselItem[] = useMemo(
     () =>
-      (data?.items ?? []).slice(0, 3).map((product) => ({
-        id: product.id,
-        isNew: Boolean(product.is_new),
-        imageUrl: product.hero_media_url || product.gallery?.[0] || null,
-      })),
+      (data?.items ?? []).slice(0, 3).map((product) => {
+        const primaryVariant = product.variants?.[0];
+        return {
+          id: product.id,
+          isNew: Boolean(product.is_new),
+          imageUrl: product.hero_media_url || product.gallery?.[0] || null,
+          tags: (product.tags ?? []).map(formatTag).filter(Boolean),
+          price: primaryVariant?.price_minor_units != null ? formatPrice(primaryVariant.price_minor_units) : '—',
+          ratingCount: typeof product.rating_count === 'number' ? product.rating_count.toString() : '—',
+          ratingValue: typeof product.rating_value === 'number' ? product.rating_value.toFixed(1) : '—',
+          defaultSize: primaryVariant?.size,
+          sizes: Array.from(new Set((product.variants ?? []).map((variant) => variant.size).filter(Boolean))),
+        };
+      }),
     [data?.items],
   );
-  const navigate = useNavigate();
+
+  const isFavorite = (productId: string) => favorites.some((item) => item.id === productId);
+
+  const openFavoriteModal = (product: CarouselItem) => {
+    if (isFavorite(product.id)) {
+      removeFavorite(product.id);
+      return;
+    }
+    if (!product.sizes.length) {
+      toast.error('Нет доступного размера для добавления.');
+      return;
+    }
+    setFavoriteProduct(product);
+    setFavoriteSize(product.sizes[0] ?? '');
+  };
+
+  const closeFavoriteModal = () => {
+    setFavoriteProduct(null);
+    setFavoriteSize('');
+  };
 
   if (isLoading) {
     return (
@@ -313,10 +398,39 @@ const ProductCardsCarousel = () => {
               imageUrl={item.imageUrl}
               ariaLabel={`Карточка ${item.id}`}
               onClick={() => navigate(`/product/${item.id}`)}
+              onToggleFavorite={() => openFavoriteModal(item)}
+              isFavorite={isFavorite(item.id)}
             />
           ))}
         </div>
       </div>
+      <SizeSelectModal
+        isOpen={Boolean(favoriteProduct)}
+        sizes={favoriteProduct?.sizes ?? []}
+        selectedSize={favoriteSize}
+        onSelectSize={setFavoriteSize}
+        onClose={closeFavoriteModal}
+        title="Выберите размер для избранного"
+        confirmLabel="Добавить в любимые"
+        onConfirm={() => {
+          if (!favoriteProduct || !favoriteSize) {
+            toast.error('Выберите размер.');
+            return;
+          }
+          addFavorite({
+            id: favoriteProduct.id,
+            tags: favoriteProduct.tags,
+            price: favoriteProduct.price,
+            ratingCount: favoriteProduct.ratingCount,
+            ratingValue: favoriteProduct.ratingValue,
+            isNew: favoriteProduct.isNew,
+            imageUrl: favoriteProduct.imageUrl,
+            defaultSize: favoriteProduct.defaultSize,
+            size: favoriteSize,
+          });
+          closeFavoriteModal();
+        }}
+      />
     </section>
   );
 };

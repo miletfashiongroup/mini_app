@@ -10,6 +10,7 @@ import { ProductPage } from '@/pages/product/ProductPage';
 import { ProductReviewsPage } from '@/pages/product/ProductReviewsPage';
 import { ProductSpecsPage } from '@/pages/product/ProductSpecsPage';
 import { AccountPage } from '@/pages/profile/AccountPage';
+import { FavoritesPage } from '@/pages/profile/FavoritesPage';
 import { OrderDetailsPage } from '@/pages/profile/OrderDetailsPage';
 import { OrdersPage } from '@/pages/profile/OrdersPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
@@ -30,6 +31,7 @@ const routes: RouteObject[] = [
   { path: '/profile/account', element: <AccountPage /> },
   { path: '/profile/orders', element: <OrdersPage /> },
   { path: '/profile/orders/:orderId', element: <OrderDetailsPage /> },
+  { path: '/profile/favorites', element: <FavoritesPage /> },
   { path: '/size-table/:type', element: <SizeTablePage /> },
   { path: '/legal/:slug', element: <TextPage /> },
   { path: '/coming-soon', element: <PlaceholderPage /> },

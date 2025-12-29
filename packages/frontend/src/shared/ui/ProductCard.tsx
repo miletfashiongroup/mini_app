@@ -12,6 +12,8 @@ export type ProductCardProps = {
   isNew?: boolean;
   onClick?: () => void;
   onAddToCart?: () => void;
+  onToggleFavorite?: () => void;
+  isFavorite?: boolean;
   defaultSize?: string;
   imageUrl?: string | null;
 };
@@ -24,6 +26,8 @@ export const ProductCard = ({
   isNew,
   onClick,
   onAddToCart,
+  onToggleFavorite,
+  isFavorite = false,
   defaultSize,
   imageUrl,
 }: ProductCardProps) => {
@@ -45,6 +49,37 @@ export const ProductCard = ({
       {isNew && (
         <img src={newIcon} alt="Новинка" className="absolute left-3 top-2 h-4 w-auto" />
       )}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={isFavorite ? 'Убрать из любимых' : 'Добавить в любимые'}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleFavorite?.();
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          onToggleFavorite?.();
+        }}
+        className={`absolute right-3 top-2 flex h-8 w-8 items-center justify-center rounded-full border ${
+          isFavorite ? 'border-red-500 bg-red-50' : 'border-gray-200 bg-white/90'
+        }`}
+      >
+        <svg
+          aria-hidden
+          viewBox="0 0 24 24"
+          className="h-4 w-4"
+          fill={isFavorite ? '#E11D48' : 'none'}
+          stroke={isFavorite ? '#E11D48' : '#9CA3AF'}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20.8 5.6a5 5 0 0 0-7.1 0L12 7.3l-1.7-1.7a5 5 0 0 0-7.1 7.1l1.7 1.7L12 21l7.1-6.6 1.7-1.7a5 5 0 0 0 0-7.1Z" />
+        </svg>
+      </div>
     </button>
 
     <div className="mt-2 flex gap-x-1.5 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

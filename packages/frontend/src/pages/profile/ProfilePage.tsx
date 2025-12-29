@@ -5,6 +5,7 @@ import boxIcon from '@/assets/images/icon-box.svg';
 import docsIcon from '@/assets/images/icon-docs.svg';
 import giftIcon from '@/assets/images/icon-gift.svg';
 import handsIcon from '@/assets/images/icon-hands.svg';
+import heartIcon from '@/assets/images/icon-heart.svg';
 import profileAccountIcon from '@/assets/images/icon-profile_white.svg';
 import supportIcon from '@/assets/images/icon-support.svg';
 import { AppBottomNav, PageTopBar } from '@/components/brace';
@@ -73,6 +74,11 @@ export const ProfilePage = () => {
         label: 'мои заказы',
         icon: boxIcon,
         onClick: () => navigate('/profile/orders'),
+      },
+      {
+        label: 'любимые товары',
+        icon: heartIcon,
+        onClick: () => navigate('/profile/favorites'),
       },
       {
         label: 'мой аккаунт',
