@@ -8,6 +8,7 @@
   color: #29292b;
   background-color: #ffffff;
   font-family: 'Montserrat', sans-serif;
+  --ui-scale: clamp(0.88, 100vw / 375, 1);
 }
 
 html,
@@ -15,6 +16,13 @@ body,
 #root {
   width: 100%;
   overflow-x: hidden;
+}
+
+#root {
+  transform: scale(var(--ui-scale));
+  transform-origin: top center;
+  width: calc(100% / var(--ui-scale));
+  min-height: calc(100vh / var(--ui-scale));
 }
 
 body {
