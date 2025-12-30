@@ -2,9 +2,8 @@ import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 
 import starIcon from '@/assets/images/StarIcon.svg';
-import { Modal } from '@/shared/ui/Modal';
-
 import ProductMainCTA from './ProductMainCTA';
+import { ReviewImageLightbox } from './ReviewImageLightbox';
 
 export type ProductReview = {
   id: string;
@@ -158,7 +157,7 @@ const ReviewGallery = ({
   onImageClick,
 }: {
   images?: string[];
-  onImageClick?: (src: string) => void;
+  onImageClick?: (index: number) => void;
 }) => {
   const safeImages = images.filter(Boolean);
   return safeImages.length ? (
@@ -170,7 +169,7 @@ const ReviewGallery = ({
           className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-[12px] bg-[#D9D9D9]"
           onClick={() => {
             if (onImageClick) {
-              onImageClick(src);
+              onImageClick(index);
             }
           }}
           aria-label="Открыть фото отзыва"
@@ -235,7 +234,7 @@ const ReviewFooter = ({
   activeVote: -1 | 0 | 1;
   onHelpful: () => void;
   onNotHelpful: () => void;
-  onImageClick?: (src: string) => void;
+  onImageClick?: (index: number) => void;
 }) => (
   <div className="mt-3 grid grid-cols-[96px_minmax(0,1fr)] gap-3">
     <div />
@@ -252,7 +251,13 @@ const ReviewFooter = ({
   </div>
 );
 
-const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; onImageClick?: (src: string) => void }) => {
+const ProductReviewCard = ({
+  review,
+  onImageClick,
+}: {
+  review: ProductReview;
+  onImageClick?: (review: ProductReview, index: number) => void;
+}) => {
   const ratingStarsCount = review.ratingStarsCount ?? 5;
   const [isExpanded, setIsExpanded] = useState(false);
   const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount ?? 0);
@@ -315,7 +320,7 @@ const ProductReviewCard = ({ review, onImageClick }: { review: ProductReview; on
           activeVote={activeVote}
           onHelpful={handleHelpful}
           onNotHelpful={handleNotHelpful}
-          onImageClick={onImageClick}
+          onImageClick={(index) => onImageClick?.(review, index)}
         />
       </div>
     </article>
@@ -356,13 +361,21 @@ const ProductReviewsSection = ({
   moreLinkTo?: string;
   showCta?: boolean;
 }) => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [activeReview, setActiveReview] = useState<ProductReview | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   return (
     <section className="mt-4">
       {reviews.length ? (
         reviews.map((review) => (
-          <ProductReviewCard key={review.id} review={review} onImageClick={setSelectedImage} />
+          <ProductReviewCard
+            key={review.id}
+            review={review}
+            onImageClick={(targetReview, index) => {
+              setActiveReview(targetReview);
+              setActiveIndex(index);
+            }}
+          />
         ))
       ) : (
         <div className="px-4 mt-4 text-[12px] text-[#8E8E8E]">
@@ -373,15 +386,16 @@ const ProductReviewsSection = ({
         <ProductReviewsMoreLink onClick={onMoreReviews} to={moreLinkTo} />
       ) : null}
       {showCta ? <ProductMainCTA className="mt-4 mb-8" /> : null}
-      <Modal
-        isOpen={Boolean(selectedImage)}
-        onClose={() => setSelectedImage(null)}
-        title="Фото отзыва"
-      >
-        {selectedImage ? (
-          <img src={selectedImage} alt="" className="w-full max-h-[70vh] object-contain" />
-        ) : null}
-      </Modal>
+      <ReviewImageLightbox
+        isOpen={Boolean(activeReview)}
+        review={activeReview}
+        activeIndex={activeIndex}
+        onChangeIndex={setActiveIndex}
+        onClose={() => {
+          setActiveReview(null);
+          setActiveIndex(0);
+        }}
+      />
     </section>
   );
 };
