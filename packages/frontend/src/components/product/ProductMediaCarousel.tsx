@@ -8,10 +8,11 @@ type ProductMediaCarouselProps = {
   items?: string[];
   activeIndex?: number;
   onChangeIndex?: (index: number) => void;
+  onImageClick?: (index: number) => void;
 };
 
 const ProductMediaCarousel = forwardRef<ProductMediaCarouselHandle, ProductMediaCarouselProps>(
-  ({ items = [], activeIndex = 0, onChangeIndex }, ref) => {
+  ({ items = [], activeIndex = 0, onChangeIndex, onImageClick }, ref) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const gapPx = 12;
@@ -92,7 +93,14 @@ const ProductMediaCarousel = forwardRef<ProductMediaCarouselHandle, ProductMedia
         className="flex-shrink-0 rounded-[16px] bg-[#F3F3F7] aspect-[232/309] overflow-hidden snap-start"
         style={{ width: `calc((100% - ${gapPx}px) / ${visibleItems})` }}
       >
-        <img src={url} alt="" className="h-full w-full object-cover" />
+        <button
+          type="button"
+          className="h-full w-full"
+          onClick={() => onImageClick?.(index)}
+          aria-label="Открыть фото товара"
+        >
+          <img src={url} alt="" className="h-full w-full object-cover" />
+        </button>
       </div>
     ));
   }, [items]);

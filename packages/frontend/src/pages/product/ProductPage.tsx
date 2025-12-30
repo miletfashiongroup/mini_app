@@ -6,6 +6,7 @@ import ProductComplementSection from '@/components/product/ProductComplementSect
 import ProductHeader from '@/components/product/ProductHeader';
 import { ProductCharacteristicsModal, ProductDescriptionModal } from '@/components/product/ProductInfoModal';
 import ProductMediaCarousel, { type ProductMediaCarouselHandle } from '@/components/product/ProductMediaCarousel';
+import { ProductImageLightbox } from '@/components/product/ProductImageLightbox';
 import ProductPriceAndSizeSection from '@/components/product/ProductPriceAndSizeSection';
 import ProductReviewsSection, { ProductReview } from '@/components/product/ProductReviewsSection';
 import ProductRichContent from '@/components/product/ProductRichContent';
@@ -39,6 +40,7 @@ export const ProductPage = () => {
   const [isDescriptionModalOpen, setIsDescriptionModalOpen] = useState(false);
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false);
   const [selectedSizeId, setSelectedSizeId] = useState('');
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
   const productTracked = useRef(false);
   const rubleFormatter = new Intl.NumberFormat('ru-RU', {
     style: 'currency',
@@ -221,6 +223,7 @@ export const ProductPage = () => {
         items={galleryItems}
         activeIndex={activeMediaIndex}
         onChangeIndex={setActiveMediaIndex}
+        onImageClick={() => setIsViewerOpen(true)}
       />
       <ProductThumbnailsStrip
         items={galleryItems}
@@ -294,6 +297,13 @@ export const ProductPage = () => {
         }
       />
       <ProductSizeTableModal isOpen={isSizeTableOpen} onClose={() => setIsSizeTableOpen(false)} />
+      <ProductImageLightbox
+        isOpen={isViewerOpen}
+        images={galleryItems}
+        activeIndex={activeMediaIndex}
+        onChangeIndex={setActiveMediaIndex}
+        onClose={() => setIsViewerOpen(false)}
+      />
     </div>
   );
 };
