@@ -75,7 +75,7 @@ const CartItemImage = ({
 const CartItemInfo = ({ title, sizeLabel }: { title: string; sizeLabel: string }) => (
   <div className="flex flex-col gap-1 pt-1">
     <p className="text-[18px] font-semibold leading-[22px] text-text-primary">{title}</p>
-    <p className="text-[16px] leading-[20px] text-text-primary">{sizeLabel}</p>
+    <p className="text-[16px] leading-[20px] text-text-primary">Размер: {sizeLabel}</p>
   </div>
 );
 
@@ -305,7 +305,7 @@ export const CartPage = () => {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-28 font-montserrat text-text-primary relative">
+    <div className="mx-auto flex min-h-screen w-full max-w-[1000px] flex-col bg-white pb-24 font-montserrat text-text-primary relative">
       <PageTopBar />
       <CartTitle itemCount={cartItems.length} />
       <CartItemsSection>
@@ -345,9 +345,7 @@ export const CartPage = () => {
           />
         )}
       </CartItemsSection>
-      <div className="pb-28">
-        <CartSummarySection totalPrice={totalPrice} onCheckout={handleCheckout} disabled={isCheckoutDisabled} />
-      </div>
+      <CartSummarySection totalPrice={totalPrice} onCheckout={handleCheckout} disabled={isCheckoutDisabled} />
       <AppBottomNav activeId="cart" />
       {showOrderSent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">

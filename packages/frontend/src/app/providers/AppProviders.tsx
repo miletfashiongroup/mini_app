@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useEffect } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import WebApp from '@twa-dev/sdk';
 
 import { ToastProvider } from '@/shared/components/ToastProvider';
 import { useToast } from '@/shared/hooks/useToast';
@@ -34,14 +35,38 @@ const AnalyticsInit = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const TelegramSwipeGuard = ({ children }: { children: React.ReactNode }) => {
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const body = document.body;
+    const prevRootOverscroll = root.style.overscrollBehavior;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+
+    root.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+    WebApp?.disableVerticalSwipes?.();
+
+    return () => {
+      root.style.overscrollBehavior = prevRootOverscroll;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+      WebApp?.enableVerticalSwipes?.();
+    };
+  }, []);
+
+  return <>{children}</>;
+};
+
 export const AppProviders = ({ children }: Props) => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
-      <ToastProvider>
-        <AnalyticsInit>
-          <QueryErrorBridge>{children}</QueryErrorBridge>
-        </AnalyticsInit>
-      </ToastProvider>
+      <TelegramSwipeGuard>
+        <ToastProvider>
+          <AnalyticsInit>
+            <QueryErrorBridge>{children}</QueryErrorBridge>
+          </AnalyticsInit>
+        </ToastProvider>
+      </TelegramSwipeGuard>
     </BrowserRouter>
     {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
   </QueryClientProvider>

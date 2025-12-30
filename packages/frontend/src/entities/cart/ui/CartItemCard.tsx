@@ -49,7 +49,7 @@ export const CartItemCard = memo(({ item, actions, onClick }: Props) => {
           <div className="text-left text-[15px] font-semibold">{item.product_name}</div>
         )}
         <p className="text-[12px] text-slate-400">
-          Размер {item.size ?? '—'} · {item.quantity ?? 0} шт.
+          Размер: {item.size ?? '—'} · {item.quantity ?? 0} шт.
         </p>
         <p className="text-[16px] font-semibold">
           {formatPrice((item.quantity ?? 0) * (item.unit_price_minor_units ?? 0))}

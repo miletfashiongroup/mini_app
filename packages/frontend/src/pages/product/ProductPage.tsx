@@ -261,7 +261,7 @@ export const ProductPage = () => {
         showCta={false}
       />
       <ProductComplementSection products={complementProducts} />
-      <ProductRichContent />
+      {/* ProductRichContent hidden until media data is ready */}
       <ProductBottomBar
         onAddToCart={() => handleAddToCart(false)}
         onBuyNow={() => handleAddToCart(true)}
@@ -272,7 +272,6 @@ export const ProductPage = () => {
         onClose={() => setIsDescriptionModalOpen(false)}
         content={
           <div className="space-y-3">
-            <h3 className="text-[16px] font-semibold text-[#29292B]">О продукте</h3>
             <p className="text-[14px] leading-relaxed text-[#29292B]">
               {product.description ??
                 'Описания для этого товара ещё нет. Мы обновим страницу, как только появится больше информации.'}
@@ -285,7 +284,6 @@ export const ProductPage = () => {
         onClose={() => setIsCharacteristicsModalOpen(false)}
         content={
           <div className="space-y-3">
-            <h3 className="text-[16px] font-semibold text-[#29292B]">Характеристики</h3>
             <ul className="list-disc space-y-2 pl-5 text-[14px] leading-relaxed text-[#29292B]">
               {(product.specs ?? ['Характеристики пока не заполнены.']).map(
                 (spec: string, idx: number) => (
