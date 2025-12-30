@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import WebApp from '@twa-dev/sdk';
 import PhotoSwipeLightbox from 'photoswipe/lightbox';
 import 'photoswipe/style.css';
 
@@ -21,6 +22,9 @@ export const ProductImageLightbox = ({
 }: ProductImageLightboxProps) => {
   const lightboxRef = useRef<PhotoSwipeLightbox | null>(null);
   const sizesRef = useRef<Record<string, { width: number; height: number }>>({});
+  const onCloseRef = useRef(onClose);
+  const onChangeIndexRef = useRef(onChangeIndex);
+  const openIndexRef = useRef(activeIndex);
   const [sizesVersion, setSizesVersion] = useState(0);
 
   useEffect(() => {
@@ -59,16 +63,42 @@ export const ProductImageLightbox = ({
   );
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    onChangeIndexRef.current = onChangeIndex;
+  }, [onChangeIndex]);
+
+  useEffect(() => {
+    openIndexRef.current = activeIndex;
+  }, [activeIndex]);
+
+  useEffect(() => {
     if (!isOpen) return;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const root = document.documentElement;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevRootOverscroll = root.style.overscrollBehavior;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+
+    body.style.overflow = 'hidden';
+    root.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+
+    WebApp?.disableVerticalSwipes?.();
+
     return () => {
-      document.body.style.overflow = prevOverflow;
+      body.style.overflow = prevOverflow;
+      root.style.overscrollBehavior = prevRootOverscroll;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+      WebApp?.enableVerticalSwipes?.();
     };
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || !sizesReady || !images.length) return;
+    if (lightboxRef.current) return;
 
     const dataSource = images.map((url) => {
       const size = sizesRef.current[url] ?? { width: FALLBACK_SIZE, height: FALLBACK_SIZE };
@@ -83,33 +113,35 @@ export const ProductImageLightbox = ({
       dataSource,
       bgOpacity: 0.96,
       showHideAnimationType: 'zoom',
-      closeOnVerticalDrag: true,
+      closeOnVerticalDrag: false,
       wheelToZoom: true,
       pinchToClose: false,
+      closeOnScroll: false,
       loop: false,
       pswpModule: () => import('photoswipe'),
     });
 
     lightbox.on('close', () => {
-      onClose();
+      onCloseRef.current();
     });
 
     lightbox.on('change', () => {
       const index = lightbox.pswp?.currIndex ?? 0;
       if (typeof index === 'number') {
-        onChangeIndex(index);
+        onChangeIndexRef.current(index);
       }
     });
 
     lightbox.init();
-    lightbox.loadAndOpen(activeIndex);
+    const startIndex = Math.min(openIndexRef.current, dataSource.length - 1);
+    lightbox.loadAndOpen(Math.max(0, startIndex));
     lightboxRef.current = lightbox;
 
     return () => {
       lightbox.destroy();
       lightboxRef.current = null;
     };
-  }, [activeIndex, images, isOpen, onChangeIndex, onClose, sizesReady]);
+  }, [images, isOpen, sizesReady]);
 
   useEffect(() => {
     const pswp = lightboxRef.current?.pswp;
