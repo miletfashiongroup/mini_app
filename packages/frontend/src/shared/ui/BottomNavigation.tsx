@@ -1,6 +1,7 @@
 type BottomNavItem<T extends string = string> = {
   id: T;
   icon: string;
+  activeIcon?: string;
   label: string;
 };
 
@@ -15,8 +16,8 @@ export const BottomNavigation = <T extends string = string>({
   activeId,
   onSelect,
 }: BottomNavigationProps<T>) => (
-  <nav className="fixed bottom-3 left-0 right-0 z-10 flex justify-center">
-    <div className="flex h-[68px] w-full max-w-[960px] items-center justify-between rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-lg">
+  <nav className="fixed bottom-3 left-4 right-4 z-10 flex justify-center">
+    <div className="flex h-[76px] w-full max-w-[900px] items-center justify-between rounded-2xl border border-white/60 bg-white/70 px-3 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.08)] backdrop-blur-lg">
       {items.map((item) => {
         const isActive = item.id === activeId;
         return (
@@ -25,11 +26,13 @@ export const BottomNavigation = <T extends string = string>({
             type="button"
             aria-label={item.label}
             onClick={() => onSelect?.(item.id)}
-            className={`flex h-12 w-12 items-center justify-center rounded-[14px] bg-white/80 transition duration-150 ease-out hover:brightness-105 active:scale-[0.97] ${
-              isActive ? 'ring-1 ring-text-primary/20' : ''
-            }`}
+            className="flex h-[70px] w-[70px] items-center justify-center rounded-[18px] bg-transparent transition duration-150 ease-out hover:brightness-105 active:scale-[0.97]"
           >
-            <img src={item.icon} alt="" className="h-7 w-7" />
+            <img
+              src={isActive ? item.activeIcon ?? item.icon : item.icon}
+              alt=""
+              className="h-full w-full object-contain"
+            />
           </button>
         );
       })}

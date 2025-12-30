@@ -1,18 +1,22 @@
-import bagIcon from '@/assets/images/icon-bag.svg';
-import cartIcon from '@/assets/images/icon-cart.svg';
-import homeIcon from '@/assets/images/icon-home.svg';
-import profileIcon from '@/assets/images/icon-profile.svg';
+import cartActiveIcon from '@/assets/images/cart_act.png';
+import cartInactiveIcon from '@/assets/images/cart_deact_new.png';
+import catalogActiveIcon from '@/assets/images/catalog_act.png';
+import catalogInactiveIcon from '@/assets/images/catalog_deact_new.png';
+import homeActiveIcon from '@/assets/images/home_act.png';
+import homeInactiveIcon from '@/assets/images/home_deact_new.png';
+import profileActiveIcon from '@/assets/images/profile_act.png';
+import profileInactiveIcon from '@/assets/images/profile_deact_new.png';
 import { useNavigate } from 'react-router-dom';
 
 import { BottomNavigation } from '@/shared/ui/BottomNavigation';
 
 export type AppNavId = 'home' | 'bag' | 'cart' | 'profile';
 
-const NAV_ITEMS: { id: AppNavId; icon: string; label: string }[] = [
-  { id: 'home', icon: homeIcon, label: 'Домой' },
-  { id: 'bag', icon: bagIcon, label: 'Сумка' },
-  { id: 'cart', icon: cartIcon, label: 'Корзина' },
-  { id: 'profile', icon: profileIcon, label: 'Профиль' },
+const NAV_ITEMS: { id: AppNavId; icon: string; activeIcon: string; label: string }[] = [
+  { id: 'home', icon: homeInactiveIcon, activeIcon: homeActiveIcon, label: 'Домой' },
+  { id: 'bag', icon: catalogInactiveIcon, activeIcon: catalogActiveIcon, label: 'Сумка' },
+  { id: 'cart', icon: cartInactiveIcon, activeIcon: cartActiveIcon, label: 'Корзина' },
+  { id: 'profile', icon: profileInactiveIcon, activeIcon: profileActiveIcon, label: 'Профиль' },
 ];
 
 const DEFAULT_ROUTES: Record<AppNavId, string> = {
