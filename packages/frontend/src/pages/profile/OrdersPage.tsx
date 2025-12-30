@@ -68,13 +68,13 @@ export const OrdersPage = () => {
         </div>
       ) : (
         <div className="flex flex-col gap-3 text-[14px] text-[#5A5A5C]">
-          <span>У вас пока нет заказов.</span>
+          <span>Заказов пока нет.</span>
           <button
             type="button"
             className="w-full rounded-2xl border border-[#000043] px-4 py-3 text-sm font-semibold text-[#000043]"
             onClick={() => navigate('/catalog')}
           >
-            Перейти в каталог
+            В каталог
           </button>
         </div>
       ),
