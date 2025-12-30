@@ -40,7 +40,7 @@ export const ProductDescriptionPage = () => {
       </div>
       <section className="space-y-4 px-4 pt-4">
         <h1 className="text-2xl font-semibold">Описание {product.name}</h1>
-        <p className="text-[#5A5A5C] leading-relaxed">
+        <p className="text-slate-200 leading-relaxed">
           {product.description ??
             'Описания для этого товара ещё нет. Мы обновим страницу, как только появится больше информации.'}
         </p>

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import { formatPrice } from '@/shared/lib/money';
 
@@ -12,6 +12,7 @@ type Props = {
 };
 
 export const CartItemCard = memo(({ item, actions, onClick }: Props) => {
+  const location = useLocation();
   const hasImage = Boolean(item.hero_media_url);
   const productLink = item.product_id ? `/product/${item.product_id}` : '';
   return (
@@ -21,6 +22,7 @@ export const CartItemCard = memo(({ item, actions, onClick }: Props) => {
       {productLink ? (
         <Link
           to={productLink}
+          state={{ from: location.pathname }}
           onClick={onClick}
           className={`w-16 h-16 rounded-xl bg-cover bg-center border border-white/5 ${
             hasImage ? '' : 'bg-gradient-to-br from-slate-800 to-slate-900'
@@ -40,6 +42,7 @@ export const CartItemCard = memo(({ item, actions, onClick }: Props) => {
         {productLink ? (
           <Link
             to={productLink}
+            state={{ from: location.pathname }}
             onClick={onClick}
             className="text-left text-[15px] font-semibold"
           >

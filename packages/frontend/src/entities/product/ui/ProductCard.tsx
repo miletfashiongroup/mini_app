@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 import { formatPrice } from '@/shared/lib/money';
 
@@ -9,6 +9,7 @@ type Props = {
 };
 
 export const ProductCard = ({ product }: Props) => {
+  const location = useLocation();
   const variants = product.variants ?? []; // PRINCIPAL-FIX: variants guard
   const primaryVariant = variants[0];
   const hasImage = Boolean(product.hero_media_url);
@@ -20,6 +21,7 @@ export const ProductCard = ({ product }: Props) => {
   return (
     <Link
       to={`/product/${product.id}`}
+      state={{ from: location.pathname }}
       className={`bg-white/5 rounded-2xl p-4 space-y-3 border border-white/5 backdrop-blur transition-opacity ${
         isOutOfStock ? 'opacity-60 pointer-events-none' : ''
       }`}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import boxersClassic from '@/assets/images/боксеры.svg';
 import boxersExtended from '@/assets/images/боксеры_расшир.svg';
@@ -14,28 +14,51 @@ type SizeChartVariant = 'classic' | 'expanded';
 
 const SizeChartModalOverlay = ({ onClose }: { onClose: () => void }) => (
   <div
-    className="fixed inset-0 z-20 bg-black/50"
+    className="fixed inset-0 z-20 bg-black/50 overscroll-none"
     onClick={onClose}
+    onWheel={(event) => event.preventDefault()}
+    onTouchMove={(event) => event.preventDefault()}
     aria-label="Закрыть таблицу размеров"
     role="presentation"
   />
 );
 
-const SizeChartModalContent = ({ children, onClick }: { children: React.ReactNode; onClick: (e: React.MouseEvent) => void }) => (
+const SizeChartModalContent = ({
+  children,
+  onClick,
+  shouldScroll,
+}: {
+  children: React.ReactNode;
+  onClick: (e: React.MouseEvent) => void;
+  shouldScroll: boolean;
+}) => {
+  const spacerHeight = 'calc(96px + env(safe-area-inset-bottom))';
+  return (
   <div
-    className="fixed inset-0 z-30 flex items-start justify-center pt-8"
+    className="fixed inset-0 z-30 flex items-start justify-center pt-8 overscroll-none"
     role="dialog"
     aria-modal="true"
     onClick={onClick}
   >
     <div
-      className="w-[calc(100%-32px)] max-w-[480px] max-h-[90vh] overflow-y-auto rounded-[16px] bg-white p-4 shadow-xl"
+      className="flex w-[calc(100%-32px)] max-w-[480px] flex-col items-stretch"
       onClick={(e) => e.stopPropagation()}
     >
-      {children}
+      <div
+        className={`rounded-[16px] bg-white px-4 pb-10 pt-4 shadow-xl ${
+          shouldScroll ? 'overflow-y-auto overscroll-contain' : 'overflow-y-hidden'
+        }`}
+        style={{ maxHeight: `calc(90vh - ${spacerHeight})` }}
+        onWheel={(event) => event.stopPropagation()}
+        onTouchMove={(event) => event.stopPropagation()}
+      >
+        {children}
+      </div>
+      <div aria-hidden style={{ height: spacerHeight }} />
     </div>
   </div>
-);
+  );
+};
 
 const SizeChartModalHeader = ({ onClose }: { onClose: () => void }) => (
   <div className="flex items-center justify-between">
@@ -101,6 +124,31 @@ const SizeChartVariantItem = ({ label, isOpen, onToggle, illustrationSrc, chartS
 const SizeChartModal = ({ isOpen, onClose }: SizeChartModalProps) => {
   const [isClassicOpen, setIsClassicOpen] = useState(true);
   const [isExpandedOpen, setIsExpandedOpen] = useState(false);
+  const shouldScroll = isClassicOpen && isExpandedOpen;
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const { body, documentElement } = document;
+    const scrollY = window.scrollY;
+    const previousBodyOverflow = body.style.overflow;
+    const previousHtmlOverflow = documentElement.style.overflow;
+    const previousBodyPosition = body.style.position;
+    const previousBodyTop = body.style.top;
+    const previousBodyWidth = body.style.width;
+    body.style.overflow = 'hidden';
+    documentElement.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    return () => {
+      body.style.overflow = previousBodyOverflow;
+      documentElement.style.overflow = previousHtmlOverflow;
+      body.style.position = previousBodyPosition;
+      body.style.top = previousBodyTop;
+      body.style.width = previousBodyWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -109,7 +157,7 @@ const SizeChartModal = ({ isOpen, onClose }: SizeChartModalProps) => {
   return (
     <>
       <SizeChartModalOverlay onClose={handleOverlayClick} />
-      <SizeChartModalContent onClick={handleOverlayClick}>
+      <SizeChartModalContent onClick={handleOverlayClick} shouldScroll={shouldScroll}>
         <SizeChartModalHeader onClose={onClose} />
         <SizeChartVariantList>
           <SizeChartVariantItem

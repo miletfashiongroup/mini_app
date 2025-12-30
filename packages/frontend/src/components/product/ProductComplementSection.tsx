@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { ProductCard, type ProductCardProps } from '@/shared/ui/ProductCard';
 import { useAddToCartMutation } from '@/features/cart/add-to-cart/model/useAddToCartMutation';
@@ -14,6 +14,7 @@ type ProductComplementSectionProps = {
 
 const ProductComplementSection = ({ title = 'Дополни образ', products }: ProductComplementSectionProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const addToCart = useAddToCartMutation();
   const favorites = useFavoritesStore((state) => state.items);
@@ -68,7 +69,7 @@ const ProductComplementSection = ({ title = 'Дополни образ', product
             <ProductCard
               key={product.id}
               {...product}
-              onClick={() => navigate(`/product/${product.id}`)}
+              onClick={() => navigate(`/product/${product.id}`, { state: { from: location.pathname } })}
               onAddToCart={() => openSizeModal(product)}
               onToggleFavorite={() => openFavoriteModal(product)}
               isFavorite={isFavorite(product.id)}
