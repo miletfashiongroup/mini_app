@@ -3,7 +3,7 @@ import type { TouchEvent as ReactTouchEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import figureBody from '@/assets/images/figure-body.svg';
+import figureBody from '@/assets/images/manequen2.svg';
 import arrowLeft from '@/assets/images/icon-arrow-left.svg';
 import arrowRight from '@/assets/images/icon-arrow-right.svg';
 import checkIcon from '@/assets/images/icon-check.svg';
@@ -488,7 +488,10 @@ const SizeCalculatorSection = () => {
 
   return (
     <section className="w-full bg-[#D9D9D9] px-4 py-4">
-      <p className="mb-3 text-[17px] leading-[1.3] text-[#29292B]">Введите ваши данные, а мы подберем размер</p>
+      <p className="mb-3 text-[17px] leading-[1.3] text-[#29292B]">
+        Введите ваши данные,<br />
+        а мы подберем размер
+      </p>
 
       <div className="flex flex-row items-start">
         <div className="basis-[60%] pr-2 flex flex-col">
