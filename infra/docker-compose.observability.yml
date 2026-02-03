@@ -1,0 +1,314 @@
+version: "3.9"
+
+services:
+  sentry-postgres:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${SENTRY_DB_PASSWORD:-sentry}
+      POSTGRES_USER: ${SENTRY_DB_USER:-sentry}
+      POSTGRES_DB: ${SENTRY_DB_NAME:-sentry}
+    volumes:
+      - sentry-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sentry-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - sentry-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sentry-zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep Mode"]
+      interval: 15s
+    volumes:
+      - sentry-zookeeper:/var/lib/zookeeper
+
+  sentry-kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    restart: unless-stopped
+    depends_on:
+      sentry-zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: sentry-zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://sentry-kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 20s
+    volumes:
+      - sentry-kafka:/var/lib/kafka/data
+
+  sentry-clickhouse:
+    image: clickhouse/clickhouse-server:23.8-alpine
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-sentry}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-sentry}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-sentry}
+    volumes:
+      - sentry-clickhouse:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'select 1'"]
+      interval: 20s
+      retries: 5
+
+  snuba-api:
+    image: getsentry/snuba:24.8.0
+    restart: unless-stopped
+    depends_on:
+      sentry-redis:
+        condition: service_healthy
+      sentry-kafka:
+        condition: service_healthy
+      sentry-clickhouse:
+        condition: service_healthy
+    environment:
+      SNUBA_SETTINGS: docker
+      DEFAULT_BROKERS: sentry-kafka:9092
+      CLICKHOUSE_HOST: sentry-clickhouse
+      CLICKHOUSE_PORT: 9000
+      REDIS_HOST: sentry-redis
+      REDIS_PORT: 6379
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:1218/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  snuba-consumer:
+    image: getsentry/snuba:24.8.0
+    restart: unless-stopped
+    depends_on:
+      snuba-api:
+        condition: service_healthy
+    environment:
+      SNUBA_SETTINGS: docker
+      DEFAULT_BROKERS: sentry-kafka:9092
+      CLICKHOUSE_HOST: sentry-clickhouse
+      CLICKHOUSE_PORT: 9000
+      REDIS_HOST: sentry-redis
+      REDIS_PORT: 6379
+    command: ["consumer", "--storage", "errors", "--auto-offset-reset=latest"]
+
+  snuba-replacer:
+    image: getsentry/snuba:24.8.0
+    restart: unless-stopped
+    depends_on:
+      snuba-api:
+        condition: service_healthy
+    environment:
+      SNUBA_SETTINGS: docker
+      DEFAULT_BROKERS: sentry-kafka:9092
+      CLICKHOUSE_HOST: sentry-clickhouse
+      CLICKHOUSE_PORT: 9000
+      REDIS_HOST: sentry-redis
+      REDIS_PORT: 6379
+    command: ["replacer", "--storage", "errors", "--auto-offset-reset=latest"]
+
+  symbolicator:
+    image: getsentry/symbolicator:24.8.0
+    restart: unless-stopped
+    command: ["run"]
+    environment:
+      RUST_BACKTRACE: "1"
+      SYMBOLICATOR_LOG_LEVEL: ${SYMBOLICATOR_LOG_LEVEL:-info}
+    volumes:
+      - symbolicator-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3021/healthcheck"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  relay:
+    image: getsentry/relay:24.8.0
+    profiles: ["manual"]
+    restart: unless-stopped
+    depends_on:
+      sentry-web:
+        condition: service_started
+    volumes:
+      - ./sentry/relay/config.yml:/work/.relay/config.yml:ro
+      - relay-credentials:/work/.relay/credentials
+    command: ["run"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  sentry-web:
+    image: getsentry/sentry:24.8.0
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    depends_on:
+      sentry-postgres:
+        condition: service_healthy
+      sentry-redis:
+        condition: service_healthy
+      snuba-api:
+        condition: service_healthy
+      symbolicator:
+        condition: service_healthy
+    environment: &sentry_env
+      SENTRY_SECRET_KEY: ${SENTRY_SECRET_KEY:-please_override}
+      SENTRY_POSTGRES_HOST: sentry-postgres
+      SENTRY_POSTGRES_PORT: 5432
+      SENTRY_DB_NAME: ${SENTRY_DB_NAME:-sentry}
+      SENTRY_DB_USER: ${SENTRY_DB_USER:-sentry}
+      SENTRY_DB_PASSWORD: ${SENTRY_DB_PASSWORD:-sentry}
+      SENTRY_REDIS_HOST: sentry-redis
+      SENTRY_REDIS_PORT: 6379
+      SENTRY_KAFKA_HOSTS: sentry-kafka:9092
+      SENTRY_SNUBA: http://snuba-api:1218
+      SENTRY_TSDB: sentry.tsdb.redissnuba.RedisSnubaTSDB
+      SENTRY_TSDB_OPTIONS: '{"cluster": "default"}'
+      SENTRY_CACHE: sentry.cache.redis.RedisCache
+      SENTRY_CACHE_OPTIONS: '{"cluster": "default"}'
+      SENTRY_BROKER_URL: redis://sentry-redis:6379/1
+      SENTRY_WEB_HOST: 0.0.0.0
+      SENTRY_WEB_PORT: 9000
+      CACHE_URL: redis://sentry-redis:6379/0
+      SENTRY_EVENT_RETENTION_DAYS: ${SENTRY_EVENT_RETENTION_DAYS:-90}
+      SENTRY_USE_RELAY: "0"
+      SENTRY_SYMBOLICATOR_ENABLED: "true"
+      SENTRY_SYMBOLICATOR_URL: http://symbolicator:3021
+      SENTRY_SINGLE_ORGANIZATION: "true"
+      SENTRY_ADMIN_EMAIL: ${SENTRY_ADMIN_EMAIL:-admin@example.com}
+      SENTRY_CONF: /etc/sentry
+    command: ["sentry", "run", "web", "--bind=0.0.0.0:9000"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python - <<'PY'\nimport urllib.request,sys\ntry:\n    urllib.request.urlopen('http://127.0.0.1:9000/_health/', timeout=5)\n    sys.exit(0)\nexcept Exception:\n    sys.exit(1)\nPY",
+        ]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    volumes:
+      - ./sentry:/etc/sentry:ro
+
+  sentry-worker:
+    image: getsentry/sentry:24.8.0
+    restart: unless-stopped
+    depends_on:
+      sentry-web:
+        condition: service_started
+    environment: *sentry_env
+    command: ["run", "worker"]
+    volumes:
+      - ./sentry:/etc/sentry:ro
+
+  sentry-cron:
+    image: getsentry/sentry:24.8.0
+    restart: unless-stopped
+    depends_on:
+      sentry-web:
+        condition: service_started
+    environment: *sentry_env
+    command: ["run", "cron"]
+    volumes:
+      - ./sentry:/etc/sentry:ro
+
+  sentry-migrate:
+    image: getsentry/sentry:24.8.0
+    depends_on:
+      sentry-postgres:
+        condition: service_healthy
+      sentry-redis:
+        condition: service_healthy
+    environment: *sentry_env
+    command: ["upgrade", "--noinput"]
+    restart: "no"
+    volumes:
+      - ./sentry:/etc/sentry:ro
+
+  netdata:
+    image: netdata/netdata:stable
+    hostname: ${NETDATA_HOSTNAME:-brace-netdata}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:19999:19999"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata-config:/etc/netdata
+      - netdata-lib:/var/lib/netdata
+      - netdata-cache:/var/cache/netdata
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./netdata/health_alarm_notify.conf:/etc/netdata/health_alarm_notify.conf:ro
+    environment:
+      DO_NOT_TRACK: 1
+      NETDATA_CLAIM_TOKEN: ${NETDATA_CLAIM_TOKEN:-}
+      NETDATA_CLAIM_URL: ${NETDATA_CLAIM_URL:-https://app.netdata.cloud}
+      NETDATA_CLAIM_ROOMS: ${NETDATA_CLAIM_ROOMS:-}
+      NETDATA_TELEGRAM_BOT_TOKEN: ${NETDATA_TELEGRAM_BOT_TOKEN:-}
+      NETDATA_TELEGRAM_CHAT_ID: ${NETDATA_TELEGRAM_CHAT_ID:-}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:19999/api/v1/info"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  health-ping:
+    image: curlimages/curl:8.5.0
+    env_file:
+      - ../.env
+    environment:
+      HEALTH_URL: ${HEALTH_URL:-http://backend:8000/api/health}
+      TELEGRAM_HEALTH_WEBHOOK: ${TELEGRAM_HEALTH_WEBHOOK:-}
+      PROJECT_NAME: ${PROJECT_NAME:-brace}
+      HEALTH_PING_INTERVAL: ${HEALTH_PING_INTERVAL:-300}
+    volumes:
+      - ../scripts/health_ping.sh:/health_ping.sh:ro
+    entrypoint: ["/bin/sh", "-c", "while true; do /health_ping.sh || true; sleep $$HEALTH_PING_INTERVAL; done"]
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  sentry-postgres:
+  sentry-redis:
+  sentry-kafka:
+  sentry-zookeeper:
+  sentry-clickhouse:
+  symbolicator-data:
+  relay-credentials:
+  netdata-config:
+  netdata-lib:
+  netdata-cache:

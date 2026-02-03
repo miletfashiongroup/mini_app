@@ -13,7 +13,28 @@ from brace_backend.domain.user import User
 from brace_backend.services.audit_service import audit_service
 
 
-CONSENT_TEXT = "Вы согласны на обработку ваших данных?"
+CONSENT_TEXT = (
+    "Для продолжения работы примите условия и ознакомьтесь с юридическими документами."
+)
+
+LEGAL_DOCS = [
+    (
+        "Согласие на обработку ПДн",
+        "https://telegra.ph/SOGLASIE-NA-OBRABOTKU-PERSONALNYH-DANNYH-02-03-5",
+    ),
+    (
+        "Сведения об операторе ПДн",
+        "https://telegra.ph/SVEDENIYA-OB-OPERATORE-PERSONALNYH-DANNYH-02-03",
+    ),
+    (
+        "Пользовательское соглашение",
+        "https://telegra.ph/POLZOVATELSKOE-SOGLASHENIE-02-03-22",
+    ),
+    (
+        "Политика конфиденциальности",
+        "https://telegra.ph/POLITIKA-KONFIDENCIALNOSTI-I-OBRABOTKI-PERSONALNYH-DANNYH-02-03",
+    ),
+]
 
 
 def _normalize_phone(value: str) -> str:
@@ -112,15 +133,16 @@ class TelegramBotService:
         if not user:
             return
 
-        if data == "consent_yes":
+        if data == "tos_accept":
             await self._record_consent(uow, user)
             await self._prompt_next(uow, chat_id, user)
             return
-        if data == "consent_no":
+        if data == "tos_decline":
             await self._send_message(
                 chat_id,
-                "Без согласия мы не можем продолжить работу. Если передумаете, отправьте /start.",
+                "Без согласия мы не можем продолжить работу. Если передумаете — отправьте /start.",
             )
+            return
 
     async def _handle_phone(
         self, uow: UnitOfWork, chat_id: int, user: User, contact: dict[str, Any]
@@ -169,13 +191,14 @@ class TelegramBotService:
         if step == "consent":
             await self._send_message(
                 chat_id,
-                "Согласны ли вы на обработку персональных данных?",
+                CONSENT_TEXT,
                 reply_markup={
                     "inline_keyboard": [
                         [
-                            {"text": "Согласен(а)", "callback_data": "consent_yes"},
-                            {"text": "Не согласен(а)", "callback_data": "consent_no"},
-                        ]
+                            {"text": "Согласен", "callback_data": "tos_accept"},
+                            {"text": "Не согласен", "callback_data": "tos_decline"},
+                        ],
+                        *[[{"text": title, "url": url}] for title, url in LEGAL_DOCS],
                     ]
                 },
             )

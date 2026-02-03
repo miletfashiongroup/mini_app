@@ -1,0 +1,14 @@
+relay:
+  upstream: "http://sentry-web:9000/"
+  host: "0.0.0.0"
+logging:
+  level: INFO
+processing:
+  enabled: false
+  kafka_config:
+    bootstrap_servers:
+      - "sentry-kafka:9092"
+    security:
+      security_protocol: "PLAINTEXT"
+    topic:
+      name: "ingest-events"

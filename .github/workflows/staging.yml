@@ -1,0 +1,27 @@
+name: Staging Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Note about branch protection
+        run: echo "Ensure PR-based merges only; direct pushes to main should be blocked in repo settings."
+      - name: Build images (reuse CI cache)
+        run: |
+          echo "Optional: pull artifacts from CI or rebuild here."
+      - name: Deploy to staging (placeholder)
+        if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_PATH: ${{ secrets.STAGING_PATH }}
+        run: bash scripts/deploy_staging.sh
+      - name: Skip deploy - secrets not configured
+        if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
+        run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH in repo settings to enable deploy."

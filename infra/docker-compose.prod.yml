@@ -20,6 +20,10 @@ services:
   db:
     image: postgres:17-alpine
     restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - brace-postgres-local
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -61,6 +65,7 @@ services:
       BRACE_TELEGRAM_BOT_TOKEN: ${BRACE_TELEGRAM_BOT_TOKEN:?BRACE_TELEGRAM_BOT_TOKEN is required}
       #BRACE_TELEGRAM_WEBAPP_SECRET: ${BRACE_TELEGRAM_WEBAPP_SECRET:-}
       BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
+      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:?BRACE_SENTRY_DSN is required}
     depends_on:
       db:
         condition: service_healthy
@@ -96,9 +101,7 @@ services:
     entrypoint: ["python", "-m", "brace_backend.admin_bot"]
     restart: unless-stopped
 
-
-
-  analytics-rollup:
+  scheduler:
     build: *backend-build
     env_file:
       - ../.env
@@ -107,32 +110,45 @@ services:
       BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
       BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
       BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
-      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:-}
+      BRACE_TELEGRAM_BOT_TOKEN: ${BRACE_TELEGRAM_BOT_TOKEN:?BRACE_TELEGRAM_BOT_TOKEN is required}
+      BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
+      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:?BRACE_SENTRY_DSN is required}
+      BRACE_RETENTION_ENABLED: ${BRACE_RETENTION_ENABLED:-true}
+      BRACE_RETENTION_INTERVAL_MINUTES: ${BRACE_RETENTION_INTERVAL_MINUTES:-60}
+      BRACE_ANALYTICS_ROLLUP_HOUR_UTC: ${BRACE_ANALYTICS_ROLLUP_HOUR_UTC:-2}
+      BRACE_ANALYTICS_ROLLUP_MINUTE_UTC: ${BRACE_ANALYTICS_ROLLUP_MINUTE_UTC:-10}
+      BRACE_ANALYTICS_CLEANUP_HOUR_UTC: ${BRACE_ANALYTICS_CLEANUP_HOUR_UTC:-3}
+      BRACE_ANALYTICS_CLEANUP_MINUTE_UTC: ${BRACE_ANALYTICS_CLEANUP_MINUTE_UTC:-10}
+      BRACE_SCHEDULER_POLL_SECONDS: ${BRACE_SCHEDULER_POLL_SECONDS:-30}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
-    entrypoint: ["python", "-m", "brace_backend.scripts.analytics_rollup"]
-    restart: "no"
+    entrypoint: ["python", "-m", "brace_backend.scripts.scheduler"]
+    restart: unless-stopped
 
-  analytics-cleanup:
-    build: *backend-build
+  backup:
+    image: postgres:17-alpine
     env_file:
       - ../.env
     environment:
-      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
-      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
-      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
-      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
-      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:-}
+      BACKUP_DATABASE_URL: ${BACKUP_DATABASE_URL:-postgresql://postgres:postgres@db:5432/brace}
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
-    entrypoint: ["python", "-m", "brace_backend.scripts.analytics_cleanup"]
-    restart: "no"
+    volumes:
+      - ../scripts:/scripts:ro
+      - ../backups:/backups
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "while true; do sh /scripts/backup_db.sh; if [ $? -eq 0 ]; then sleep 86400; else sleep 300; fi; done",
+      ]
+    restart: unless-stopped
 
   frontend:
     build:
@@ -141,7 +157,7 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
         VITE_APP_BASE_URL: ${VITE_APP_BASE_URL:-http://localhost}
         VITE_ENV: ${VITE_ENV:-production}
-        VITE_TG_DEV_MODE: ${VITE_TG_DEV_MODE:-false}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:?VITE_SENTRY_DSN is required}
     depends_on:
       backend:
         condition: service_healthy

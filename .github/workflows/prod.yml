@@ -1,0 +1,39 @@
+name: Production Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release tag format
+        run: echo "Tag $GITHUB_REF will trigger prod deploy once secrets are set."
+      - name: Pre-deploy backup (placeholder)
+        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_PATH: ${{ secrets.PROD_PATH }}
+        run: bash scripts/prod_backup_and_deploy.sh precheck
+      - name: Deploy to production (placeholder)
+        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_PATH: ${{ secrets.PROD_PATH }}
+        run: bash scripts/prod_backup_and_deploy.sh deploy
+      - name: Alembic upgrade head (placeholder)
+        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
+        env:
+          PROD_HOST: ${{ secrets.PROD_HOST }}
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+          PROD_PATH: ${{ secrets.PROD_PATH }}
+        run: bash scripts/prod_backup_and_deploy.sh alembic
+      - name: Skip prod deploy - secrets not configured
+        if: ${{ !(secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '') }}
+        run: echo "Prod secrets not set; add PROD_HOST/PROD_SSH_KEY/PROD_PATH to enable prod deploy."

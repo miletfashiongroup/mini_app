@@ -8,6 +8,8 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_BUILDKIT: 1
     services:
       postgres:
         image: postgres:16
@@ -49,10 +51,26 @@ jobs:
           TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/brace_test
         run: |
           cd packages/backend
-          poetry run pytest
+          poetry run pytest --cov=brace_backend --cov-report=xml --cov-report=term --cov-fail-under=30
       - name: Frontend unit tests
         run: |
-          cd packages/frontend && pnpm test -- --runInBand
+          cd packages/frontend && pnpm test -- --runInBand --coverage
+      - name: Docker build (backend)
+        run: |
+          docker build -f packages/backend/Dockerfile -t brace-backend-ci .
+      - name: Docker build (frontend)
+        run: |
+          docker build -f packages/frontend/Dockerfile -t brace-frontend-ci .
+      - name: Upload backend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: packages/backend/coverage.xml
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: packages/frontend/coverage
       - name: OpenAPI types up to date
         run: |
           pnpm generate:api
@@ -68,3 +86,33 @@ jobs:
           (pnpm preview --host --port 4173 > /tmp/preview.log 2>&1 &) 
           sleep 5
           pnpm e2e
+
+  lighthouse:
+    name: Lighthouse (informational)
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install deps
+        run: pnpm install --ignore-scripts
+      - name: Build frontend
+        run: |
+          cd packages/frontend
+          pnpm build
+      - name: Run Lighthouse CI (preview)
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+        run: |
+          cd packages/frontend
+          (pnpm preview --host --port 4173 > /tmp/preview.log 2>&1 &) 
+          sleep 5
+          pnpm dlx @lhci/cli@0.13.x healthcheck || true
+          pnpm dlx @lhci/cli@0.13.x collect --url=http://localhost:4173 --numberOfRuns=1 --staticDistDir=dist || true
