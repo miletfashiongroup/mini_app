@@ -96,6 +96,44 @@ services:
     entrypoint: ["python", "-m", "brace_backend.admin_bot"]
     restart: unless-stopped
 
+
+
+  analytics-rollup:
+    build: *backend-build
+    env_file:
+      - ../.env
+    environment:
+      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
+      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
+      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
+      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
+      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["python", "-m", "brace_backend.scripts.analytics_rollup"]
+    restart: "no"
+
+  analytics-cleanup:
+    build: *backend-build
+    env_file:
+      - ../.env
+    environment:
+      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
+      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
+      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
+      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
+      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["python", "-m", "brace_backend.scripts.analytics_cleanup"]
+    restart: "no"
+
   frontend:
     build:
       <<: *frontend-build

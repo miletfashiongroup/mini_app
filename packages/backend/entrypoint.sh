@@ -1,6 +1,5 @@
 #!/bin/bash
 set -euo pipefail
-set -x
 
 if [ "$#" -eq 0 ]; then
   set -- uvicorn brace_backend.main:app --host 0.0.0.0 --port 8000
