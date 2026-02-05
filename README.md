@@ -119,9 +119,7 @@ Refer to `packages/backend/tests` for usage examples.
 ## Testing
 - Manual smoke: `API_URL=http://localhost:8000 bash scripts/smoke_manual.sh` (расширяйте под ваши сценарии)
 
-- Manual smoke:  (расширяйте под ваши сценарии)
 
-- Manual smoke:  (расширяйте под ваши сценарии)
 
 - **Backend unit/integration**: `make backend-test` (requires PostgreSQL reachable at `postgresql://postgres:postgres@localhost:5432/brace_test`; run `docker compose -f infra/docker-compose.prod.yml up -d db redis` beforehand).
 - **Frontend lint/unit**: `cd packages/frontend && pnpm lint && pnpm test`.
@@ -205,3 +203,7 @@ Example flow — PATCH /cart/{item_id}:
 3) infrastructure/repositories/cart → CartRepository (SQLAlchemy)
 4) domain/cart → CartItem mapped to CartItemRead DTO
 5) transport returns envelope with updated item
+## Observability
+- Backend exposes Prometheus metrics at  (enabled by default); scrape via  or through nginx if published.
+- Health checks:  plus container-level checks for backend, admin-bot, support-bot, scheduler (see ).
+- Quick smoke:  validates health, minimal product fetch, analytics endpoint, and metrics availability without mutating production data.
