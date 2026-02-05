@@ -18,7 +18,15 @@ import {
 } from '@/entities/product/api/productApi';
 import { type Order, fetchOrderById, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
+import {
+  type SupportTicket,
+  fetchSupportTickets,
+  type SupportMessage,
+  fetchSupportMessages,
+} from '@/entities/support/api/supportApi';
 import { ApiError } from '@/shared/api/types';
+
+// Typed helper
 
 type QueryOptions<TData> = Omit<
   UseQueryOptions<TData, ApiError>,
@@ -102,5 +110,24 @@ export const useOrderQuery = (orderId: string, options?: QueryOptions<Order>) =>
     queryKey: orderKeys.detail(orderId),
     queryFn: () => fetchOrderById(orderId),
     enabled: Boolean(orderId),
+    ...options,
+  });
+
+export const useSupportTicketsQuery = (options?: QueryOptions<SupportTicket[]>) =>
+  useQuery<SupportTicket[], ApiError>({
+    queryKey: ['support', 'tickets'],
+    queryFn: fetchSupportTickets,
+    ...options,
+  });
+
+export const useSupportMessagesQuery = (
+  ticketId: string,
+  options?: QueryOptions<SupportMessage[]>,
+) =>
+  useQuery<SupportMessage[], ApiError>({
+    queryKey: ['support', 'tickets', ticketId, 'messages'],
+    queryFn: () => fetchSupportMessages(ticketId),
+    enabled: Boolean(ticketId),
+    refetchInterval: 5000,
     ...options,
   });

@@ -22,15 +22,19 @@ async def list_orders(
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[list[OrderRead]]:
     page, page_size, unpaged = pagination.normalized(total_items=0)
+    page = max(1, page)
+    page_size = max(1, page_size)
     orders, total = await order_service.list_orders(
         uow,
         current_user.id,
         page=None if unpaged else page,
         page_size=None if unpaged else page_size,
     )
+    page_size_value = len(orders) if unpaged else page_size
+    page_size_value = max(1, page_size_value)
     pagination_meta = Pagination(
         page=1 if unpaged else page,
-        page_size=len(orders) if unpaged else page_size,
+        page_size=page_size_value,
         total=len(orders) if unpaged else total,
         pages=1 if unpaged else max(1, (total + page_size - 1) // page_size),
     )

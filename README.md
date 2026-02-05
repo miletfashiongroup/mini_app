@@ -117,6 +117,12 @@ For the full list (including optional analytics, admin, and build flags), see `.
 Refer to `packages/backend/tests` for usage examples.
 
 ## Testing
+- Manual smoke: `API_URL=http://localhost:8000 bash scripts/smoke_manual.sh` (расширяйте под ваши сценарии)
+
+- Manual smoke:  (расширяйте под ваши сценарии)
+
+- Manual smoke:  (расширяйте под ваши сценарии)
+
 - **Backend unit/integration**: `make backend-test` (requires PostgreSQL reachable at `postgresql://postgres:postgres@localhost:5432/brace_test`; run `docker compose -f infra/docker-compose.prod.yml up -d db redis` beforehand).
 - **Frontend lint/unit**: `cd packages/frontend && pnpm lint && pnpm test`.
 - **Smoke/e2e**: `make smoke` (wraps `infra/docker-compose.smoke.yml`) or `docker compose -f infra/docker-compose.prod.yml --profile smoke up --abort-on-container-exit smoke-tests`.

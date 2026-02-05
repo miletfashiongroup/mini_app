@@ -1,0 +1,225 @@
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+import httpx
+
+from brace_backend.core.config import settings
+from brace_backend.core.logging import logger
+from brace_backend.db.session import session_manager
+from brace_backend.db.uow import UnitOfWork
+from brace_backend.services.support_chat_service import support_chat_service
+from brace_backend.services.support_service import support_service
+from brace_backend.domain.support import SupportTicket
+
+STATUS_ICON = {"open": "❗️", "closed": "✅", "resolved": "✅"}
+ICON_CUSTOM = {"open": "5379748062124056162", "closed": "5237699328843200968", "resolved": "5237699328843200968"}
+
+
+def topic_name(ticket: SupportTicket) -> str:
+    icon = STATUS_ICON.get(ticket.status, "❗️")
+    return f"{icon} #{ticket.id.hex[:6]} | {ticket.subject[:64]}"
+
+
+class SupportBot:
+    def __init__(self) -> None:
+        self.token = (settings.support_bot_token or "").strip()
+        self.support_chats = set(settings.support_chat_ids or [])
+        self.admins = set(settings.admin_chat_ids or [])
+        self.api_base = f"https://api.telegram.org/bot{self.token}"
+        self.offset = 0
+
+    # UI helpers
+    def _status_keyboard(self, ticket_id: str, current: str) -> dict[str, Any]:
+        return {
+            "inline_keyboard": [
+                [
+                    {"text": "Открыт" + (" ✅" if current == "open" else ""), "callback_data": f"status:{ticket_id}:open"},
+                    {"text": "Закрыт" + (" ✅" if current == "closed" else ""), "callback_data": f"status:{ticket_id}:closed"},
+                ]
+            ]
+        }
+
+    async def _edit_topic(self, client: httpx.AsyncClient, *, chat_id: int, thread_id: int, name: str, status: str) -> None:
+        payload = {
+            "chat_id": chat_id,
+            "message_thread_id": thread_id,
+            "name": name[:128],
+            "icon_custom_emoji_id": ICON_CUSTOM.get(status),
+        }
+        try:
+            await client.post(f"{self.api_base}/editForumTopic", json=payload)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("support_bot_edit_topic_failed", chat_id=chat_id, thread_id=thread_id, error=str(exc))
+
+    async def _send_status_message(
+        self,
+        client: httpx.AsyncClient,
+        *,
+        ticket_id: str,
+        status: str,
+        chat_id: int,
+        thread_id: int | None,
+    ) -> None:
+        icon = STATUS_ICON.get(status, "❗️")
+        payload: dict[str, Any] = {
+            "chat_id": chat_id,
+            "text": f"Статус тикета обновлён: {icon} {status}",
+            "reply_markup": self._status_keyboard(ticket_id, status),
+        }
+        if thread_id is not None:
+            payload["message_thread_id"] = thread_id
+        try:
+            await client.post(f"{self.api_base}/sendMessage", json=payload)
+        except Exception as exc:
+            logger.warning("support_bot_status_notify_failed", ticket_id=ticket_id, error=str(exc))
+
+    # Status change logic
+    async def _apply_status(
+        self,
+        client: httpx.AsyncClient,
+        *,
+        ticket_id: str,
+        status: str,
+        chat_id: int,
+        thread_id: int | None,
+    ) -> None:
+        async with session_manager.session() as session:
+            uow = UnitOfWork(session)
+            fresh = await uow.support_tickets.get(ticket_id)
+            if not fresh:
+                return
+            await support_service.update_status(uow, ticket=fresh, status=status)
+            user = await uow.users.get(fresh.user_id)
+            user_telegram = user.telegram_id if user else None
+            subject = fresh.subject
+            thread = (fresh.meta or {}).get("thread_id") or thread_id
+            status_value = fresh.status
+            await uow.session.commit()
+        if thread is not None:
+            await self._edit_topic(client, chat_id=chat_id, thread_id=thread, name=topic_name(fresh), status=status_value)
+        await self._send_status_message(client, ticket_id=ticket_id, status=status_value, chat_id=chat_id, thread_id=thread_id)
+        if user_telegram:
+            try:
+                await client.post(
+                    f"{self.api_base}/sendMessage",
+                    json={"chat_id": user_telegram, "text": f"Статус тикета {subject} обновлён: {status_value}"},
+                )
+            except Exception as exc:
+                logger.warning("support_bot_status_user_notify_failed", user_id=user_telegram, error=str(exc))
+
+    # Handlers
+    async def _process_callback(self, client: httpx.AsyncClient, callback: dict[str, Any]) -> None:
+        data = callback.get("data") or ""
+        from_user = (callback.get("from") or {}).get("id")
+        message = callback.get("message") or {}
+        chat_id = (message.get("chat") or {}).get("id")
+        thread_id = message.get("message_thread_id")
+        if from_user not in self.admins:
+            return
+        parts = data.split(":")
+        if len(parts) != 3 or parts[0] != "status":
+            return
+        ticket_id, status = parts[1], parts[2]
+        ok = True
+        try:
+            await self._apply_status(client, ticket_id=ticket_id, status=status, chat_id=chat_id, thread_id=thread_id)
+        except Exception as exc:  # pragma: no cover
+            ok = False
+            logger.exception("support_bot_callback_failed", extra={"ticket_id": ticket_id, "error": str(exc)})
+        try:
+            await client.post(
+                f"{self.api_base}/answerCallbackQuery",
+                json={"callback_query_id": callback.get("id"), "text": "Статус обновлён" if ok else "Ошибка, попробуйте ещё раз"},
+            )
+        except Exception:
+            pass
+
+    async def _process_message(self, client: httpx.AsyncClient, message: dict[str, Any]) -> None:
+        chat_id = (message.get("chat") or {}).get("id")
+        thread_id = message.get("message_thread_id")
+        text = message.get("text") or message.get("caption")
+        sender = message.get("from", {})
+        sender_id = sender.get("id")
+        is_bot = sender.get("is_bot")
+        if not isinstance(chat_id, int) or chat_id not in self.support_chats:
+            return
+        if not isinstance(thread_id, int):
+            return
+        if not text or is_bot:
+            return
+
+        async with session_manager.session() as session:
+            uow = UnitOfWork(session)
+            ticket: SupportTicket | None = await uow.support_tickets.find_by_thread_id(thread_id)
+            if not ticket:
+                logger.info("support_bot_unknown_thread", thread_id=thread_id)
+                return
+            ticket_id = str(ticket.id)
+            normalized = text.strip().lower()
+            if sender_id in self.admins and normalized in {"/close", "close", "закрыть"}:
+                await self._apply_status(client, ticket_id=ticket_id, status="closed", chat_id=chat_id, thread_id=thread_id)
+                return
+            if sender_id in self.admins and normalized in {"/open", "open", "открыть"}:
+                await self._apply_status(client, ticket_id=ticket_id, status="open", chat_id=chat_id, thread_id=thread_id)
+                return
+            if sender_id in self.admins and normalized in {"/status", "status", "статус", "кнопки", "кнопка"}:
+                await self._send_status_message(client, ticket_id=ticket_id, status=ticket.status, chat_id=chat_id, thread_id=thread_id)
+                return
+
+            await support_chat_service.add_admin_message(uow, ticket=ticket, text=text)
+            user = await uow.users.get(ticket.user_id)
+            subject = ticket.subject
+            await uow.session.commit()
+
+        if user and user.telegram_id:
+            try:
+                await client.post(
+                    f"{self.api_base}/sendMessage",
+                    json={"chat_id": user.telegram_id, "text": f"Ответ по тикету {subject}:\n{text}"},
+                )
+            except Exception as exc:
+                logger.warning("support_bot_user_notify_failed", user_id=user.telegram_id, error=str(exc))
+
+    async def run(self) -> None:
+        if not self.token or not self.support_chats:
+            logger.warning("support_bot_disabled", reason="missing_token_or_chats")
+            while True:
+                await asyncio.sleep(60)
+
+        async with httpx.AsyncClient(timeout=httpx.Timeout(25.0)) as client:
+            logger.info("support_bot_started", chats=len(self.support_chats))
+            while True:
+                try:
+                    response = await client.post(
+                        f"{self.api_base}/getUpdates",
+                        json={"offset": self.offset, "timeout": 20, "allowed_updates": ["message", "edited_message", "callback_query"]},
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    updates = data.get("result", [])
+                    if updates:
+                        logger.info("support_bot_updates", count=len(updates))
+                    for update in updates:
+                        update_id = update.get("update_id")
+                        if isinstance(update_id, int):
+                            self.offset = update_id + 1
+                        if "callback_query" in update:
+                            await self._process_callback(client, update["callback_query"])
+                        if "message" in update:
+                            await self._process_message(client, update["message"])
+                        if "edited_message" in update:
+                            await self._process_message(client, update["edited_message"])
+                except Exception as exc:
+                    logger.exception("support_bot_poll_failed", exc_info=exc)
+                    await asyncio.sleep(2)
+
+
+async def main() -> None:  # noqa: N802
+    bot = SupportBot()
+    await bot.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

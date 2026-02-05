@@ -21,3 +21,7 @@
 
 ## Backups
 - Daily backup job runs in compose (`backup` service). Manual check: `./scripts/check_backup_freshness.sh`.
+
+## Frontend availability
+- "coming soon" stub removed; /support and /profile/legal render on first load with current bundle.
+- Frontend retries with fresh Telegram init data automatically on 401/403 responses.

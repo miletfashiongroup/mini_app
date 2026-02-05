@@ -1,0 +1,102 @@
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+import httpx
+
+from brace_backend.core.config import settings
+from brace_backend.core.logging import logger
+from brace_backend.db.session import session_manager
+from brace_backend.db.uow import UnitOfWork
+from brace_backend.services.support_chat_service import support_chat_service
+from brace_backend.domain.support import SupportTicket
+
+
+class SupportBot:
+    def __init__(self) -> None:
+        self.token = (settings.support_bot_token or "").strip()
+        self.support_chats = set(settings.support_chat_ids or [])
+        self.api_base = f"https://api.telegram.org/bot{self.token}"
+        self.offset = 0
+
+    async def _process_message(self, client: httpx.AsyncClient, message: dict[str, Any]) -> None:
+        chat = message.get("chat", {})
+        chat_id = chat.get("id")
+        thread_id = message.get("message_thread_id")
+        text = message.get("text") or message.get("caption")
+        sender = message.get("from", {})
+        is_bot = sender.get("is_bot")
+        logger.info(
+            "support_bot_update",
+            chat_id=chat_id,
+            thread_id=thread_id,
+            has_text=bool(text),
+            is_bot=is_bot,
+            message_id=message.get("message_id"),
+        )
+        if not isinstance(chat_id, int) or chat_id not in self.support_chats:
+            logger.info("support_bot_skip_chat", chat_id=chat_id)
+            return
+        if not isinstance(thread_id, int):
+            logger.info("support_bot_skip_no_thread", chat_id=chat_id)
+            return
+        if not text or is_bot:
+            logger.info("support_bot_skip_no_text_or_bot", chat_id=chat_id, is_bot=is_bot)
+            return
+        async with session_manager.session() as session:
+            uow = UnitOfWork(session)
+            ticket: SupportTicket | None = await uow.support_tickets.find_by_thread_id(thread_id)
+            if not ticket:
+                logger.info("support_bot_unknown_thread", thread_id=thread_id)
+                return
+            await support_chat_service.add_admin_message(uow, ticket=ticket, text=text)
+            user = await uow.users.get(ticket.user_id)
+            if user and user.telegram_id:
+                try:
+                    await client.post(
+                        f"{self.api_base}/sendMessage",
+                        json={"chat_id": user.telegram_id, "text": f"Ответ по тикету {ticket.subject}:\n{text}"},
+                    )
+                except Exception as exc:  # pragma: no cover - logging only
+                    logger.warning("support_bot_user_notify_failed", user_id=str(user.id), error=str(exc))
+
+    async def run(self) -> None:
+        if not self.token or not self.support_chats:
+            logger.warning("support_bot_disabled", reason="missing_token_or_chats")
+            while True:
+                await asyncio.sleep(60)
+
+        async with httpx.AsyncClient(timeout=httpx.Timeout(25.0)) as client:
+            logger.info("support_bot_started", chats=len(self.support_chats))
+            while True:
+                try:
+                    response = await client.post(
+                        f"{self.api_base}/getUpdates",
+                        json={"offset": self.offset, "timeout": 20, "allowed_updates": ["message", "edited_message", "channel_post", "edited_channel_post", "my_chat_member", "chat_member", "chat_join_request"]},
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    updates = data.get("result", []); logger.info("support_bot_poll", offset=self.offset, updates=len(updates))
+                    if updates:
+                        logger.info("support_bot_updates", count=len(updates))
+                    for update in updates:
+                        update_id = update.get("update_id")
+                        if isinstance(update_id, int):
+                            self.offset = update_id + 1
+                        if "message" in update:
+                            await self._process_message(client, update["message"])
+                        if "edited_message" in update:
+                            await self._process_message(client, update["edited_message"])
+                except Exception as exc:
+                    logger.warning(f"support_bot_poll_failed: {exc}")
+                    await asyncio.sleep(2)
+
+
+async def main() -> None:  # noqa: N802
+    bot = SupportBot()
+    await bot.run()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

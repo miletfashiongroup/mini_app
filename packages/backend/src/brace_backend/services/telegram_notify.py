@@ -11,6 +11,16 @@ from brace_backend.domain.order import Order
 from brace_backend.domain.user import User
 
 
+ORDER_FORUM_CHAT_ID = -1003868543712
+
+STATUS_LABELS = {
+    "pending": "Новый",
+    "processing": "В обработке",
+    "shipped": "Отправлен",
+    "delivered": "Доставлен",
+    "cancelled": "Отменён",
+}
+
 def _format_money(minor_units: int) -> str:
     return f"{Decimal(minor_units) / Decimal(100):.2f} RUB"
 
@@ -38,6 +48,21 @@ def _status_keyboard(order_id: str) -> dict[str, object]:
         ]
     }
 
+ORDER_STATUS_ICON = {
+    "pending": "❗️",
+    "processing": "⚡️",
+    "shipped": "🚚",
+    "delivered": "✅",
+    "cancelled": "❗️",
+}
+ORDER_ICON_CUSTOM = {
+    "pending": "5379748062124056162",
+    "processing": "5312016608254762256",
+    "shipped": "5312322066328853156",
+    "delivered": "5237699328843200968",
+    "cancelled": "5379748062124056162",
+}
+
 async def _send_message(token: str, chat_id: int, text: str, reply_markup: dict | None = None) -> None:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
@@ -47,11 +72,68 @@ async def _send_message(token: str, chat_id: int, text: str, reply_markup: dict 
         response = await client.post(url, json=payload)
     response.raise_for_status()
 
+def _topic_name(order: Order) -> str:
+    icon = ORDER_STATUS_ICON.get(order.status, "❗️")
+    return f"{icon} Заказ #{order.id.hex[:6]} | {STATUS_LABELS.get(order.status, order.status)}"
+
+async def _send_order_to_forum(order: Order, user: User) -> None:
+    token = settings.admin_bot_token
+    if not token or not ORDER_FORUM_CHAT_ID:
+        logger.info("order_forum_skip", reason="no_token_or_chat", order_id=str(order.id))
+        return
+    client_timeout = httpx.Timeout(5.0)
+    async with httpx.AsyncClient(timeout=client_timeout) as client:
+        thread_id = None
+        try:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{token}/createForumTopic",
+                json={
+                    "chat_id": ORDER_FORUM_CHAT_ID,
+                    "name": _topic_name(order),
+                    "icon_custom_emoji_id": ORDER_ICON_CUSTOM.get(order.status),
+                },
+            )
+            data = resp.json()
+            if data.get("ok") and data.get("result", {}).get("message_thread_id"):
+                thread_id = int(data["result"]["message_thread_id"])
+                logger.info("order_forum_topic_created", order_id=str(order.id), thread_id=thread_id)
+            else:
+                logger.warning("order_forum_topic_failed", order_id=str(order.id), response=data)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("order_forum_topic_error", order_id=str(order.id), error=str(exc))
+        if not thread_id:
+            return
+        try:
+            await client.post(
+                f"https://api.telegram.org/bot{token}/editForumTopic",
+                json={
+                    "chat_id": ORDER_FORUM_CHAT_ID,
+                    "message_thread_id": thread_id,
+                    "name": _topic_name(order)[:128],
+                    "icon_custom_emoji_id": ORDER_ICON_CUSTOM.get(order.status),
+                },
+            )
+        except Exception as exc:
+            logger.warning("order_forum_topic_edit_failed", order_id=str(order.id), thread_id=thread_id, error=str(exc))
+        try:
+            await client.post(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                json={
+                    "chat_id": ORDER_FORUM_CHAT_ID,
+                    "message_thread_id": thread_id,
+                    "text": _build_order_message(order, user),
+                    "reply_markup": _status_keyboard(str(order.id)),
+                },
+            )
+            logger.info("order_forum_sent", order_id=str(order.id), thread_id=thread_id)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("order_forum_send_failed", order_id=str(order.id), error=str(exc))
 
 def _build_order_message(order: Order, user: User) -> str:
     lines = [
         "Новый заказ",
         f"Заказ: {escape(str(order.id))}",
+        f"Статус: {STATUS_LABELS.get(order.status, order.status)}",
         f"Сумма: {_format_money(order.total_amount_minor_units)}",
         "",
         "Покупатель:",
@@ -78,8 +160,8 @@ def _build_order_message(order: Order, user: User) -> str:
         )
     return "\n".join(lines)
 
-
 async def notify_manager_order(order: Order, user: User) -> None:
+    await _send_order_to_forum(order, user)
     token, chat_ids = _admin_targets()
     if not chat_ids:
         logger.info("order_notify_skipped", reason="admin_chat_missing", order_id=str(order.id))
@@ -100,7 +182,6 @@ async def notify_manager_order(order: Order, user: User) -> None:
             order_id=str(order.id),
             error=str(exc),
         )
-
 
 async def notify_manager_order_cancel(order: Order, user: User) -> None:
     token, chat_ids = _admin_targets()

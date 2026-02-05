@@ -120,6 +120,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("BRACE_ADMIN_CHAT_IDS", "ADMIN_CHAT_IDS"),
         description="Telegram chat IDs allowed to access admin bot.",
     )
+    support_bot_token: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_SUPPORT_BOT_TOKEN", "SUPPORT_BOT_TOKEN"),
+        description="Telegram bot token for support notifications and topics.",
+    )
+    support_chat_ids: list[int] = Field(
+        default_factory=list,
+        validation_alias=AliasChoices("BRACE_SUPPORT_CHAT_IDS", "SUPPORT_CHAT_IDS"),
+        description="Telegram chat IDs (forums) used for support notifications.",
+    )
     telegram_dev_mode: bool = False
     telegram_dev_fallback_token: str = Field(
         default="",
@@ -193,6 +203,18 @@ class Settings(BaseSettings):
     analytics_report_enabled: bool = Field(
         default=False,
         description="Enable scheduled analytics reports to Telegram.",
+    )
+    metrika_enabled: bool = Field(
+        default=False,
+        description="Enable Yandex Metrika Measurement Protocol server-side sending.",
+    )
+    metrika_counter_id: int | None = Field(
+        default=None,
+        description="Yandex Metrika counter ID for Measurement Protocol.",
+    )
+    metrika_measurement_token: str = Field(
+        default="",
+        description="Measurement Protocol token (measurement_token)",
     )
 
     @property

@@ -13,6 +13,8 @@ from brace_backend.repositories import (
     OrderRepository,
     ProductRepository,
     ProductReviewRepository,
+    SupportMessageRepository,
+    SupportTicketRepository,
     UserRepository,
 )
 
@@ -30,6 +32,8 @@ class UnitOfWork:
     audits: AuditRepository = field(init=False, repr=False)
     analytics: AnalyticsRepository = field(init=False, repr=False)
     reviews: ProductReviewRepository = field(init=False, repr=False)
+    support_tickets: SupportTicketRepository = field(init=False, repr=False)
+    support_messages: SupportMessageRepository = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.products = ProductRepository(self.session)
@@ -40,6 +44,8 @@ class UnitOfWork:
         self.audits = AuditRepository(self.session)
         self.analytics = AnalyticsRepository(self.session)
         self.reviews = ProductReviewRepository(self.session)
+        self.support_tickets = SupportTicketRepository(self.session)
+        self.support_messages = SupportMessageRepository(self.session)
 
     async def commit(self) -> None:
         await self.session.commit()

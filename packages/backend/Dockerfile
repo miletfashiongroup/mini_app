@@ -114,6 +114,9 @@ COPY packages/backend/alembic.ini .
 COPY packages/backend/entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
 
+RUN addgroup --system app && adduser --system --ingroup app app     && chown -R app:app /app
+USER app
+
 FROM runtime AS smoke-runner
 COPY packages/backend/tests ./tests
 ENTRYPOINT []

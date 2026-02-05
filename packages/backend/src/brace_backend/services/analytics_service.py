@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from brace_backend.core.config import settings
+from brace_backend.services import metrika_sender
 from brace_backend.core.logging import logger
 from brace_backend.core.security import TelegramInitData
 from brace_backend.db.uow import UnitOfWork
@@ -29,7 +30,7 @@ REDACT_KEYS = {
 
 EVENT_SCHEMAS: dict[str, dict[str, type]] = {
     "app_open": {"first_open": bool},
-    "screen_view": {"screen": str},
+    "screen_view": {},
     "catalog_view": {"items_count": int},
     "catalog_tab_change": {"from_category": str, "to_category": str},
     "product_view": {"product_id": str},
@@ -43,6 +44,8 @@ EVENT_SCHEMAS: dict[str, dict[str, type]] = {
     "order_failed": {"error_code": str},
     "search_used": {"query": str},
     "filter_applied": {"filter_name": str},
+    "order_status_changed": {"order_id": str, "to_status": str},
+    "support_message_sent": {"channel": str},
 }
 
 
@@ -168,6 +171,17 @@ class AnalyticsService:
         inserted = await uow.analytics.add_events(events)
         await uow.commit()
         deduped = len(events) - inserted
+        # Fire-and-forget server-side sending to Yandex Metrika Measurement Protocol
+        try:
+            metrika_sender.enqueue_events(
+                events=[(e.name, _clamp_event_time(e.occurred_at), e.screen) for e in payload.events],
+                client_id_raw=payload.anon_id,
+                device_id_raw=payload.device_id,
+                user_id=str(init_data.user.get("id")) if init_data and init_data.user else None,
+            )
+        except Exception:
+            logger.exception("metrika_enqueue_failed")
+
         logger.info(
             "analytics_ingested",
             ingested=inserted,

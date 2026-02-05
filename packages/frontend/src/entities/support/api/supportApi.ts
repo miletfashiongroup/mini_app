@@ -1,0 +1,56 @@
+import { apiClient } from "@/shared/api/httpClient";
+
+import type {
+  SupportTicket,
+  SupportTicketCreatePayload,
+  SupportMessage,
+  SupportMessageCreatePayload,
+  SupportTicketStatusUpdatePayload,
+} from "../model/types";
+
+export type {
+  SupportTicket,
+  SupportTicketCreatePayload,
+  SupportMessage,
+  SupportMessageCreatePayload,
+  SupportTicketStatusUpdatePayload,
+} from "../model/types";
+
+export const createSupportTicket = async (
+  payload: SupportTicketCreatePayload,
+): Promise<SupportTicket> => {
+  const response = await apiClient.post<SupportTicket>("/support/tickets", payload);
+  return response.data;
+};
+
+export const fetchSupportTickets = async (): Promise<SupportTicket[]> => {
+  const response = await apiClient.get<SupportTicket[]>("/support/tickets");
+  return response.data;
+};
+
+export const fetchSupportMessages = async (ticketId: string): Promise<SupportMessage[]> => {
+  const response = await apiClient.get<SupportMessage[]>("/support/tickets/" + ticketId + "/messages");
+  return response.data;
+};
+
+export const sendSupportMessage = async (
+  ticketId: string,
+  payload: SupportMessageCreatePayload,
+): Promise<SupportMessage> => {
+  const response = await apiClient.post<SupportMessage>(
+    "/support/tickets/" + ticketId + "/messages",
+    payload,
+  );
+  return response.data;
+};
+
+export const updateSupportTicketStatus = async (
+  ticketId: string,
+  payload: SupportTicketStatusUpdatePayload,
+): Promise<SupportTicket> => {
+  const response = await apiClient.post<SupportTicket>(
+    "/support/tickets/" + ticketId + "/status",
+    payload,
+  );
+  return response.data;
+};

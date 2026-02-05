@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query, Request, status
+
+from brace_backend.api.deps import get_current_user, get_uow
+from brace_backend.core.limiter import limiter
+from brace_backend.db.uow import UnitOfWork
+from brace_backend.domain.user import User
+from brace_backend.schemas.common import SuccessResponse
+from brace_backend.schemas.support import SupportTicketCreate, SupportTicketRead
+from brace_backend.services.support_service import support_service
+
+router = APIRouter(prefix="/support", tags=["Support"])
+
+
+@router.post("/tickets", response_model=SuccessResponse[SupportTicketRead], status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def create_support_ticket(
+    request: Request,
+    payload: SupportTicketCreate,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[SupportTicketRead]:
+    ticket = await support_service.create_ticket(
+        uow,
+        user_id=current_user.id,
+        subject=payload.subject,
+        message=payload.message,
+        order_id=payload.order_id,
+        priority=payload.priority or "normal",
+        contact=payload.contact,
+        category=payload.category,
+    )
+    return SuccessResponse[SupportTicketRead](data=SupportTicketRead.model_validate(ticket))
+
+
+@router.get("/tickets", response_model=SuccessResponse[list[SupportTicketRead]])
+@limiter.limit("30/minute")
+async def list_support_tickets(
+    request: Request,
+    status: str | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[list[SupportTicketRead]]:
+    if (current_user.role or "").lower() == "admin":
+        tickets = await support_service.list_tickets(uow, status=status, limit=limit, offset=offset)
+    else:
+        tickets = await uow.support_tickets.list_for_user(
+            user_id=current_user.id, limit=limit, offset=offset
+        )
+    data = [SupportTicketRead.model_validate(ticket) for ticket in tickets]
+    return SuccessResponse[list[SupportTicketRead]](data=data)
+
+
+__all__ = ["router"]

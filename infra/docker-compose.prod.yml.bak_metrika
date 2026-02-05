@@ -1,0 +1,220 @@
+x-backend-build: &backend-build
+  context: ..
+  dockerfile: packages/backend/Dockerfile
+  target: app
+  args:
+    PIP_INDEX_URL: ${PIP_INDEX_URL:-https://pypi.org/simple}
+    PIP_EXTRA_INDEX_URL: ${PIP_EXTRA_INDEX_URL:-https://mirror.yandex.ru/pypi/simple}
+    PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-mirror.yandex.ru}
+    PIP_DEFAULT_TIMEOUT: ${PIP_DEFAULT_TIMEOUT:-30}
+    PIP_RETRIES: ${PIP_RETRIES:-2}
+    PIP_INDEX_CANDIDATES: ${PIP_INDEX_CANDIDATES:-https://pypi.org/simple https://pypi.tuna.tsinghua.edu.cn/simple https://mirror.yandex.ru/pypi/simple}
+    PIP_OFFLINE: ${PIP_OFFLINE:-0}
+    WHEELHOUSE_URL: ${WHEELHOUSE_URL:-}
+
+x-frontend-build: &frontend-build
+  context: ..
+  dockerfile: packages/frontend/Dockerfile
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - brace-postgres-local
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-brace}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    # PRINCIPAL-NOTE: DB stays internal-only so production hosts never expose 5432.
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # PRINCIPAL-NOTE: Redis is only reachable on the overlay network.
+#comment
+  backend:
+    build: *backend-build
+    env_file:
+      - ../.env
+    environment:
+      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
+      ALEMBIC_DATABASE_URL: ${ALEMBIC_DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/brace}
+      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
+      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
+      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
+      BRACE_CORS_ORIGINS: ${BRACE_CORS_ORIGINS:-["http://localhost","http://localhost:4173"]}
+      BRACE_TELEGRAM_BOT_TOKEN: ${BRACE_TELEGRAM_BOT_TOKEN:?BRACE_TELEGRAM_BOT_TOKEN is required}
+      #BRACE_TELEGRAM_WEBAPP_SECRET: ${BRACE_TELEGRAM_WEBAPP_SECRET:-}
+      BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
+      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:?BRACE_SENTRY_DSN is required}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  admin-bot:
+    build: *backend-build
+    env_file:
+      - ../.env
+    environment:
+      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
+      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
+      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
+      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["python", "-m", "brace_backend.admin_bot"]
+    restart: unless-stopped
+
+  scheduler:
+    build: *backend-build
+    env_file:
+      - ../.env
+    environment:
+      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
+      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
+      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
+      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
+      BRACE_TELEGRAM_BOT_TOKEN: ${BRACE_TELEGRAM_BOT_TOKEN:?BRACE_TELEGRAM_BOT_TOKEN is required}
+      BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
+      BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:?BRACE_SENTRY_DSN is required}
+      BRACE_RETENTION_ENABLED: ${BRACE_RETENTION_ENABLED:-true}
+      BRACE_RETENTION_INTERVAL_MINUTES: ${BRACE_RETENTION_INTERVAL_MINUTES:-60}
+      BRACE_ANALYTICS_ROLLUP_HOUR_UTC: ${BRACE_ANALYTICS_ROLLUP_HOUR_UTC:-2}
+      BRACE_ANALYTICS_ROLLUP_MINUTE_UTC: ${BRACE_ANALYTICS_ROLLUP_MINUTE_UTC:-10}
+      BRACE_ANALYTICS_CLEANUP_HOUR_UTC: ${BRACE_ANALYTICS_CLEANUP_HOUR_UTC:-3}
+      BRACE_ANALYTICS_CLEANUP_MINUTE_UTC: ${BRACE_ANALYTICS_CLEANUP_MINUTE_UTC:-10}
+      BRACE_SCHEDULER_POLL_SECONDS: ${BRACE_SCHEDULER_POLL_SECONDS:-30}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["python", "-m", "brace_backend.scripts.scheduler"]
+    restart: unless-stopped
+
+  backup:
+    image: postgres:17-alpine
+    env_file:
+      - ../.env
+    environment:
+      BACKUP_DATABASE_URL: ${BACKUP_DATABASE_URL:-postgresql://postgres:postgres@db:5432/brace}
+      BACKUP_DIR: /backups
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ../scripts:/scripts:ro
+      - ../backups:/backups
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "while true; do sh /scripts/backup_db.sh; if [ $? -eq 0 ]; then sleep 86400; else sleep 300; fi; done",
+      ]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      <<: *frontend-build
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+        VITE_APP_BASE_URL: ${VITE_APP_BASE_URL:-http://localhost}
+        VITE_ENV: ${VITE_ENV:-production}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:?VITE_SENTRY_DSN is required}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - certbot-certs:/etc/letsencrypt
+      - certbot-web:/var/www/certbot
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- https://localhost --no-check-certificate >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  smoke-tests:
+    profiles: ["smoke"]
+    build:
+      context: ..
+      dockerfile: packages/backend/Dockerfile
+      target: smoke-runner
+    env_file:
+      - ../.env
+    environment:
+      SMOKE_DATABASE_URL: ${SMOKE_DATABASE_URL:-postgresql+asyncpg://postgres:postgres@db:5432/brace_smoke}
+      SMOKE_BACKEND_URL: ${SMOKE_BACKEND_URL:-http://backend:8000}
+      SMOKE_FRONTEND_URL: ${SMOKE_FRONTEND_URL:-http://frontend}
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "tests/fullstack_smoke.py"]
+    restart: "no"
+
+  support-bot:
+    build: *backend-build
+    env_file:
+      - ../.env
+    environment:
+      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
+      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
+      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
+      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["python", "-m", "brace_backend.support_bot"]
+    restart: unless-stopped
+volumes:
+  db_data:
+  certbot-certs:
+  certbot-web:

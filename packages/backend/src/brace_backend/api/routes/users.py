@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 
-from brace_backend.api.deps import get_current_user, get_uow
+from brace_backend.api.deps import get_authenticated_user, get_current_user, get_uow
 from brace_backend.core.exceptions import ValidationError
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.user import User
@@ -21,7 +21,7 @@ def _resolve_client_ip(request: Request) -> str | None:
 
 
 @router.get("/me", response_model=SuccessResponse[UserProfile])
-async def get_me(current_user: User = Depends(get_current_user)) -> SuccessResponse[UserProfile]:
+async def get_me(current_user: User = Depends(get_authenticated_user)) -> SuccessResponse[UserProfile]:
     profile = UserProfile.model_validate(current_user)
     return SuccessResponse[UserProfile](data=profile)
 
@@ -30,7 +30,7 @@ async def get_me(current_user: User = Depends(get_current_user)) -> SuccessRespo
 async def record_consent(
     request: Request,
     payload: UserConsentRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_authenticated_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[UserProfile]:
     if not payload.consent:

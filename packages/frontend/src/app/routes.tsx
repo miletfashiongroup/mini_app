@@ -1,10 +1,9 @@
 import { Suspense, useEffect, useRef } from 'react';
-import { RouteObject, useLocation, useRoutes } from 'react-router-dom';
+import { Navigate, RouteObject, useLocation, useRoutes } from 'react-router-dom';
 
 import { CartPage } from '@/pages/cart/CartPage';
 import { CatalogPage } from '@/pages/catalog/CatalogPage';
 import { Homepage } from '@/pages/Homepage';
-import { PlaceholderPage } from '@/pages/placeholder/PlaceholderPage';
 import { ProductDescriptionPage } from '@/pages/product/ProductDescriptionPage';
 import { ProductPage } from '@/pages/product/ProductPage';
 import { ProductReviewsPage } from '@/pages/product/ProductReviewsPage';
@@ -15,8 +14,10 @@ import { LegalDocsPage } from '@/pages/profile/LegalDocsPage';
 import { OrderDetailsPage } from '@/pages/profile/OrderDetailsPage';
 import { OrdersPage } from '@/pages/profile/OrdersPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
+import { SupportPage } from '@/pages/support/SupportPage';
 import { SizeTablePage } from '@/pages/size-table/SizeTablePage';
 import { TextPage } from '@/pages/text/TextPage';
+import { PlaceholderPage } from '@/pages/placeholder/PlaceholderPage';
 import { ErrorBoundary } from '@/shared/ui/ErrorBoundary';
 import { trackAppOpen, trackScreenView } from '@/shared/analytics/tracker';
 
@@ -34,9 +35,11 @@ const routes: RouteObject[] = [
   { path: '/profile/orders/:orderId', element: <OrderDetailsPage /> },
   { path: '/profile/favorites', element: <FavoritesPage /> },
   { path: '/profile/legal', element: <LegalDocsPage /> },
+  { path: '/support', element: <SupportPage /> },
   { path: '/size-table/:type', element: <SizeTablePage /> },
   { path: '/legal/:slug', element: <TextPage /> },
-  { path: '/coming-soon', element: <PlaceholderPage /> },
+  { path: '/coming-soon', element: <Navigate to="/support" replace /> },
+  { path: '*', element: <PlaceholderPage /> },
 ];
 
 export const AppRoutes = () => {

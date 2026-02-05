@@ -22,6 +22,8 @@ ALLOWED_EVENT_NAMES = {
     "order_failed",
     "search_used",
     "filter_applied",
+    "order_status_changed",
+    "support_message_sent",
 }
 
 MAX_EVENT_PROPERTIES = 50

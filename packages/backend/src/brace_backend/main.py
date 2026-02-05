@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -18,6 +19,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, version="0.2.0")
 
     app.add_middleware(ObservabilityMiddleware)
+    Instrumentator().instrument(app).expose(app, include_in_schema=False)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

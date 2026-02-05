@@ -33,6 +33,51 @@ STATUS_FILTERS: dict[str, str] = {
     "отменённые заказы": "cancelled",
 }
 
+ORDER_FORUM_CHAT_ID = -1003868543712
+ORDER_STATUS_ICON = {
+    "pending": "❗️",
+    "processing": "⚡️",
+    "shipped": "🚚",
+    "delivered": "✅",
+    "cancelled": "❗️",
+}
+ORDER_ICON_CUSTOM = {
+    "pending": "5379748062124056162",   # ❗️
+    "processing": "5312016608254762256",  # ⚡️
+    "shipped": "5312322066328853156",    # 🚚
+    "delivered": "5237699328843200968",  # ✅
+    "cancelled": "5379748062124056162",  # ❗️
+}
+
+def _order_payload(order, user=None) -> dict[str, Any]:
+    user = user or getattr(order, "user", None)
+    items_payload = []
+    for item in getattr(order, "items", []) or []:
+        product_code = item.product.product_code if getattr(item, "product", None) else None
+        items_payload.append(
+            {
+                "product_code": product_code,
+                "product_id": str(item.product_id),
+                "size": item.size,
+                "quantity": item.quantity,
+                "unit_price_minor_units": item.unit_price_minor_units,
+            }
+        )
+    return {
+        "id": _order_id(order),
+        "status": _order_status(order),
+        "total_amount_minor_units": getattr(order, "total_amount_minor_units", 0) if not isinstance(order, dict) else order.get("total_amount_minor_units", 0),
+        "items": items_payload,
+        "user": {
+            "id": str(user.id) if user else None,
+            "telegram_id": user.telegram_id if user else None,
+            "username": user.username if user else None,
+            "phone": user.phone if user else None,
+            "full_name": getattr(user, "full_name", None),
+        }
+        if user
+        else None,
+    }
 
 def _order_actions_keyboard(order_id: str) -> dict[str, Any]:
     return {
@@ -94,35 +139,51 @@ def _format_money(minor_units: int) -> str:
     return f"{minor_units / 100:.2f} RUB"
 
 
-def _format_order_message(order, user=None) -> str:
+def _format_order_message(order: dict, user=None) -> str:
+    payload_user = user or order.get("user")
     contact_lines = []
-    if user:
+    if payload_user:
         contact_lines = [
             "Покупатель:",
-            f"User ID: {escape(str(user.id))}",
-            f"Telegram ID: {escape(str(user.telegram_id))}" if user.telegram_id else "Telegram ID: —",
-            f"Username: @{escape(user.username)}" if user.username else "Username: —",
-            f"Телефон: {escape(user.phone)}" if user.phone else "Телефон: —",
+            f"User ID: {escape(str(payload_user.get('id')))}" if payload_user.get('id') else "User ID: —",
+            f"Telegram ID: {escape(str(payload_user.get('telegram_id')))}" if payload_user.get('telegram_id') else "Telegram ID: —",
+            f"Username: @{escape(payload_user.get('username'))}" if payload_user.get('username') else "Username: —",
+            f"Телефон: {escape(payload_user.get('phone'))}" if payload_user.get('phone') else "Телефон: —",
             "",
         ]
     lines = [
         "Заказ",
-        f"ID: {escape(str(order.id))}",
-        f"Статус: {STATUS_LABELS.get(order.status, order.status)}",
-        f"Сумма: {_format_money(order.total_amount_minor_units)}",
+        f"ID: {escape(str(order.get('id')))}",
+        f"Статус: {STATUS_LABELS.get(order.get('status'), order.get('status'))}",
+        f"Сумма: {_format_money(order.get('total_amount_minor_units', 0))}",
         "",
         "Состав:",
     ]
-    for item in order.items:
-        product_code = None
-        if item.product is not None:
-            product_code = item.product.product_code
+    for item in order.get('items', []):
+        product_code = item.get('product_code')
         lines.append(
-            f"- {escape(product_code) if product_code else escape(str(item.product_id))} | "
-            f"размер {escape(item.size)} | x{item.quantity} | "
-            f"{_format_money(item.unit_price_minor_units)}"
+            f"- {escape(product_code) if product_code else escape(str(item.get('product_id')))} | "
+            f"размер {escape(item.get('size'))} | x{item.get('quantity')} | "
+            f"{_format_money(item.get('unit_price_minor_units', 0))}"
         )
     return "\n".join(contact_lines + lines)
+
+
+def _order_id(order):
+    if isinstance(order, dict):
+        return order.get("id")
+    return getattr(order, "id", None)
+
+def _order_status(order):
+    if isinstance(order, dict):
+        return order.get("status")
+    return getattr(order, "status", None)
+
+def _topic_name(order: dict | Any) -> str:
+    status = order.get("status") if isinstance(order, dict) else getattr(order, "status", None)
+    order_id = order.get("id") if isinstance(order, dict) else getattr(order, "id", None)
+    icon = ORDER_STATUS_ICON.get(status, "❗️")
+    return f"{icon} Заказ #{order_id.hex[:6]} | {STATUS_LABELS.get(status, status)}"
 
 
 class AdminBot:
@@ -131,16 +192,19 @@ class AdminBot:
         self.allowed_admins = set(settings.admin_chat_ids)
         self.api_base = f"https://api.telegram.org/bot{self.token}"
         self.offset = 0
+        self.order_topic_cache: dict[UUID, int] = {}
 
     def _is_admin(self, user_id: int) -> bool:
         return user_id in self.allowed_admins
 
     async def _send_message(
-        self, client: httpx.AsyncClient, chat_id: int, text: str, reply_markup: dict | None = None
+        self, client: httpx.AsyncClient, chat_id: int, text: str, reply_markup: dict | None = None, thread_id: int | None = None
     ) -> None:
         payload: dict[str, Any] = {"chat_id": chat_id, "text": text}
         if reply_markup:
             payload["reply_markup"] = reply_markup
+        if thread_id is not None:
+            payload["message_thread_id"] = thread_id
         response = await client.post(f"{self.api_base}/sendMessage", json=payload)
         response.raise_for_status()
 
@@ -193,19 +257,88 @@ class AdminBot:
             uow = UnitOfWork(session)
             return await order_service.set_status_admin(uow, order_id=order_id, status=status)
 
-    async def _get_order_message(self, order_id: UUID) -> str:
+    async def _get_order(self, order_id: UUID) -> dict | None:
         async with session_manager.session() as session:
             uow = UnitOfWork(session)
             order = await uow.orders.get_by_id(order_id=order_id)
             if not order:
-                return "Заказ не найден."
+                return None
+            await session.refresh(order, attribute_names=['items', 'user'])
+            _ = list(order.items)
             user = order.user or await uow.users.get(order.user_id)
-            return _format_order_message(order, user)
+            for item in order.items:
+                _ = item.product
+            return _order_payload(order, user)
+
+    async def _get_order_message(self, order_id: UUID) -> str:
+        order = await self._get_order(order_id)
+        if not order:
+            return "Заказ не найден."
+        user = order.get('user') if order else None
+        return _format_order_message(order, user)
 
     async def _delete_order(self, order_id: UUID) -> None:
         async with session_manager.session() as session:
             uow = UnitOfWork(session)
             await order_service.delete_order_admin(uow, order_id=order_id)
+
+    async def _edit_topic(self, client: httpx.AsyncClient, thread_id: int, order) -> None:
+        payload = {
+            "chat_id": ORDER_FORUM_CHAT_ID,
+            "message_thread_id": thread_id,
+            "name": _topic_name(order)[:128],
+            "icon_custom_emoji_id": ORDER_ICON_CUSTOM.get(_order_status(order)),
+        }
+        try:
+            resp = await client.post(f"{self.api_base}/editForumTopic", json=payload)
+            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            if not data.get("ok", False):
+                logger.warning("admin_bot_edit_topic_failed", order_id=str(_order_id(order)), thread_id=thread_id, response=data)
+            resp.raise_for_status()
+        except Exception as exc:  # pragma: no cover
+            logger.warning("admin_bot_edit_topic_error", order_id=str(_order_id(order)), thread_id=thread_id, error=str(exc))
+
+    async def _ensure_topic(self, client: httpx.AsyncClient, order) -> int | None:
+        if _order_id(order) in self.order_topic_cache:
+            return self.order_topic_cache[_order_id(order)]
+        if not ORDER_FORUM_CHAT_ID:
+            return None
+        try:
+            resp = await client.post(
+                f"{self.api_base}/createForumTopic",
+                json={
+                    "chat_id": ORDER_FORUM_CHAT_ID,
+                    "name": _topic_name(order),
+                    "icon_custom_emoji_id": ORDER_ICON_CUSTOM.get(_order_status(order)),
+                },
+            )
+            data = resp.json()
+            if data.get("ok") and data.get("result", {}).get("message_thread_id"):
+                thread_id = int(data["result"]["message_thread_id"])
+                self.order_topic_cache[_order_id(order)] = thread_id
+                return thread_id
+            logger.warning("admin_bot_create_topic_failed", order_id=str(_order_id(order)), response=data)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("admin_bot_create_topic_error", order_id=str(_order_id(order)), error=str(exc))
+        return None
+
+    async def _send_order_to_forum(self, client: httpx.AsyncClient, order, thread_id_hint: int | None = None) -> None:
+        thread_id = thread_id_hint or await self._ensure_topic(client, order)
+        if thread_id is None:
+            return
+        self.order_topic_cache[_order_id(order)] = thread_id
+        await self._edit_topic(client, thread_id, order)
+        text = _format_order_message(order, order.get('user') if order else None)
+        try:
+            await self._send_message(
+                client,
+                ORDER_FORUM_CHAT_ID,
+                text,
+                reply_markup=_order_actions_keyboard(str(_order_id(order))),
+                thread_id=thread_id,
+            )
+        except Exception as exc:
+            logger.warning("admin_bot_forum_send_failed", order_id=str(_order_id(order)), thread_id=thread_id, error=str(exc))
 
     async def _handle_command(self, client: httpx.AsyncClient, chat_id: int, text: str) -> None:
         raw_text = text.strip()
@@ -238,12 +371,17 @@ class AdminBot:
                     return
                 for order in orders:
                     user = order.user or await uow.users.get(order.user_id)
+                    _ = list(order.items)
+                    for item in order.items:
+                        _ = item.product
+                    payload = _order_payload(order, user)
                     await self._send_message(
                         client,
                         chat_id,
-                        _format_order_message(order, user),
-                        reply_markup=_order_actions_keyboard(str(order.id)),
+                        _format_order_message(payload, payload.get("user")),
+                        reply_markup=_order_actions_keyboard(str(payload["id"])),
                     )
+                    await self._send_order_to_forum(client, payload)
             return
 
         if command == "/order":
@@ -262,13 +400,18 @@ class AdminBot:
                     await self._send_message(client, chat_id, "Заказ не найден.")
                     return
                 user = await uow.users.get(order.user_id)
-                message = _format_order_message(order, user)
+                _ = list(order.items)
+                for item in order.items:
+                    _ = item.product
+                payload = _order_payload(order, user)
+                message = _format_order_message(payload, payload.get("user"))
                 await self._send_message(
                     client,
                     chat_id,
                     message,
-                    reply_markup=_order_actions_keyboard(str(order.id)),
+                    reply_markup=_order_actions_keyboard(str(payload["id"])),
                 )
+            await self._send_order_to_forum(client, payload)
             return
 
         await self._send_message(client, chat_id, "Неизвестная команда. /help")
@@ -375,14 +518,32 @@ class AdminBot:
         except ValueError:
             await self._answer_callback(client, callback_id, "Некорректный заказ.")
             return
+
         try:
             await self._set_status(order_id, status)
-            await self._answer_callback(client, callback_id, f"Статус: {STATUS_LABELS.get(status, status)}")
-            message = callback.get("message", {})
-            chat_id = message.get("chat", {}).get("id")
-            message_id = message.get("message_id")
-            if isinstance(chat_id, int) and isinstance(message_id, int):
-                updated_text = await self._get_order_message(order_id)
+        except Exception as exc:
+            # NotFound -> заказ удалён/не существует: отвечаем пользователю и не логируем как крит.
+            if exc.__class__.__name__ == "NotFoundError":
+                await self._answer_callback(client, callback_id, "Заказ не найден.")
+                return
+            logger.exception("admin_bot_status_failed", exc_info=True, extra={"order_id": str(order_id), "status": status})
+            await self._answer_callback(client, callback_id, "Не удалось обновить статус.")
+            return
+
+        await self._answer_callback(client, callback_id, f"Статус: {STATUS_LABELS.get(status, status)}")
+        order = await self._get_order(order_id)
+        message = callback.get("message", {})
+        chat_id = message.get("chat", {}).get("id")
+        message_id = message.get("message_id")
+        thread_id = message.get("message_thread_id")
+
+        # Fall back to cached thread id if callback lacks it
+        if not isinstance(thread_id, int) and order and _order_id(order) in self.order_topic_cache:
+            thread_id = self.order_topic_cache[_order_id(order)]
+
+        if order and isinstance(chat_id, int) and isinstance(message_id, int):
+            updated_text = _format_order_message(order, order.get('user') if order else None)
+            try:
                 await self._edit_message_text(
                     client,
                     chat_id,
@@ -390,9 +551,29 @@ class AdminBot:
                     updated_text,
                     reply_markup=_order_actions_keyboard(order_id_str),
                 )
-        except Exception as exc:
-            logger.warning("admin_bot_status_failed", order_id=str(order_id), error=str(exc))
-            await self._answer_callback(client, callback_id, "Не удалось обновить статус.")
+            except Exception as exc:
+                logger.warning(
+                    "admin_bot_edit_message_failed",
+                    order_id=str(order_id),
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    error=str(exc),
+                )
+
+
+        thread_hint = thread_id if isinstance(thread_id, int) else None
+        if order and thread_hint:
+            self.order_topic_cache[_order_id(order)] = thread_hint
+        if order:
+            try:
+                await self._send_order_to_forum(client, order, thread_hint)
+            except Exception as exc:
+                logger.warning(
+                    "admin_bot_forum_update_failed",
+                    order_id=str(order_id),
+                    thread_id=thread_hint,
+                    error=str(exc),
+                )
 
     async def run(self) -> None:
         if not self.token or not self.allowed_admins:
@@ -430,7 +611,7 @@ class AdminBot:
                         if "callback_query" in update:
                             await self._handle_callback(client, update["callback_query"])
                 except Exception as exc:
-                    logger.warning("admin_bot_poll_failed", error=str(exc))
+                    logger.exception("admin_bot_poll_failed")
                     await asyncio.sleep(2)
 
 

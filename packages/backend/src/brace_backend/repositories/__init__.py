@@ -5,6 +5,7 @@ from brace_backend.repositories.cart import CartRepository
 from brace_backend.repositories.order import OrderRepository
 from brace_backend.repositories.product import ProductRepository
 from brace_backend.repositories.review import ProductReviewRepository
+from brace_backend.repositories.support import SupportTicketRepository
 from brace_backend.repositories.user import UserRepository
 
 __all__ = [
@@ -16,4 +17,6 @@ __all__ = [
     "BannerRepository",
     "AuditRepository",
     "AnalyticsRepository",
+    "SupportTicketRepository",
 ]
+from brace_backend.repositories.support_message import SupportMessageRepository

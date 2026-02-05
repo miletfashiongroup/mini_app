@@ -246,4 +246,12 @@ export const trackAppOpen = (screen: string) => {
 
 export const trackScreenView = (screen: string) => {
   trackEvent('screen_view', { screen }, screen);
+  if (typeof window !== 'undefined' && typeof (window as any).ym === 'function') {
+    const loc = window.location;
+    const url = screen.startsWith('/') ? screen + loc.search + loc.hash : screen;
+    (window as any).ym(106632112, 'hit', url, {
+      title: typeof document !== 'undefined' ? document.title : undefined,
+      referer: typeof document !== 'undefined' ? document.referrer : undefined,
+    });
+  }
 };

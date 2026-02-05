@@ -5,7 +5,7 @@ class PaginationParams:
     def __init__(
         self,
         page: int | None = Query(default=None, ge=1),
-        page_size: int | None = Query(default=None, ge=1, le=200),
+        page_size: int | None = Query(default=None, ge=0, le=200),
     ) -> None:
         self.page = page
         self.page_size = page_size

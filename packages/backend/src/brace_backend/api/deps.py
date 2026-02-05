@@ -80,11 +80,16 @@ async def get_uow() -> AsyncIterator[UnitOfWork]:
         yield UnitOfWork(session)
 
 
-async def get_current_user(
+async def get_authenticated_user(
     init_data: TelegramInitData = Depends(get_current_init_data),
     uow: UnitOfWork = Depends(get_uow),
 ) -> User:
-    user = await user_service.sync_from_telegram(uow, init_data)
+    return await user_service.sync_from_telegram(uow, init_data)
+
+
+async def get_current_user(
+    user: User = Depends(get_authenticated_user),
+) -> User:
     if not user.consent_given_at:
         raise AccessDeniedError("Consent required. Please confirm in bot.")
     return user

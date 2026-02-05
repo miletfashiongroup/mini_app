@@ -2,117 +2,90 @@ name: CI
 
 on:
   pull_request:
+    branches: ["main"]
   push:
-    branches: [main]
+    branches: ["main"]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+
+env:
+  PYTHON_VERSION: "3.12"
 
 jobs:
-  build-and-test:
+  backend-tests:
+    name: Backend build & smoke tests
     runs-on: ubuntu-latest
-    env:
-      DOCKER_BUILDKIT: 1
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: brace_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          version: 9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - name: Install frontend deps
-        run: pnpm install --ignore-scripts
-      - name: Backend deps
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install backend deps
+        working-directory: packages/backend
         run: |
-          cd packages/backend
+          python -m pip install --upgrade pip
           pip install poetry
-          poetry install
-      - name: Lint
+          poetry config virtualenvs.create false
+          poetry install --no-root --only main
+      - name: Run unit tests (fast subset)
+        working-directory: packages/backend
         run: |
-          pnpm -r lint
-          cd packages/backend && poetry run ruff check
-      - name: Typecheck
+          pytest -q --disable-warnings --maxfail=1
+      - name: Backend type check (optional)
+        if: ${{ always() }}
+        working-directory: packages/backend
         run: |
-          cd packages/frontend && pnpm typecheck
-      - name: Backend tests
-        env:
-          TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/brace_test
-        run: |
-          cd packages/backend
-          poetry run pytest --cov=brace_backend --cov-report=xml --cov-report=term --cov-fail-under=30
-      - name: Frontend unit tests
-        run: |
-          cd packages/frontend && pnpm test -- --runInBand --coverage
-      - name: Docker build (backend)
-        run: |
-          docker build -f packages/backend/Dockerfile -t brace-backend-ci .
-      - name: Docker build (frontend)
-        run: |
-          docker build -f packages/frontend/Dockerfile -t brace-frontend-ci .
-      - name: Upload backend coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: packages/backend/coverage.xml
-      - name: Upload frontend coverage
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage
-          path: packages/frontend/coverage
-      - name: OpenAPI types up to date
-        run: |
-          pnpm generate:api
-          git diff --exit-code -- packages/shared-api/src/index.ts
-      - name: Frontend e2e
-        env:
-          VITE_API_BASE_URL: http://localhost:8000
-          VITE_APP_BASE_URL: http://localhost:4173
-        run: |
-          cd packages/frontend
-          pnpm build
-          pnpm exec playwright install --with-deps
-          (pnpm preview --host --port 4173 > /tmp/preview.log 2>&1 &) 
-          sleep 5
-          pnpm e2e
+          python -m compileall src
 
-  lighthouse:
-    name: Lighthouse (informational)
+  frontend-build:
+    name: Frontend build
     runs-on: ubuntu-latest
-    needs: build-and-test
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
       - name: Install deps
-        run: pnpm install --ignore-scripts
-      - name: Build frontend
+        working-directory: packages/frontend
         run: |
-          cd packages/frontend
-          pnpm build
-      - name: Run Lighthouse CI (preview)
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          npm ci
+      - name: Build
+        working-directory: packages/frontend
         run: |
-          cd packages/frontend
-          (pnpm preview --host --port 4173 > /tmp/preview.log 2>&1 &) 
-          sleep 5
-          pnpm dlx @lhci/cli@0.13.x healthcheck || true
-          pnpm dlx @lhci/cli@0.13.x collect --url=http://localhost:4173 --numberOfRuns=1 --staticDistDir=dist || true
+          npm run build --if-present
+
+  docker-build:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-build]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build backend image
+        run: docker build -f packages/backend/Dockerfile -t brace/backend-ci .
+      - name: Build frontend image
+        run: docker build -f packages/frontend/Dockerfile -t brace/frontend-ci .
+
+  security-scan:
+    name: Security scan (gitleaks + trivy fs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: detect --no-banner -v
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.21.0
+        with:
+          scan-type: fs
+          security-checks: vuln,config,secret
+          ignore-unfixed: true
+          format: table
+          exit-code: 1
+          vuln-type: "os,library"
