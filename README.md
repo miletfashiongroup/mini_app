@@ -207,3 +207,5 @@ Example flow — PATCH /cart/{item_id}:
 - Backend exposes Prometheus metrics at  (enabled by default); scrape via  or through nginx if published.
 - Health checks:  plus container-level checks for backend, admin-bot, support-bot, scheduler (see ).
 - Quick smoke:  validates health, minimal product fetch, analytics endpoint, and metrics availability without mutating production data.
+
+Key docs: [ONBOARDING](docs/ONBOARDING.md), [Testing](docs/TESTING_STRATEGY.md), [Security](SECURITY.md), [Security checklist](docs/SECURITY_CHECKLIST.md), [Observability](docs/OBSERVABILITY.md), [Data/DR](docs/DATA_BACKUP_DISASTER.md).

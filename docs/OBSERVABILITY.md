@@ -28,3 +28,33 @@
 
 ## Smoke Tests
 - Manual: `API_URL=https://bracefashion.online bash scripts/smoke_manual.sh` (read-only). Extend script for staging to run order lifecycle using test DB/user.
+
+## Alert Rules (sample Prometheus)
+```
+- alert: HighErrorRate
+  expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.01
+  for: 5m
+  labels: {severity: critical}
+  annotations: {summary: "5xx >1%"}
+- alert: HighLatencyP95
+  expr: histogram_quantile(0.95, sum by (le)(rate(http_request_duration_seconds_bucket[5m]))) > 1
+  for: 5m
+  labels: {severity: warning}
+- alert: AdminBotStatusFailures
+  expr: increase(admin_bot_status_failed_total[5m]) > 3
+  labels: {severity: critical}
+- alert: BackupStale
+  expr: time() - brace_backup_timestamp_seconds > 93600
+  labels: {severity: warning}
+```
+
+## Dashboards (Grafana starter panels)
+- Requests rate/latency/error by route and status
+- Bot callbacks success/fail by status
+- DB pool usage, SQL timings, slow queries count
+- Redis ops/sec and errors
+- Custom business: orders created, status transitions, payment attempts (when added)
+
+## WebVisor / Metrika Notes
+- Telegram WebView CSP blocks inline scripts; use hosted loaders (`/metrika-tag.js`, `/metrika.js`) already present.
+- Enable WebVisor in Metrika UI; no code change needed after CSP-safe loader. For SPA hits, emit `ym(counterId, hit, url)` on route changes if telemetry is required beyond current `/api/analytics/events` pipeline.
