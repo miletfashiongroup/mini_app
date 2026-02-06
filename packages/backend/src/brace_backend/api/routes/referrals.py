@@ -44,6 +44,12 @@ class ReferralMyResponse(BaseModel):
     invited: list[ReferralInviteRead]
 
 
+def _to_uuid(value) -> UUID:
+    if isinstance(value, UUID):
+        return value
+    return UUID(str(value))
+
+
 def _generate_code(length: int = 8) -> str:
     alphabet = string.ascii_uppercase + string.digits
     return "".join(random.choices(alphabet, k=length))
@@ -57,7 +63,8 @@ async def _get_or_create_code(uow: UnitOfWork, user_id: UUID) -> tuple[UUID, str
         )
     ).first()
     if row:
-        return UUID(row.id), row.code, row.is_active
+        code_id = _to_uuid(row.id)
+        return code_id, row.code, row.is_active
 
     code = _generate_code()
     code_id = uuid4()
@@ -94,7 +101,7 @@ async def apply_referral_code(
     ).first()
     if not code_row:
         raise HTTPException(status_code=404, detail="Код не найден")
-    owner_id = UUID(code_row.owner_user_id)
+    owner_id = _to_uuid(code_row.owner_user_id)
     if owner_id == current_user.id:
         raise HTTPException(status_code=400, detail="Нельзя использовать свой код")
 
@@ -113,9 +120,9 @@ async def apply_referral_code(
     if existing:
         return SuccessResponse[ReferralBindingRead](
             data=ReferralBindingRead(
-                id=UUID(existing.id),
-                referrer_user_id=UUID(existing.referrer_user_id),
-                referee_user_id=UUID(existing.referee_user_id),
+                id=_to_uuid(existing.id),
+                referrer_user_id=_to_uuid(existing.referrer_user_id),
+                referee_user_id=_to_uuid(existing.referee_user_id),
                 status=existing.status,
                 code=code_value,
                 created_at=existing.created_at,
@@ -176,8 +183,8 @@ async def get_my_referral(
 
     invited = [
         ReferralInviteRead(
-            referrer_user_id=UUID(row.referrer_user_id),
-            referee_user_id=UUID(row.referee_user_id),
+            referrer_user_id=_to_uuid(row.referrer_user_id),
+            referee_user_id=_to_uuid(row.referee_user_id),
             status=row.status,
             created_at=row.created_at,
         )
