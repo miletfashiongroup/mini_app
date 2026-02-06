@@ -7,6 +7,13 @@ import {
 } from '@/entities/banner/api/bannerApi';
 import { type CartCollection, cartKeys, fetchCart } from '@/entities/cart/api/cartApi';
 import {
+  type BonusBalance,
+  type BonusLedgerEntry,
+  bonusKeys,
+  getBonusBalance,
+  getBonusLedger,
+} from '@/entities/bonus/api/bonusApi';
+import {
   type Product,
   type ProductListResult,
   type ProductReview,
@@ -16,17 +23,12 @@ import {
   fetchRelatedProducts,
   fetchProductReviews,
 } from '@/entities/product/api/productApi';
+import { type ReferralStats, getReferralStats, referralKeys } from '@/entities/referral/api/referralApi';
 import { type Order, fetchOrderById, fetchOrders, orderKeys } from '@/entities/order/api/orderApi';
 import { type UserProfile, fetchProfile, userKeys } from '@/entities/user/api/userApi';
-import {
-  type SupportTicket,
-  fetchSupportTickets,
-  type SupportMessage,
-  fetchSupportMessages,
-} from '@/entities/support/api/supportApi';
+import { type SupportTicket, fetchSupportTickets } from '@/entities/support/api/supportApi';
+import { type SupportMessage, fetchSupportMessages } from '@/entities/support/api/supportApi';
 import { ApiError } from '@/shared/api/types';
-
-// Typed helper
 
 type QueryOptions<TData> = Omit<
   UseQueryOptions<TData, ApiError>,
@@ -120,6 +122,27 @@ export const useSupportTicketsQuery = (options?: QueryOptions<SupportTicket[]>) 
     ...options,
   });
 
+export const useBonusBalance = (options?: QueryOptions<BonusBalance>) =>
+  useQuery<BonusBalance, ApiError>({
+    queryKey: bonusKeys.balance,
+    queryFn: getBonusBalance,
+    ...options,
+  });
+
+export const useBonusLedgerQuery = (options?: QueryOptions<BonusLedgerEntry[]>) =>
+  useQuery<BonusLedgerEntry[], ApiError>({
+    queryKey: bonusKeys.ledger,
+    queryFn: getBonusLedger,
+    ...options,
+  });
+
+export const useReferral = (options?: QueryOptions<ReferralStats>) =>
+  useQuery<ReferralStats, ApiError>({
+    queryKey: referralKeys.my,
+    queryFn: getReferralStats,
+    ...options,
+  });
+
 export const useSupportMessagesQuery = (
   ticketId: string,
   options?: QueryOptions<SupportMessage[]>,
@@ -131,3 +154,4 @@ export const useSupportMessagesQuery = (
     refetchInterval: 5000,
     ...options,
   });
+

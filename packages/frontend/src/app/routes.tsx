@@ -14,6 +14,8 @@ import { LegalDocsPage } from '@/pages/profile/LegalDocsPage';
 import { OrderDetailsPage } from '@/pages/profile/OrderDetailsPage';
 import { OrdersPage } from '@/pages/profile/OrdersPage';
 import { ProfilePage } from '@/pages/profile/ProfilePage';
+import { BonusPage } from '@/pages/profile/BonusPage';
+import { ReferralPage } from '@/pages/profile/ReferralPage';
 import { SupportPage } from '@/pages/support/SupportPage';
 import { SizeTablePage } from '@/pages/size-table/SizeTablePage';
 import { TextPage } from '@/pages/text/TextPage';
@@ -35,6 +37,8 @@ const routes: RouteObject[] = [
   { path: '/profile/orders/:orderId', element: <OrderDetailsPage /> },
   { path: '/profile/favorites', element: <FavoritesPage /> },
   { path: '/profile/legal', element: <LegalDocsPage /> },
+  { path: '/profile/bonus', element: <BonusPage /> },
+  { path: '/profile/referrals', element: <ReferralPage /> },
   { path: '/support', element: <SupportPage /> },
   { path: '/size-table/:type', element: <SizeTablePage /> },
   { path: '/legal/:slug', element: <TextPage /> },
