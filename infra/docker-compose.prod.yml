@@ -30,10 +30,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-brace}
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
-        ]
+        - CMD-SHELL
+        - pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
       interval: 5s
       timeout: 5s
       retries: 10
@@ -103,7 +101,7 @@ services:
         condition: service_healthy
     entrypoint: ["python", "-m", "brace_backend.admin_bot"]
     healthcheck:
-      test: ["CMD","python","-c","import socket; socket.create_connection(("db",5432),3); socket.create_connection(("redis",6379),3)"]
+      test: ["CMD-SHELL", "python -c \"import socket; socket.create_connection((\'db\',5432),3); socket.create_connection((\'redis\',6379),3)\""]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -138,7 +136,7 @@ services:
         condition: service_healthy
     entrypoint: ["python", "-m", "brace_backend.scripts.scheduler"]
     healthcheck:
-      test: ["CMD","python","-c","import socket; socket.create_connection(("db",5432),3); socket.create_connection(("redis",6379),3)"]
+      test: ["CMD","python","-c","import socket; socket.create_connection((\"db\",5432),3); socket.create_connection((\"redis\",6379),3)"]
       interval: 20s
       timeout: 5s
       retries: 3
@@ -230,7 +228,7 @@ services:
         condition: service_healthy
     entrypoint: ["python", "-m", "brace_backend.support_bot"]
     healthcheck:
-      test: ["CMD","python","-c","import socket; socket.create_connection(("db",5432),3); socket.create_connection(("redis",6379),3)"]
+      test: ["CMD","python","-c","import socket; socket.create_connection((\"db\",5432),3); socket.create_connection((\"redis\",6379),3)"]
       interval: 20s
       timeout: 5s
       retries: 3
