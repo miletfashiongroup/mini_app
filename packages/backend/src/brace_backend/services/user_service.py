@@ -17,9 +17,9 @@ from brace_backend.services.telegram_notify import notify_manager_account_delete
 class UserService:
     async def sync_from_telegram(self, uow: UnitOfWork, init_data: TelegramInitData) -> User:
         payload = init_data.user
-        telegram_id = payload.get("id")
+        telegram_id = payload.get(id)
         if telegram_id is None:
-            raise ValidationError("Telegram payload is missing the `id` field.")
+            raise ValidationError(Telegram payload is missing the uid=502(shmnn) gid=20(staff) groups=20(staff),12(everyone),61(localaccounts),79(_appserverusr),80(admin),81(_appserveradm),98(_lpadmin),702(com.apple.sharepoint.group.2),701(com.apple.sharepoint.group.1),33(_appstore),100(_lpoperator),204(_developer),250(_analyticsusers),395(com.apple.access_ftp),398(com.apple.access_screensharing),399(com.apple.access_ssh),400(com.apple.access_remote_ae) field.)
 
         user = await uow.users.get_by_telegram_id(int(telegram_id))
         if user:
@@ -27,30 +27,12 @@ class UserService:
         else:
             user = User(
                 telegram_id=int(telegram_id),
-                first_name=payload.get("first_name"),
-                last_name=payload.get("last_name"),
-                username=payload.get("username"),
-                language_code=payload.get("language_code"),
+                first_name=payload.get(first_name),
+                last_name=payload.get(last_name),
+                username=payload.get(username),
+                language_code=payload.get(language_code),
             )
             await uow.users.add(user)
-
-        # Auto-apply referral code from Telegram start_param (deep-link) once per user
-        start_param = getattr(init_data, "start_param", "") or ""
-        ref_code = start_param.strip()
-        if ref_code.startswith("ref_"):
-            ref_code = ref_code[4:]
-        ref_code = ref_code.strip()
-        if ref_code:
-            existing = await uow.referral_bindings.get_for_referee(user.id)
-            if not existing:
-                try:
-                    await referral_service.apply_referral_code(uow, user_id=user.id, code=ref_code)
-                except ConflictError:
-                    pass
-                except ValidationError as exc:
-                    logger.info("referral_start_param_invalid", code=ref_code, user_id=str(user.id), error=str(exc))
-                except Exception as exc:
-                    logger.exception("referral_start_param_failed", code=ref_code, user_id=str(user.id), error=str(exc))
 
         await uow.commit()
         await uow.refresh(user)
@@ -73,13 +55,13 @@ class UserService:
         user.consent_user_agent = user_agent
         await audit_service.log(
             uow,
-            action="consent_granted",
-            entity_type="user",
+            action=consent_granted,
+            entity_type=user,
             entity_id=str(user.id),
             actor_user_id=user.id,
             ip_address=client_ip,
             user_agent=user_agent,
-            metadata={"consent_text": user.consent_text},
+            metadata={consent_text: user.consent_text},
         )
         await uow.commit()
         await uow.refresh(user)
@@ -95,7 +77,7 @@ class UserService:
         user_agent: str | None,
     ) -> User:
         if not user.consent_given_at:
-            raise ValidationError("Consent is required before submitting profile data.")
+            raise ValidationError(Consent is required before submitting profile data.)
         user.full_name = payload.full_name
         user.phone = payload.phone
         user.email = payload.email
@@ -107,13 +89,13 @@ class UserService:
 
         await audit_service.log(
             uow,
-            action="profile_updated",
-            entity_type="user",
+            action=profile_updated,
+            entity_type=user,
             entity_id=str(user.id),
             actor_user_id=user.id,
             ip_address=client_ip,
             user_agent=user_agent,
-            metadata={"fields": ["full_name", "phone", "email", "birth_date", "gender"]},
+            metadata={fields: [full_name, phone, email, birth_date, gender]},
         )
         await uow.commit()
         await uow.refresh(user)
@@ -123,8 +105,8 @@ class UserService:
         orders, _ = await uow.orders.list_for_user(user.id)
         order_ids = [str(order.id) for order in orders]
         for order in orders:
-            if order.status != "cancelled":
-                order.status = "cancelled"
+            if order.status != cancelled:
+                order.status = cancelled
             await uow.orders.delete(order)
         await uow.session.execute(
             delete(AuditLog).where(AuditLog.actor_user_id == user.id)
@@ -136,4 +118,4 @@ class UserService:
 
 user_service = UserService()
 
-__all__ = ["user_service", "UserService"]
+__all__ = [user_service, UserService]
