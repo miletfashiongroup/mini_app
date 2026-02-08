@@ -11,7 +11,12 @@ from brace_backend.domain.product import ProductVariant
 from brace_backend.services.audit_service import audit_service
 from brace_backend.services.analytics_service import analytics_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
-from brace_backend.services.telegram_notify import notify_manager_order, notify_manager_order_cancel
+from brace_backend.services.referral_service import referral_service
+from brace_backend.services.telegram_notify import (
+    notify_manager_order,
+    notify_manager_order_cancel,
+    notify_user_order_status,
+)
 
 
 class OrderService:
@@ -21,6 +26,7 @@ class OrderService:
         "shipped",
         "cancelled",
         "delivered",
+        "completed",
     }
     async def list_orders(
         self, uow: UnitOfWork, user_id: UUID, *, page: int | None, page_size: int | None
@@ -76,10 +82,15 @@ class OrderService:
 
         order = await uow.orders.create(
             user_id=user_id,
-            shipping_address=payload.shipping_address,
-            note=payload.note,
+            shipping_address=payload.address or payload.shipping_address,
+            note=payload.comment or payload.note,
             idempotency_key=idempotency_key,
         )
+        order.meta = {
+            "address": payload.address or payload.shipping_address,
+            "delivery_type": payload.delivery_type,
+            "comment": payload.comment or payload.note,
+        }
 
         for item in cart_items:
             await uow.orders.add_item(
@@ -132,7 +143,7 @@ class OrderService:
         )
         user = await uow.users.get(user_id)
         if user:
-            await notify_manager_order(order, user)
+            await notify_manager_order(uow, order, user)
         return self._to_schema(order)
 
     async def get_order(self, uow: UnitOfWork, *, user_id: UUID, order_id: UUID) -> OrderRead:
@@ -149,9 +160,9 @@ class OrderService:
             return self._to_schema(order)
         if order.status in ("delivered", "refunded"):
             raise ValidationError("Order cannot be cancelled.")
-        order.status = "cancelled"
-        await uow.commit()
-        await uow.session.refresh(order, attribute_names=["items", "updated_at", "status"])
+        order, _ = await self.set_order_status(
+            uow, order_id=order.id, status="cancelled", actor_user_id=user_id
+        )
         await audit_service.log(
             uow,
             action="order_cancelled",
@@ -179,25 +190,82 @@ class OrderService:
                 logger.warning("order_cancel_notify_failed", order_id=str(order.id), error=str(exc))
         return self._to_schema(order)
 
-    async def set_status_admin(self, uow: UnitOfWork, *, order_id: UUID, status: str) -> OrderRead:
-        if status not in self.allowed_admin_statuses:
-            raise ValidationError("Invalid order status.")
+    async def set_order_status(
+        self,
+        uow: UnitOfWork,
+        *,
+        order_id: UUID,
+        status: str,
+        actor_user_id: UUID | None = None,
+    ) -> tuple[Order, bool]:
         order = await uow.orders.get_by_id(order_id=order_id)
         if not order:
             raise NotFoundError("Order not found.")
         if order.status == status:
-            return self._to_schema(order)
+            return order, False
         order.status = status
         await uow.commit()
-        await uow.session.refresh(order, attribute_names=["items", "updated_at", "status"])
+        await uow.session.refresh(
+            order,
+            attribute_names=["items", "updated_at", "status", "last_notified_status"],
+        )
+        status_messages = {
+            "pending": (
+                "принят",
+                "Менеджер свяжется с вами в течение 4 часов.",
+            ),
+            "processing": ("в сборке", ""),
+            "shipped": ("отправлен", "Детали доставки уточним в чате."),
+            "delivered": ("доставлен", "Если есть вопросы — напишите в поддержку."),
+            "completed": ("завершён", "Спасибо за покупку!"),
+            "cancelled": ("отменён", ""),
+        }
+        message = status_messages.get(status)
+        if message and order.last_notified_status != status:
+            user = await uow.users.get(order.user_id)
+            if user and user.telegram_id:
+                label, hint = message
+                sent = False
+                try:
+                    sent = await notify_user_order_status(
+                        telegram_id=int(user.telegram_id),
+                        order_id=str(order.id),
+                        status=status,
+                        label=label,
+                        hint=hint,
+                    )
+                except Exception:
+                    logger.exception(
+                        "order_status_notify_failed",
+                        order_id=str(order.id),
+                        status=status,
+                    )
+                if sent:
+                    order.last_notified_status = status
+                    await uow.commit()
+        _ = actor_user_id
+        return order, True
+
+    async def set_status_admin(
+        self, uow: UnitOfWork, *, order_id: UUID, status: str, actor_user_id: UUID | None = None
+    ) -> OrderRead:
+        if status not in self.allowed_admin_statuses:
+            raise ValidationError("Invalid order status.")
+        order, changed = await self.set_order_status(
+            uow, order_id=order_id, status=status, actor_user_id=actor_user_id
+        )
+        if not changed:
+            return self._to_schema(order)
         await audit_service.log(
             uow,
             action="order_status_updated",
             entity_type="order",
             entity_id=str(order.id),
             metadata={"status": status},
-            actor_user_id=order.user_id,
+            actor_user_id=actor_user_id or order.user_id,
         )
+        if status in ("delivered", "completed"):
+            await referral_service.on_order_completed(uow, order_id=order.id)
         return self._to_schema(order)
 
     async def delete_order_admin(self, uow: UnitOfWork, *, order_id: UUID) -> None:

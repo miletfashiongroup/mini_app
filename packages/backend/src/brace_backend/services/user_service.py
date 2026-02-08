@@ -4,9 +4,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy import delete
 
-from brace_backend.core.exceptions import ValidationError, ConflictError
+from brace_backend.core.exceptions import ValidationError
 from brace_backend.core.security import TelegramInitData
-from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.audit import AuditLog
 from brace_backend.domain.user import User

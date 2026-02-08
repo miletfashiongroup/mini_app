@@ -30,5 +30,8 @@ class OrderRead(BaseModel):
 
 
 class OrderCreate(BaseModel):
-    shipping_address: str | None = Field(default=None, max_length=512)  # PRINCIPAL-FIX
-    note: str | None = None
+    address: str | None = Field(default=None, max_length=512)
+    delivery_type: str | None = Field(default=None, max_length=32)
+    comment: str | None = Field(default=None, max_length=512)
+    shipping_address: str | None = Field(default=None, max_length=512)  # legacy
+    note: str | None = None  # legacy

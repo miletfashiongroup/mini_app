@@ -9,11 +9,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from brace_backend.api.deps import get_current_user, get_uow, get_optional_init_data
+from brace_backend.api.deps import get_current_user, get_uow
 from brace_backend.core.limiter import limiter
-from brace_backend.core.exceptions import ValidationError, ConflictError
+from brace_backend.core.exceptions import ValidationError
 from brace_backend.db.uow import UnitOfWork
-from brace_backend.core.security import TelegramInitData
 from brace_backend.domain.user import User
 from brace_backend.schemas.common import SuccessResponse
 
@@ -178,37 +177,7 @@ async def get_my_referral(
     request: Request,
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
-    init_data: TelegramInitData | None = Depends(get_optional_init_data),
 ) -> SuccessResponse[ReferralMyResponse]:
-    # Auto-apply referral from start_param on first touch via WebApp
-    if init_data:
-        ref_code = getattr(init_data, "start_param", "") or ""
-        ref_code = ref_code.strip()
-        if ref_code.startswith("ref_"):
-            ref_code = ref_code[4:]
-        ref_code = ref_code.strip()
-        if ref_code:
-            existing = (
-                await uow.session.execute(
-                    text("SELECT id FROM referral_binding WHERE referee_user_id = :uid"),
-                    {"uid": str(current_user.id)},
-                )
-            ).first()
-            if not existing:
-                try:
-                    await apply_referral_code(
-                        request,
-                        payload=ReferralApplyRequest(code=ref_code),
-                        current_user=current_user,
-                        uow=uow,
-                    )
-                except (ValidationError, ConflictError, HTTPException):
-                    pass
-                except Exception as exc:  # pragma: no cover
-                    from brace_backend.core.logging import logger
-                    logger.exception(
-                        "referral_start_param_apply_failed", code=ref_code, user_id=str(current_user.id), error=str(exc)
-                    )
     _, code_value, is_active = await _get_or_create_code(uow, user_id=current_user.id)
 
     invited_rows = (
@@ -238,6 +207,5 @@ async def get_my_referral(
     return SuccessResponse[ReferralMyResponse](
         data=ReferralMyResponse(code=code_value, is_active=is_active, invited=invited)
     )
-
 
 __all__ = ["router"]
