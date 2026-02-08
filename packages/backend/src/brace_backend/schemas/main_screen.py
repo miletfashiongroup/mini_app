@@ -7,7 +7,7 @@ class BannerRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    image_url: str
+    image_url: str | None = None
     video_url: str | None = None
     is_active: bool
     sort_order: int
