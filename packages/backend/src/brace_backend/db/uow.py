@@ -9,10 +9,14 @@ from brace_backend.repositories import (
     AnalyticsRepository,
     AuditRepository,
     BannerRepository,
+    BonusLedgerRepository,
     CartRepository,
+    FavoriteRepository,
     OrderRepository,
     ProductRepository,
     ProductReviewRepository,
+    ReferralBindingRepository,
+    ReferralCodeRepository,
     SupportMessageRepository,
     SupportTicketRepository,
     UserRepository,
@@ -21,29 +25,37 @@ from brace_backend.repositories import (
 
 @dataclass
 class UnitOfWork:
-    """Aggregate repositories and control transaction boundaries."""
+    Aggregate repositories and control transaction boundaries.
 
     session: AsyncSession
     products: ProductRepository = field(init=False, repr=False)
     carts: CartRepository = field(init=False, repr=False)
+    favorites: FavoriteRepository = field(init=False, repr=False)
     orders: OrderRepository = field(init=False, repr=False)
     users: UserRepository = field(init=False, repr=False)
     banners: BannerRepository = field(init=False, repr=False)
     audits: AuditRepository = field(init=False, repr=False)
     analytics: AnalyticsRepository = field(init=False, repr=False)
     reviews: ProductReviewRepository = field(init=False, repr=False)
+    bonus_ledger: BonusLedgerRepository = field(init=False, repr=False)
+    referral_codes: ReferralCodeRepository = field(init=False, repr=False)
+    referral_bindings: ReferralBindingRepository = field(init=False, repr=False)
     support_tickets: SupportTicketRepository = field(init=False, repr=False)
     support_messages: SupportMessageRepository = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.products = ProductRepository(self.session)
         self.carts = CartRepository(self.session)
+        self.favorites = FavoriteRepository(self.session)
         self.orders = OrderRepository(self.session)
         self.users = UserRepository(self.session)
         self.banners = BannerRepository(self.session)
         self.audits = AuditRepository(self.session)
         self.analytics = AnalyticsRepository(self.session)
         self.reviews = ProductReviewRepository(self.session)
+        self.bonus_ledger = BonusLedgerRepository(self.session)
+        self.referral_codes = ReferralCodeRepository(self.session)
+        self.referral_bindings = ReferralBindingRepository(self.session)
         self.support_tickets = SupportTicketRepository(self.session)
         self.support_messages = SupportMessageRepository(self.session)
 
