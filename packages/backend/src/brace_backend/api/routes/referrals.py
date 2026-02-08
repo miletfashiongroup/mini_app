@@ -9,9 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from brace_backend.api.deps import get_current_user, get_uow
+from brace_backend.api.deps import get_current_user, get_uow, get_optional_init_data
 from brace_backend.core.limiter import limiter
+from brace_backend.core.exceptions import ValidationError, ConflictError
 from brace_backend.db.uow import UnitOfWork
+from brace_backend.core.security import TelegramInitData
 from brace_backend.domain.user import User
 from brace_backend.schemas.common import SuccessResponse
 
@@ -19,7 +21,7 @@ router = APIRouter(prefix="/referrals", tags=["Referrals"])
 
 
 class ReferralApplyRequest(BaseModel):
-    code: str
+    code: str | None = None
 
 
 class ReferralBindingRead(BaseModel):
@@ -85,11 +87,23 @@ async def _get_or_create_code(uow: UnitOfWork, user_id: UUID) -> tuple[UUID, str
 @limiter.limit("10/minute")
 async def apply_referral_code(
     request: Request,
-    payload: ReferralApplyRequest,
+    payload: ReferralApplyRequest | None = None,
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[ReferralBindingRead]:
-    code_value = payload.code.strip().upper()
+    # Accept code from JSON body, query param or form; be lenient to avoid 422
+    code_value = (payload.code if payload else None) or request.query_params.get("code") or ""
+    if not code_value:
+        try:
+            data = await request.json()
+            code_value = str(data.get("code", ""))
+        except Exception:
+            try:
+                form = await request.form()
+                code_value = str(form.get("code", ""))
+            except Exception:
+                code_value = ""
+    code_value = code_value.strip().upper()
     if not code_value:
         raise HTTPException(status_code=400, detail="Код не может быть пустым")
 
@@ -134,7 +148,7 @@ async def apply_referral_code(
         text(
             """
             INSERT INTO referral_binding (id, referrer_user_id, referee_user_id, code_id, status)
-            VALUES (:id, :referrer, :referee, :code_id, pending)
+            VALUES (:id, :referrer, :referee, :code_id, 'pending')
             """
         ),
         {
@@ -164,7 +178,37 @@ async def get_my_referral(
     request: Request,
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
+    init_data: TelegramInitData | None = Depends(get_optional_init_data),
 ) -> SuccessResponse[ReferralMyResponse]:
+    # Auto-apply referral from start_param on first touch via WebApp
+    if init_data:
+        ref_code = getattr(init_data, "start_param", "") or ""
+        ref_code = ref_code.strip()
+        if ref_code.startswith("ref_"):
+            ref_code = ref_code[4:]
+        ref_code = ref_code.strip()
+        if ref_code:
+            existing = (
+                await uow.session.execute(
+                    text("SELECT id FROM referral_binding WHERE referee_user_id = :uid"),
+                    {"uid": str(current_user.id)},
+                )
+            ).first()
+            if not existing:
+                try:
+                    await apply_referral_code(
+                        request,
+                        payload=ReferralApplyRequest(code=ref_code),
+                        current_user=current_user,
+                        uow=uow,
+                    )
+                except (ValidationError, ConflictError, HTTPException):
+                    pass
+                except Exception as exc:  # pragma: no cover
+                    from brace_backend.core.logging import logger
+                    logger.exception(
+                        "referral_start_param_apply_failed", code=ref_code, user_id=str(current_user.id), error=str(exc)
+                    )
     _, code_value, is_active = await _get_or_create_code(uow, user_id=current_user.id)
 
     invited_rows = (
