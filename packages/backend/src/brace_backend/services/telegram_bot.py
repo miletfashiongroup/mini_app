@@ -8,9 +8,11 @@ import httpx
 
 from brace_backend.core.config import settings
 from brace_backend.core.logging import logger
+from brace_backend.core.exceptions import ValidationError, ConflictError
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.user import User
 from brace_backend.services.audit_service import audit_service
+from brace_backend.services.referral_service import referral_service
 
 
 CONSENT_TEXT = (
@@ -36,6 +38,14 @@ LEGAL_DOCS = [
     ),
 ]
 
+_REF_PREFIX = "ref_"
+
+def _extract_referral_code(payload: str) -> str | None:
+    code = (payload or "").strip()
+    if code.startswith(_REF_PREFIX):
+        code = code[len(_REF_PREFIX):]
+    code = code.strip()
+    return code or None
 
 def _normalize_phone(value: str) -> str:
     digits_only = "".join(ch for ch in (value or "") if ch.isdigit())
@@ -106,6 +116,20 @@ class TelegramBotService:
             return
 
         if text.startswith("/start"):
+            payload = text.split(maxsplit=1)[1].strip() if len(text.split(maxsplit=1)) > 1 else ""
+            ref_code = _extract_referral_code(payload)
+            if ref_code:
+                existing = await uow.referral_bindings.get_for_referee(user.id)
+                if not existing:
+                    try:
+                        await referral_service.apply_referral_code(uow, user_id=user.id, code=ref_code)
+                        await self._send_message(chat_id, "Реферальный код применён. Бонус придёт после первой покупки.")
+                    except ConflictError:
+                        await self._send_message(chat_id, "Реферальный код уже применён ранее.")
+                    except ValidationError as exc:
+                        await self._send_message(chat_id, str(exc))
+                    except Exception as exc:
+                        logger.exception("referral_start_apply_failed", code=ref_code, user_id=str(user.id), error=str(exc))
             await self._prompt_next(uow, chat_id, user)
             return
 

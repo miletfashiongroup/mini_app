@@ -39,6 +39,10 @@ class TelegramInitData:
         return self.data.get("user", {})
 
     @property
+    def start_param(self) -> str:
+        return str(self.data.get("start_param", ))
+
+    @property
     def auth_date(self) -> int:
         return int(self.data.get("auth_date", 0))
 

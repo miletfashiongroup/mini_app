@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 
 from sqlalchemy import delete
 
-from brace_backend.core.exceptions import ValidationError
+from brace_backend.core.exceptions import ValidationError, ConflictError
 from brace_backend.core.security import TelegramInitData
+from brace_backend.core.logging import logger
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.audit import AuditLog
 from brace_backend.domain.user import User
@@ -33,6 +34,24 @@ class UserService:
                 language_code=payload.get("language_code"),
             )
             await uow.users.add(user)
+
+        # Auto-apply referral code from Telegram start_param (deep-link) once per user
+        start_param = getattr(init_data, "start_param", "") or ""
+        ref_code = start_param.strip()
+        if ref_code.startswith("ref_"):
+            ref_code = ref_code[4:]
+        ref_code = ref_code.strip()
+        if ref_code:
+            existing = await uow.referral_bindings.get_for_referee(user.id)
+            if not existing:
+                try:
+                    await referral_service.apply_referral_code(uow, user_id=user.id, code=ref_code)
+                except ConflictError:
+                    pass
+                except ValidationError as exc:
+                    logger.info("referral_start_param_invalid", code=ref_code, user_id=str(user.id), error=str(exc))
+                except Exception as exc:
+                    logger.exception("referral_start_param_failed", code=ref_code, user_id=str(user.id), error=str(exc))
 
         await uow.commit()
         await uow.refresh(user)
