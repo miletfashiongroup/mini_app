@@ -123,7 +123,7 @@ class Settings(BaseSettings):
     support_bot_token: str | None = Field(
         default=None,
         validation_alias=AliasChoices("BRACE_SUPPORT_BOT_TOKEN", "SUPPORT_BOT_TOKEN"),
-        description="Telegram bot token for support notifications and topics.",
+        description="Telegram bot token for support bot.",
     )
     support_chat_ids: list[int] = Field(
         default_factory=list,
@@ -148,6 +148,36 @@ class Settings(BaseSettings):
         default="",
         validation_alias=AliasChoices("BRACE_PII_ENCRYPTION_KEY", "PII_ENCRYPTION_KEY"),
         description="Fernet key for PII encryption at rest. REQUIRED in production.",
+    )
+
+    sentry_dsn: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_SENTRY_DSN", "SENTRY_DSN"),
+        description="Sentry DSN for backend error tracking.",
+    )
+    sentry_environment: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_SENTRY_ENVIRONMENT", "SENTRY_ENVIRONMENT"),
+        description="Sentry environment name (defaults to BRACE_ENVIRONMENT).",
+    )
+    sentry_release: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("BRACE_SENTRY_RELEASE", "SENTRY_RELEASE"),
+        description="Sentry release identifier (optional).",
+    )
+    sentry_traces_sample_rate: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices("BRACE_SENTRY_TRACES_SAMPLE_RATE", "SENTRY_TRACES_SAMPLE_RATE"),
+        description="Sentry tracing sample rate (0.0-1.0).",
+    )
+    sentry_profiles_sample_rate: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        validation_alias=AliasChoices("BRACE_SENTRY_PROFILES_SAMPLE_RATE", "SENTRY_PROFILES_SAMPLE_RATE"),
+        description="Sentry profiling sample rate (0.0-1.0).",
     )
 
     analytics_enabled: bool = Field(
@@ -204,17 +234,88 @@ class Settings(BaseSettings):
         default=False,
         description="Enable scheduled analytics reports to Telegram.",
     )
-    metrika_enabled: bool = Field(
+
+    retention_enabled: bool = Field(
         default=False,
-        description="Enable Yandex Metrika Measurement Protocol server-side sending.",
+        description="Enable Telegram retention reminders (favorites/cart/repeat purchase).",
     )
-    metrika_counter_id: int | None = Field(
-        default=None,
-        description="Yandex Metrika counter ID for Measurement Protocol.",
+    retention_cart_delay_hours: int = Field(
+        default=6,
+        ge=1,
+        le=168,
+        description="Hours after last cart activity before sending an abandoned cart reminder.",
     )
-    metrika_measurement_token: str = Field(
-        default="",
-        description="Measurement Protocol token (measurement_token)",
+    retention_cart_cooldown_hours: int = Field(
+        default=48,
+        ge=1,
+        le=720,
+        description="Cooldown before sending another cart reminder to the same user.",
+    )
+    retention_cart_suppression_hours: int = Field(
+        default=24,
+        ge=1,
+        le=720,
+        description="Skip cart reminders if the user placed an order within this window.",
+    )
+    retention_favorite_delay_hours: int = Field(
+        default=48,
+        ge=1,
+        le=720,
+        description="Hours after adding favorite before sending a reminder.",
+    )
+    retention_favorite_cooldown_hours: int = Field(
+        default=168,
+        ge=1,
+        le=1440,
+        description="Cooldown before sending another favorites reminder.",
+    )
+    retention_repeat_purchase_days: int = Field(
+        default=30,
+        ge=7,
+        le=365,
+        description="Days after last order before sending a repeat purchase reminder.",
+    )
+    retention_repeat_cooldown_days: int = Field(
+        default=60,
+        ge=7,
+        le=365,
+        description="Cooldown before sending another repeat purchase reminder.",
+    )
+    retention_max_messages_per_run: int = Field(
+        default=50,
+        ge=1,
+        le=1000,
+        description="Max number of retention messages sent in a single run.",
+    )
+
+    referral_bonus_percent: float = Field(
+        default=0.10,
+        ge=0.0,
+        le=1.0,
+        description="Referral bonus percent for the referrer (0.0-1.0).",
+    )
+    referral_min_order_amount_minor_units: int = Field(
+        default=100_000,
+        ge=0,
+        description="Minimum order amount in minor units to grant referral bonus.",
+    )
+    referral_code_length: int = Field(
+        default=8,
+        ge=4,
+        le=16,
+        description="Length of referral code.",
+    )
+    bonus_expiration_days: int = Field(
+        default=180,
+        ge=1,
+        le=3650,
+        description="Bonus expiration window in days.",
+    )
+
+    support_manual_bonus_daily_limit: int = Field(
+        default=200_000,
+        ge=0,
+        description="Daily limit (minor units) for manual bonus credits by support.",
     )
 
     @property
@@ -314,6 +415,11 @@ class Settings(BaseSettings):
             return [int(item) for item in v]
         return v if v else []
 
+    @field_validator("support_chat_ids", mode="before")
+    @classmethod
+    def parse_support_chat_ids(cls, v: Any) -> list[int]:
+        return cls.parse_admin_chat_ids(v)
+
     rate_limit: str = Field(
         default="60/minute",
         description="Rate limit string (e.g., '60/minute', '100/hour')",
@@ -381,6 +487,9 @@ class Settings(BaseSettings):
 
         if not self.pii_encryption_key:
             raise RuntimeError("PII encryption key is required in production")
+
+        if not self.sentry_dsn:
+            raise RuntimeError("Sentry DSN is required in production")
 
         return self
 
