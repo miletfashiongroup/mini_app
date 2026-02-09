@@ -209,3 +209,5 @@ Example flow — PATCH /cart/{item_id}:
 - Quick smoke:  validates health, minimal product fetch, analytics endpoint, and metrics availability without mutating production data.
 
 Key docs: [ONBOARDING](docs/ONBOARDING.md), [Testing](docs/TESTING_STRATEGY.md), [Security](SECURITY.md), [Security checklist](docs/SECURITY_CHECKLIST.md), [Observability](docs/OBSERVABILITY.md), [Data/DR](docs/DATA_BACKUP_DISASTER.md).
+
+CI check trigger
