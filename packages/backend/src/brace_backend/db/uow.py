@@ -25,7 +25,7 @@ from brace_backend.repositories import (
 
 @dataclass
 class UnitOfWork:
-    Aggregate repositories and control transaction boundaries.
+    """Aggregate repositories and control transaction boundaries."""
 
     session: AsyncSession
     products: ProductRepository = field(init=False, repr=False)
