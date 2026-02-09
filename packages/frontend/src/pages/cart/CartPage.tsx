@@ -7,7 +7,7 @@ import { AppBottomNav, PageTopBar } from '@/components/brace';
 import { cartKeys, deleteCartItem, updateCartItem } from '@/entities/cart/api/cartApi';
 import type { CartCollection } from '@/entities/cart/model/types';
 import { useCreateOrderMutation } from '@/features/order/create-order/model/useCreateOrderMutation';
-import { useCartQuery } from '@/shared/api/queries';
+import { useCartQuery, useBonusBalance } from '@/shared/api/queries';
 import { trackEvent } from '@/shared/analytics/tracker';
 
 type CartItemView = {
@@ -270,6 +270,13 @@ export const CartPage = () => {
     0,
   );
   const totalPrice = formatRubles(totalMinorUnits);
+  const { data: bonusData } = useBonusBalance();
+  const bonusBalance = bonusData?.balance ?? 0;
+  const eligibleBonusMinor = Math.min(bonusBalance * 100, Math.floor(totalMinorUnits / 2));
+  const [useBonus, setUseBonus] = useState(false);
+  const bonusAppliedMinor = useBonus ? eligibleBonusMinor : 0;
+  const payableMinorUnits = totalMinorUnits - bonusAppliedMinor;
+  const payablePrice = formatRubles(payableMinorUnits);
   const isCheckoutDisabled = cartItems.length === 0 || createOrderMutation.isPending;
 
   useEffect(() => {
@@ -290,7 +297,7 @@ export const CartPage = () => {
       cart_total_minor_units: totalMinorUnits,
       currency: 'RUB',
     }, '/cart');
-    createOrderMutation.mutate(undefined, {
+    createOrderMutation.mutate({ bonus_minor_units: bonusAppliedMinor }, {
       onSuccess: () => {
         setShowOrderSent(true);
       },
@@ -346,7 +353,37 @@ export const CartPage = () => {
           />
         )}
       </CartItemsSection>
-      <CartSummarySection totalPrice={totalPrice} onCheckout={handleCheckout} disabled={isCheckoutDisabled} />
+      <section className="bg-white">
+        <div className="flex items-center justify-between px-4 pt-4">
+          <span className="text-[20px] font-bold text-text-primary">Сумма</span>
+          <span className="text-[20px] font-bold text-text-primary">{totalPrice}</span>
+        </div>
+        {bonusBalance > 0 ? (
+          <div className="flex items-center justify-between gap-3 px-4 pt-2">
+            <span className="text-[14px] text-[#5A5A5C]">Доступно: {bonusBalance} баллов</span>
+            <button
+              type="button"
+              onClick={() => setUseBonus((prev) => !prev)}
+              className="rounded-xl border border-[#000043] px-3 py-2 text-[13px] font-semibold text-[#000043] transition hover:bg-[#000043] hover:text-white"
+            >
+              {useBonus ? 'Не списывать' : 'Списать баллы'}
+            </button>
+          </div>
+        ) : null}
+        {useBonus && bonusAppliedMinor > 0 ? (
+          <div className="flex flex-col gap-1 px-4 pt-3 text-[14px]">
+            <div className="flex items-center justify-between text-[#5A5A5C]">
+              <span>Списано баллами</span>
+              <span>-{formatRubles(bonusAppliedMinor)}</span>
+            </div>
+            <div className="flex items-center justify-between text-[18px] font-semibold text-text-primary">
+              <span>К оплате</span>
+              <span>{payablePrice}</span>
+            </div>
+          </div>
+        ) : null}
+        <CartCheckoutButton label="оформить заказ" onClick={handleCheckout} disabled={isCheckoutDisabled} />
+      </section>
       <AppBottomNav activeId="cart" />
       {showOrderSent ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
