@@ -244,9 +244,7 @@ const SupportTicketCard = ({
   onSend: (text: string) => void;
   isSending: boolean;
 }) => {
-  const { data: messagesData, isLoading } = useSupportMessagesQuery(ticket.id, {
-    enabled: isOpen,
-  });
+  const { data: messagesData, isLoading } = useSupportMessagesQuery(ticket.id, { enabled: isOpen, refetchInterval: isOpen ? 5000 : false, staleTime: 0 });
   const isClosed = ticket.status === "closed";
   return (
     <div
