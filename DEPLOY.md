@@ -1,5 +1,7 @@
 # Deployment Playbook
 
+> NOTE (2026-02-09): Для Docker-based staging/prod через GHCR и GitHub Actions см. `CI_CD.md`. Этот файл оставлен как справочник по старой схеме Render/Vercel.
+
 Reference deployment to free/low-cost services: Render (backend), Railway (PostgreSQL), and Vercel (frontend). Adapt as needed.
 
 ## 1. Provision Managed Services
@@ -100,6 +102,7 @@ Reference deployment to free/low-cost services: Render (backend), Railway (Postg
 
 ## 5. Disaster Recovery
 - DB backups handled by Railway (enable daily snapshots).
+- If using docker-compose, enable the `backup` service and follow `BACKUP_RUNBOOK.md`.
 - Store `.env` securely (1Password / Vault).
 
 ## 6. Rollback

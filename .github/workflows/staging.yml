@@ -5,23 +5,107 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
-  deploy-staging:
+  build-and-push:
+    name: Build & Push Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_image: ${{ steps.tags.outputs.backend_image }}
+      frontend_image: ${{ steps.tags.outputs.frontend_image }}
     steps:
       - uses: actions/checkout@v4
-      - name: Note about branch protection
-        run: echo "Ensure PR-based merges only; direct pushes to main should be blocked in repo settings."
-      - name: Build images (reuse CI cache)
+
+      - name: Derive image tags
+        id: tags
         run: |
-          echo "Optional: pull artifacts from CI or rebuild here."
-      - name: Deploy to staging (placeholder)
-        if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
+          repo_lower=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          echo "backend_image=${REGISTRY}/${repo_lower}/backend:${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "backend_image_stage=${REGISTRY}/${repo_lower}/backend:staging" >> $GITHUB_OUTPUT
+          echo "frontend_image=${REGISTRY}/${repo_lower}/frontend:${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "frontend_image_stage=${REGISTRY}/${repo_lower}/frontend:staging" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        run: |
+          docker buildx build \
+            -f packages/backend/Dockerfile \
+            -t ${{ steps.tags.outputs.backend_image }} \
+            -t ${{ steps.tags.outputs.backend_image_stage }} \
+            --push .
+
+      - name: Build & push frontend
+        run: |
+          docker buildx build \
+            -f packages/frontend/Dockerfile \
+            -t ${{ steps.tags.outputs.frontend_image }} \
+            -t ${{ steps.tags.outputs.frontend_image_stage }} \
+            --push .
+
+  deploy:
+    name: Deploy to Staging
+    needs: build-and-push
+    if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Write SSH key
+        run: |
+          echo "${STAGING_SSH_KEY}" > /tmp/ssh_key
+          chmod 600 /tmp/ssh_key
+        env:
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: Deploy via SSH
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
-          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
           STAGING_PATH: ${{ secrets.STAGING_PATH }}
-        run: bash scripts/deploy_staging.sh
-      - name: Skip deploy - secrets not configured
-        if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
-        run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH in repo settings to enable deploy."
+          BACKEND_IMAGE: ${{ needs.build-and-push.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" <<'EOF'
+          set -euo pipefail
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          STAGING_PATH="${STAGING_PATH}"
+
+          mkdir -p "$STAGING_PATH"
+          if [ ! -d "$STAGING_PATH/.git" ]; then
+            git clone "$REPO_URL" "$STAGING_PATH"
+          fi
+          cd "$STAGING_PATH"
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+          export BACKEND_IMAGE="${BACKEND_IMAGE}"
+          export ADMIN_BOT_IMAGE="${BACKEND_IMAGE}"
+          export SCHEDULER_IMAGE="${BACKEND_IMAGE}"
+          export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
+
+          # Default to .env.staging if present, otherwise .env
+          ENV_FILE="../.env.staging"
+          [ -f "$ENV_FILE" ] || ENV_FILE="../.env"
+          export ENV_FILE
+
+          docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
+          docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
+          EOF
+
+  skip-deploy:
+    if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH to enable deploy."

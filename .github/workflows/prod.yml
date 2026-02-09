@@ -6,34 +6,117 @@ on:
       - "v*"
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+
 jobs:
-  deploy-prod:
+  build-and-push:
+    name: Build & Push Images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_image: ${{ steps.tags.outputs.backend_image }}
+      frontend_image: ${{ steps.tags.outputs.frontend_image }}
     steps:
       - uses: actions/checkout@v4
-      - name: Verify release tag format
-        run: echo "Tag $GITHUB_REF will trigger prod deploy once secrets are set."
-      - name: Pre-deploy backup (placeholder)
-        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
+
+      - name: Derive image tags
+        id: tags
+        run: |
+          repo_lower=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+          version="${GITHUB_REF_NAME}"
+          echo "backend_image=${REGISTRY}/${repo_lower}/backend:${version}" >> $GITHUB_OUTPUT
+          echo "backend_image_latest=${REGISTRY}/${repo_lower}/backend:prod" >> $GITHUB_OUTPUT
+          echo "frontend_image=${REGISTRY}/${repo_lower}/frontend:${version}" >> $GITHUB_OUTPUT
+          echo "frontend_image_latest=${REGISTRY}/${repo_lower}/frontend:prod" >> $GITHUB_OUTPUT
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        run: |
+          docker buildx build \
+            -f packages/backend/Dockerfile \
+            -t ${{ steps.tags.outputs.backend_image }} \
+            -t ${{ steps.tags.outputs.backend_image_latest }} \
+            --push .
+
+      - name: Build & push frontend
+        run: |
+          docker buildx build \
+            -f packages/frontend/Dockerfile \
+            -t ${{ steps.tags.outputs.frontend_image }} \
+            -t ${{ steps.tags.outputs.frontend_image_latest }} \
+            --push .
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: build-and-push
+    if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Write SSH key
+        run: |
+          echo "${PROD_SSH_KEY}" > /tmp/ssh_key
+          chmod 600 /tmp/ssh_key
+        env:
+          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Deploy via SSH (backup → migrate → rollout)
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
-          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
           PROD_PATH: ${{ secrets.PROD_PATH }}
-        run: bash scripts/prod_backup_and_deploy.sh precheck
-      - name: Deploy to production (placeholder)
-        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
-        env:
-          PROD_HOST: ${{ secrets.PROD_HOST }}
-          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-          PROD_PATH: ${{ secrets.PROD_PATH }}
-        run: bash scripts/prod_backup_and_deploy.sh deploy
-      - name: Alembic upgrade head (placeholder)
-        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
-        env:
-          PROD_HOST: ${{ secrets.PROD_HOST }}
-          PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
-          PROD_PATH: ${{ secrets.PROD_PATH }}
-        run: bash scripts/prod_backup_and_deploy.sh alembic
-      - name: Skip prod deploy - secrets not configured
-        if: ${{ !(secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '') }}
-        run: echo "Prod secrets not set; add PROD_HOST/PROD_SSH_KEY/PROD_PATH to enable prod deploy."
+          BACKEND_IMAGE: ${{ needs.build-and-push.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${PROD_HOST}" <<'EOF'
+          set -euo pipefail
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
+          PROD_PATH="${PROD_PATH}"
+
+          mkdir -p "$PROD_PATH"
+          if [ ! -d "$PROD_PATH/.git" ]; then
+            git clone "$REPO_URL" "$PROD_PATH"
+          fi
+          cd "$PROD_PATH"
+          git fetch --tags origin
+          git checkout "${RELEASE_TAG}"
+
+          export BACKEND_IMAGE="${BACKEND_IMAGE}"
+          export ADMIN_BOT_IMAGE="${BACKEND_IMAGE}"
+          export SCHEDULER_IMAGE="${BACKEND_IMAGE}"
+          export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
+
+          # Prefer .env.production if present
+          ENV_FILE="../.env.production"
+          [ -f "$ENV_FILE" ] || ENV_FILE="../.env"
+          export ENV_FILE
+
+          echo "==> Pre-deploy backup"
+          docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml run --rm backup sh -c "sh /scripts/backup_db.sh"
+
+          echo "==> Apply migrations (staging first is enforced by process; prod here)"
+          docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml run --rm backend /opt/venv/bin/alembic upgrade head
+
+          echo "==> Pull images"
+          docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
+
+          echo "==> Deploy containers"
+          docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
+          EOF
+
+  skip-deploy:
+    if: ${{ !(secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Prod secrets not set; add PROD_HOST/PROD_SSH_KEY/PROD_PATH to enable production deploy."

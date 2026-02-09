@@ -30,8 +30,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-brace}
     healthcheck:
       test:
-        - CMD-SHELL
-        - pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -50,9 +52,10 @@ services:
     # PRINCIPAL-NOTE: Redis is only reachable on the overlay network.
 #comment
   backend:
+    image: ${BACKEND_IMAGE:-brace-backend:local}
     build: *backend-build
     env_file:
-      - ../.env
+      - ${ENV_FILE:-../.env}
     environment:
       BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
       ALEMBIC_DATABASE_URL: ${ALEMBIC_DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/brace}
@@ -64,9 +67,6 @@ services:
       #BRACE_TELEGRAM_WEBAPP_SECRET: ${BRACE_TELEGRAM_WEBAPP_SECRET:-}
       BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
       BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:?BRACE_SENTRY_DSN is required}
-      BRACE_METRIKA_ENABLED: ${BRACE_METRIKA_ENABLED:-false}
-      BRACE_METRIKA_COUNTER_ID: ${BRACE_METRIKA_COUNTER_ID:-106632112}
-      BRACE_METRIKA_MEASUREMENT_TOKEN: ${BRACE_METRIKA_MEASUREMENT_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -86,9 +86,10 @@ services:
       retries: 5
 
   admin-bot:
+    image: ${ADMIN_BOT_IMAGE:-brace-backend:local}
     build: *backend-build
     env_file:
-      - ../.env
+      - ${ENV_FILE:-../.env}
     environment:
       BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
       BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
@@ -100,17 +101,13 @@ services:
       redis:
         condition: service_healthy
     entrypoint: ["python", "-m", "brace_backend.admin_bot"]
-    healthcheck:
-      test: ["CMD-SHELL", "python -c \"import socket; socket.create_connection((\'db\',5432),3); socket.create_connection((\'redis\',6379),3)\""]
-      interval: 20s
-      timeout: 5s
-      retries: 3
     restart: unless-stopped
 
   scheduler:
+    image: ${SCHEDULER_IMAGE:-brace-backend:local}
     build: *backend-build
     env_file:
-      - ../.env
+      - ${ENV_FILE:-../.env}
     environment:
       BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
       BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
@@ -119,9 +116,6 @@ services:
       BRACE_TELEGRAM_BOT_TOKEN: ${BRACE_TELEGRAM_BOT_TOKEN:?BRACE_TELEGRAM_BOT_TOKEN is required}
       BRACE_PII_ENCRYPTION_KEY: ${BRACE_PII_ENCRYPTION_KEY:?BRACE_PII_ENCRYPTION_KEY is required}
       BRACE_SENTRY_DSN: ${BRACE_SENTRY_DSN:?BRACE_SENTRY_DSN is required}
-      BRACE_METRIKA_ENABLED: ${BRACE_METRIKA_ENABLED:-false}
-      BRACE_METRIKA_COUNTER_ID: ${BRACE_METRIKA_COUNTER_ID:-106632112}
-      BRACE_METRIKA_MEASUREMENT_TOKEN: ${BRACE_METRIKA_MEASUREMENT_TOKEN:-}
       BRACE_RETENTION_ENABLED: ${BRACE_RETENTION_ENABLED:-true}
       BRACE_RETENTION_INTERVAL_MINUTES: ${BRACE_RETENTION_INTERVAL_MINUTES:-60}
       BRACE_ANALYTICS_ROLLUP_HOUR_UTC: ${BRACE_ANALYTICS_ROLLUP_HOUR_UTC:-2}
@@ -135,17 +129,12 @@ services:
       redis:
         condition: service_healthy
     entrypoint: ["python", "-m", "brace_backend.scripts.scheduler"]
-    healthcheck:
-      test: ["CMD","python","-c","import socket; socket.create_connection((\"db\",5432),3); socket.create_connection((\"redis\",6379),3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
     restart: unless-stopped
 
   backup:
     image: postgres:17-alpine
     env_file:
-      - ../.env
+      - ${ENV_FILE:-../.env}
     environment:
       BACKUP_DATABASE_URL: ${BACKUP_DATABASE_URL:-postgresql://postgres:postgres@db:5432/brace}
       BACKUP_DIR: /backups
@@ -165,6 +154,7 @@ services:
     restart: unless-stopped
 
   frontend:
+    image: ${FRONTEND_IMAGE:-brace-frontend:local}
     build:
       <<: *frontend-build
       args:
@@ -212,27 +202,6 @@ services:
     command: ["python", "tests/fullstack_smoke.py"]
     restart: "no"
 
-  support-bot:
-    build: *backend-build
-    env_file:
-      - ../.env
-    environment:
-      BRACE_DATABASE_URL: ${BRACE_DATABASE_URL:-postgresql+psycopg_async://postgres:postgres@db:5432/brace}
-      BRACE_REDIS_URL: ${BRACE_REDIS_URL:-redis://redis:6379/0}
-      BRACE_ENVIRONMENT: ${BRACE_ENVIRONMENT:-production}
-      BRACE_ALLOW_DEV_MODE: ${BRACE_ALLOW_DEV_MODE:-false}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    entrypoint: ["python", "-m", "brace_backend.support_bot"]
-    healthcheck:
-      test: ["CMD","python","-c","import socket; socket.create_connection((\"db\",5432),3); socket.create_connection((\"redis\",6379),3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
 volumes:
   db_data:
   certbot-certs:
