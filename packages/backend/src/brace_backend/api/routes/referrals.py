@@ -10,11 +10,12 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from brace_backend.api.deps import get_current_user, get_uow
+from brace_backend.core.exceptions import ValidationError, ConflictError
 from brace_backend.core.limiter import limiter
-from brace_backend.core.exceptions import ValidationError
 from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.user import User
 from brace_backend.schemas.common import SuccessResponse
+from brace_backend.services.referral_service import referral_service
 
 router = APIRouter(prefix="/referrals", tags=["Referrals"])
 
@@ -106,67 +107,21 @@ async def apply_referral_code(
     if not code_value:
         raise HTTPException(status_code=400, detail="Код не может быть пустым")
 
-    code_row = (
-        await uow.session.execute(
-            text("SELECT id, owner_user_id, is_active FROM referral_code WHERE code = :code"),
-            {"code": code_value},
-        )
-    ).first()
-    if not code_row:
-        raise HTTPException(status_code=404, detail="Код не найден")
-    owner_id = _to_uuid(code_row.owner_user_id)
-    if owner_id == current_user.id:
-        raise HTTPException(status_code=400, detail="Нельзя использовать свой код")
-
-    existing = (
-        await uow.session.execute(
-            text(
-                """
-                SELECT id, referrer_user_id, referee_user_id, status, created_at
-                FROM referral_binding
-                WHERE referee_user_id = :uid
-                """
-            ),
-            {"uid": str(current_user.id)},
-        )
-    ).first()
-    if existing:
-        return SuccessResponse[ReferralBindingRead](
-            data=ReferralBindingRead(
-                id=_to_uuid(existing.id),
-                referrer_user_id=_to_uuid(existing.referrer_user_id),
-                referee_user_id=_to_uuid(existing.referee_user_id),
-                status=existing.status,
-                code=code_value,
-                created_at=existing.created_at,
-            )
-        )
-
-    binding_id = uuid4()
-    await uow.session.execute(
-        text(
-            """
-            INSERT INTO referral_binding (id, referrer_user_id, referee_user_id, code_id, status)
-            VALUES (:id, :referrer, :referee, :code_id, 'pending')
-            """
-        ),
-        {
-            "id": str(binding_id),
-            "referrer": str(owner_id),
-            "referee": str(current_user.id),
-            "code_id": str(code_row.id),
-        },
-    )
-    await uow.commit()
+    try:
+        binding = await referral_service.apply_referral_code(uow, user_id=current_user.id, code=code_value)
+    except ConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     return SuccessResponse[ReferralBindingRead](
         data=ReferralBindingRead(
-            id=binding_id,
-            referrer_user_id=owner_id,
-            referee_user_id=current_user.id,
-            status="pending",
+            id=binding.id,
+            referrer_user_id=binding.referrer_user_id,
+            referee_user_id=binding.referee_user_id,
+            status=binding.status,
             code=code_value,
-            created_at=datetime.utcnow(),
+            created_at=binding.created_at,
         )
     )
 
@@ -207,5 +162,3 @@ async def get_my_referral(
     return SuccessResponse[ReferralMyResponse](
         data=ReferralMyResponse(code=code_value, is_active=is_active, invited=invited)
     )
-
-__all__ = ["router"]
