@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from brace_backend.domain.base import BaseModel
-from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import BigInteger, CheckConstraint, ForeignKey, JSON, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 
@@ -12,14 +12,20 @@ class Order(BaseModel):
     __table_args__ = (
         UniqueConstraint("user_id", "idempotency_key", name="uniq_order_idempotency"),
         CheckConstraint("total_amount_minor_units >= 0", name="ck_order_total_nonnegative"),
+        CheckConstraint("bonus_applied_minor_units >= 0", name="ck_order_bonus_nonnegative"),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     status: Mapped[str] = mapped_column(String(50), default="pending")
     total_amount_minor_units: Mapped[int] = mapped_column(BigInteger, default=0)
+    bonus_applied_minor_units: Mapped[int] = mapped_column(BigInteger, default=0)
     shipping_address: Mapped[str | None] = mapped_column(String(512))
     note: Mapped[str | None] = mapped_column(Text)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    payment_fingerprint: Mapped[str | None] = mapped_column(String(128))
+    meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    last_notified_status: Mapped[str | None] = mapped_column(String(50))
+    forum_thread_id: Mapped[int | None] = mapped_column(BigInteger)
 
     user: Mapped[User] = relationship(back_populates="orders")
     items: Mapped[list[OrderItem]] = relationship(

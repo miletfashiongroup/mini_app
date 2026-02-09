@@ -230,6 +230,11 @@ class Settings(BaseSettings):
         default_factory=list,
         description="Telegram chat IDs for analytics reports.",
     )
+    metrika_enabled: bool = Field(
+        default=False,
+        description="Enable Yandex Metrika server-side events.",
+    )
+    metrika_counter_id: str | None = Field(default=None)
     analytics_report_enabled: bool = Field(
         default=False,
         description="Enable scheduled analytics reports to Telegram.",

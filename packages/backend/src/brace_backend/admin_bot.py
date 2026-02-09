@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 import httpx
+from sqlalchemy import text
 
 from brace_backend.core.config import settings
 from brace_backend.core.logging import logger
@@ -49,6 +50,14 @@ ORDER_ICON_CUSTOM = {
     "cancelled": "5379748062124056162",  # ❗️
 }
 
+async def _persist_forum_thread(order_id: str, thread_id: int) -> None:
+    async with session_manager.session() as session:
+        await session.execute(
+            text("UPDATE orders SET forum_thread_id = :tid WHERE id = :oid"),
+            {"tid": thread_id, "oid": str(order_id)},
+        )
+        await session.commit()
+
 def _order_payload(order, user=None) -> dict[str, Any]:
     user = user or getattr(order, "user", None)
     items_payload = []
@@ -66,6 +75,7 @@ def _order_payload(order, user=None) -> dict[str, Any]:
     return {
         "id": _order_id(order),
         "status": _order_status(order),
+        "forum_thread_id": getattr(order, "forum_thread_id", None) if not isinstance(order, dict) else order.get("forum_thread_id"),
         "total_amount_minor_units": getattr(order, "total_amount_minor_units", 0) if not isinstance(order, dict) else order.get("total_amount_minor_units", 0),
         "items": items_payload,
         "user": {
@@ -301,8 +311,35 @@ class AdminBot:
     async def _ensure_topic(self, client: httpx.AsyncClient, order) -> int | None:
         if _order_id(order) in self.order_topic_cache:
             return self.order_topic_cache[_order_id(order)]
+        thread_from_order = None
+        if isinstance(order, dict):
+            thread_from_order = order.get("forum_thread_id")
+        else:
+            thread_from_order = getattr(order, "forum_thread_id", None)
+        if thread_from_order:
+            self.order_topic_cache[_order_id(order)] = int(thread_from_order)
+            return int(thread_from_order)
         if not ORDER_FORUM_CHAT_ID:
             return None
+        try:
+            resp = await client.post(
+                f"{self.api_base}/createForumTopic",
+                json={
+                    "chat_id": ORDER_FORUM_CHAT_ID,
+                    "name": _topic_name(order),
+                    "icon_custom_emoji_id": ORDER_ICON_CUSTOM.get(_order_status(order)),
+                },
+            )
+            data = resp.json()
+            if data.get("ok") and data.get("result", {}).get("message_thread_id"):
+                thread_id = int(data["result"]["message_thread_id"])
+                self.order_topic_cache[_order_id(order)] = thread_id
+                await _persist_forum_thread(_order_id(order), thread_id)
+                return thread_id
+            logger.warning("admin_bot_create_topic_failed", order_id=str(_order_id(order)), response=data)
+        except Exception as exc:  # pragma: no cover
+            logger.warning("admin_bot_create_topic_error", order_id=str(_order_id(order)), error=str(exc))
+        return None
         try:
             resp = await client.post(
                 f"{self.api_base}/createForumTopic",

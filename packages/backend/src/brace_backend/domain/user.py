@@ -26,10 +26,16 @@ class User(BaseModel):
     consent_ip: Mapped[str | None] = mapped_column(String(64))
     consent_user_agent: Mapped[str | None] = mapped_column(String(512))
     profile_completed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    last_cart_reminder_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    last_favorite_reminder_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    last_repeat_purchase_reminder_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
 
     orders: Mapped[list[Order]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
     cart_items: Mapped[list[CartItem]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    favorite_items: Mapped[list[FavoriteItem]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

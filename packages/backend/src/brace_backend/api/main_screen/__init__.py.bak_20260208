@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Depends
 
-from brace_backend.api.deps import get_current_user, get_uow
+from brace_backend.api.deps import get_uow
 from brace_backend.db.uow import UnitOfWork
-from brace_backend.domain.user import User
 from brace_backend.schemas.common import SuccessResponse
 from brace_backend.schemas.main_screen import (
     BannerListResponse,
@@ -16,11 +15,7 @@ router = APIRouter(tags=["Main Screen"])
 
 
 @router.get("/banners", response_model=SuccessResponse[BannerListResponse])
-async def list_banners(
-    current_user: User = Depends(get_current_user),
-    uow: UnitOfWork = Depends(get_uow),
-) -> SuccessResponse[BannerListResponse]:
-    _ = current_user
+async def list_banners(uow: UnitOfWork = Depends(get_uow)) -> SuccessResponse[BannerListResponse]:
     payload = await banner_service.list_banners(uow)
     return SuccessResponse[BannerListResponse](data=payload)
 
@@ -28,9 +23,7 @@ async def list_banners(
 @router.post("/size/calc", response_model=SuccessResponse[SizeCalculationResponse])
 async def calculate_size(
     payload: SizeCalculationRequest,
-    current_user: User = Depends(get_current_user),
 ) -> SuccessResponse[SizeCalculationResponse]:
-    _ = current_user
     result = size_service.calculate(payload)
     return SuccessResponse[SizeCalculationResponse](data=result)
 

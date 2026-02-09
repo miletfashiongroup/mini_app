@@ -84,15 +84,13 @@ RUN python -m venv /opt/venv \
       /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
     else \
       if [ -n "$(ls -A /wheels 2>/dev/null)" ]; then \
-        if /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; then \
-          exit 0; \
-        else \
-          echo "wheelhouse incomplete, falling back to indexes"; \
-        fi; \
+        /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
+        exit 0; \
       fi; \
       set -e; \
       for INDEX in $PIP_INDEX_CANDIDATES; do \
         echo "Trying index: $INDEX"; \
+        rm -rf /wheels/*; \
         if /opt/venv/bin/pip download --dest /wheels --prefer-binary --index-url "$INDEX" -r requirements.txt; then \
           /opt/venv/bin/pip install --no-index --find-links=/wheels --prefer-binary -r requirements.txt; \
           exit 0; \

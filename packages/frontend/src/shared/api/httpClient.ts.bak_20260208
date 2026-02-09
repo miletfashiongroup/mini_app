@@ -3,7 +3,6 @@ import WebApp from '@twa-dev/sdk';
 
 import { resolveTelegramInitDataAsync, withTelegramInitData } from '@/shared/api/telegram';
 import { env } from '@/shared/config/env';
-import { notifyConsentRequired } from '@/shared/lib/consentGate';
 
 import type { ApiEnvelope, ApiSuccess } from './types';
 import { ApiError } from './types';
@@ -19,30 +18,12 @@ instance.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<ApiEnvelope<unknown>>) => {
     const status = error.response?.status;
-    const payload = error.response?.data;
-    const originalConfig = error.config as AxiosRequestConfig & {
-      __braceRetried?: boolean;
-      __braceConsentQueued?: boolean;
-    };
-
-    // Hard-stop if согласие не дано: мгновенно отправляем обратно в бота с кнопками согласия.
-    if (payload?.error?.type === 'consent_required') {
-      const botLink = `https://t.me/${env.telegramBotUsername}?start=consent`;
-      if (typeof WebApp?.openTelegramLink === 'function') {
-        WebApp.openTelegramLink(botLink);
-        if (typeof WebApp?.close === 'function') {
-          setTimeout(() => WebApp.close(), 250);
-        }
-      } else if (typeof window !== 'undefined') {
-        window.location.href = botLink;
-      }
-      throw new ApiError(payload.error.message, payload.error.type, status);
-    }
+    const originalConfig = error.config as AxiosRequestConfig & { __braceRetried?: boolean };
 
     // Retry once with freshly resolved init data if we got auth-related errors.
     if (status === 401 || status === 403) {
-      const authRelated =
-        payload?.error?.type === 'access_denied' || payload?.error?.type === 'unauthorized';
+      const payload = error.response?.data;
+      const authRelated = payload?.error?.type === 'access_denied' || payload?.error?.type === 'unauthorized';
       const consentRequired =
         payload?.error?.type === 'access_denied' &&
         typeof payload?.error?.message === 'string' &&
@@ -94,11 +75,8 @@ instance.interceptors.response.use(
       throw new ApiError('Произошла ошибка сервера. Повторите попытку позже.', 'server_error', status);
     }
 
+    const payload = error.response?.data;
     if (payload?.error) {
-      if (payload.error.type === 'consent_required' && originalConfig && !originalConfig.__braceConsentQueued) {
-        originalConfig.__braceConsentQueued = true;
-        notifyConsentRequired(() => instance.request(originalConfig));
-      }
       throw new ApiError(payload.error.message, payload.error.type, status);
     }
     throw new ApiError(error.message || 'network_error', 'network_error', status);
@@ -133,12 +111,30 @@ export const apiClient = {
     request<T>({ method: 'PUT', url, data, ...config }),
   patch: <T>(url: string, data?: unknown, config?: AxiosRequestConfig) =>
     request<T>({ method: 'PATCH', url, data, ...config }),
-  delete: <T>(url: string, config?: AxiosRequestConfig) => request<T>({ method: 'DELETE', url, ...config }),
+  delete: <T>(url: string, config?: AxiosRequestConfig) =>
+    request<T>({ method: 'DELETE', url, ...config }),
 };
 
-export const redirectToAppRoot = () => {
-  const root = '/';
-  if (typeof window !== 'undefined') {
-    window.location.href = root;
+const isTestEnv =
+  (typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test') ||
+  (typeof process !== 'undefined' && process.env.VITEST);
+
+const redirectToAppRoot = () => {
+  if (typeof window === 'undefined') {
+    return;
   }
+  const target = env.appBaseUrl || window.location.origin;
+  if (isTestEnv) {
+    window.__braceRedirectTarget__ = target;
+    return;
+  }
+  if (typeof window.location.replace === 'function') {
+    try {
+      window.location.replace(target);
+      return;
+    } catch {
+      // jsdom and headless environments can throw for navigation helpers.
+    }
+  }
+  window.location.href = target;
 };

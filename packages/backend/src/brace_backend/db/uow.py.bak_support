@@ -1,0 +1,70 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from brace_backend.repositories import (
+    AnalyticsRepository,
+    AuditRepository,
+    BannerRepository,
+    BonusLedgerRepository,
+    CartRepository,
+    FavoriteRepository,
+    OrderRepository,
+    ProductRepository,
+    ProductReviewRepository,
+    ReferralBindingRepository,
+    ReferralCodeRepository,
+    SupportTicketRepository,
+    UserRepository,
+)
+
+
+@dataclass
+class UnitOfWork:
+    """Aggregate repositories and control transaction boundaries."""
+
+    session: AsyncSession
+    products: ProductRepository = field(init=False, repr=False)
+    carts: CartRepository = field(init=False, repr=False)
+    favorites: FavoriteRepository = field(init=False, repr=False)
+    orders: OrderRepository = field(init=False, repr=False)
+    users: UserRepository = field(init=False, repr=False)
+    banners: BannerRepository = field(init=False, repr=False)
+    audits: AuditRepository = field(init=False, repr=False)
+    analytics: AnalyticsRepository = field(init=False, repr=False)
+    reviews: ProductReviewRepository = field(init=False, repr=False)
+    bonus_ledger: BonusLedgerRepository = field(init=False, repr=False)
+    referral_codes: ReferralCodeRepository = field(init=False, repr=False)
+    referral_bindings: ReferralBindingRepository = field(init=False, repr=False)
+    support_tickets: SupportTicketRepository = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self.products = ProductRepository(self.session)
+        self.carts = CartRepository(self.session)
+        self.favorites = FavoriteRepository(self.session)
+        self.orders = OrderRepository(self.session)
+        self.users = UserRepository(self.session)
+        self.banners = BannerRepository(self.session)
+        self.audits = AuditRepository(self.session)
+        self.analytics = AnalyticsRepository(self.session)
+        self.reviews = ProductReviewRepository(self.session)
+        self.bonus_ledger = BonusLedgerRepository(self.session)
+        self.referral_codes = ReferralCodeRepository(self.session)
+        self.referral_bindings = ReferralBindingRepository(self.session)
+        self.support_tickets = SupportTicketRepository(self.session)
+
+    async def commit(self) -> None:
+        await self.session.commit()
+
+    async def rollback(self) -> None:
+        await self.session.rollback()
+
+    async def flush(self) -> None:
+        await self.session.flush()
+
+    def __getattr__(self, item: str) -> Any:
+        # Delegate attribute access to the underlying session for convenience.
+        return getattr(self.session, item)

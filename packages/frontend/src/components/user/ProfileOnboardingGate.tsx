@@ -5,6 +5,7 @@ import WebApp from '@twa-dev/sdk';
 import { useUserProfileQuery } from '@/shared/api/queries';
 import { env } from '@/shared/config/env';
 import { submitConsent, updateProfile } from '@/entities/user/api/userApi';
+import { clearConsentRequired, retryConsentBlockedRequests, subscribeConsentRequired } from '@/shared/lib/consentGate';
 
 type Props = {
   children: React.ReactNode;
@@ -19,7 +20,8 @@ export const ProfileOnboardingGate = ({ children }: Props) => {
   const { data, isLoading, isError } = useUserProfileQuery();
   const needsProfile = !isProfileComplete(data);
   const [isSkipped, setIsSkipped] = useState(false);
-  const showGate = !isLoading && !isError && needsProfile && !isSkipped;
+  const [consentRequired, setConsentRequired] = useState(false);
+  const showGate = !isLoading && !isError && ((needsProfile && !isSkipped) || consentRequired);
 
   const [fullName, setFullName] = useState('');
   const [birthDate, setBirthDate] = useState('');
@@ -51,6 +53,12 @@ export const ProfileOnboardingGate = ({ children }: Props) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setIsSkipped(localStorage.getItem(SKIP_KEY) === '1');
+  }, []);
+
+  useEffect(() => {
+    return subscribeConsentRequired((state) => {
+      setConsentRequired(state.required);
+    });
   }, []);
 
   useEffect(() => {
@@ -100,12 +108,17 @@ export const ProfileOnboardingGate = ({ children }: Props) => {
         await consentMutation.mutateAsync();
       }
       await profileMutation.mutateAsync();
+      clearConsentRequired();
+      await retryConsentBlockedRequests();
     } catch (err: any) {
       setError(err?.message || 'Не удалось сохранить профиль.');
     }
   };
 
   const handleSkip = () => {
+    if (consentRequired) {
+      return;
+    }
     if (typeof window !== 'undefined') {
       localStorage.setItem(SKIP_KEY, '1');
     }
@@ -116,8 +129,8 @@ export const ProfileOnboardingGate = ({ children }: Props) => {
     <>
       {children}
       {showGate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 text-[#29292B] shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 overflow-y-auto py-6">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 text-[#29292B] shadow-2xl max-h-[85vh] overflow-y-auto">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Заполните данные</h2>
