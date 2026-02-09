@@ -280,7 +280,7 @@ const SupportTicketCard = ({
           {isLoading ? (
             <div className="text-[14px]">Загружаем историю...</div>
           ) : messagesData && messagesData.length ? (
-            <div className="flex flex-col gap-2 rounded-2xl bg-white px-3 py-3 max-h-[260px] overflow-y-auto border border-[#E6E6E9]">
+            <div className="flex flex-col gap-2 rounded-2xl bg-white px-3 py-3 max-h-[420px] overflow-y-auto border border-[#E6E6E9]">
               {messagesData.map((msg) => (
                 <div
                   key={msg.id}
