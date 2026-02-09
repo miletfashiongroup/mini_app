@@ -42,28 +42,24 @@ jobs:
 
       - name: Build & push backend
         run: |
-          docker buildx build \
-            -f packages/backend/Dockerfile \
-            -t ${{ steps.tags.outputs.backend_image }} \
-            -t ${{ steps.tags.outputs.backend_image_latest }} \
-            --push .
+          docker buildx build             -f packages/backend/Dockerfile             -t ${{ steps.tags.outputs.backend_image }}             -t ${{ steps.tags.outputs.backend_image_latest }}             --push .
 
       - name: Build & push frontend
         run: |
-          docker buildx build \
-            -f packages/frontend/Dockerfile \
-            -t ${{ steps.tags.outputs.frontend_image }} \
-            -t ${{ steps.tags.outputs.frontend_image_latest }} \
-            --push .
+          docker buildx build             -f packages/frontend/Dockerfile             -t ${{ steps.tags.outputs.frontend_image }}             -t ${{ steps.tags.outputs.frontend_image_latest }}             --push .
 
   deploy-prod:
     name: Deploy to Production
     needs: build-and-push
-    if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Skip deploy (missing secrets)
+        if: ${{ secrets.PROD_HOST == '' || secrets.PROD_SSH_KEY == '' || secrets.PROD_PATH == '' }}
+        run: echo "Prod secrets not set; add PROD_HOST/PROD_SSH_KEY/PROD_PATH to enable deploy."
+
       - name: Write SSH key
+        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
         run: |
           echo "${PROD_SSH_KEY}" > /tmp/ssh_key
           chmod 600 /tmp/ssh_key
@@ -71,6 +67,7 @@ jobs:
           PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
 
       - name: Deploy via SSH (backup → migrate → rollout)
+        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_PATH: ${{ secrets.PROD_PATH }}
@@ -97,7 +94,6 @@ jobs:
           export SCHEDULER_IMAGE="${BACKEND_IMAGE}"
           export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
 
-          # Prefer .env.production if present
           ENV_FILE="../.env.production"
           [ -f "$ENV_FILE" ] || ENV_FILE="../.env"
           export ENV_FILE
@@ -105,7 +101,7 @@ jobs:
           echo "==> Pre-deploy backup"
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml run --rm backup sh -c "sh /scripts/backup_db.sh"
 
-          echo "==> Apply migrations (staging first is enforced by process; prod here)"
+          echo "==> Apply migrations"
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml run --rm backend /opt/venv/bin/alembic upgrade head
 
           echo "==> Pull images"
@@ -114,9 +110,3 @@ jobs:
           echo "==> Deploy containers"
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
           EOF
-
-  skip-deploy:
-    if: ${{ !(secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '') }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Prod secrets not set; add PROD_HOST/PROD_SSH_KEY/PROD_PATH to enable production deploy."
