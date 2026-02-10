@@ -24,6 +24,9 @@ except Exception:  # pragma: no cover
 
 def _log_auth_debug(message: str, **extra: Any) -> None:
     """Emit structured Telegram auth debug logs (emergency mode)."""
+    if getattr(settings, "is_production", False):
+        logger.bind(auth="telegram").info("TELEGRAM AUTH DEBUG: <REDACTED>")
+        return
     safe_extra = {key: _redact_value(value) for key, value in extra.items() if value is not None}
     logger.bind(auth="telegram", **safe_extra).info(f"TELEGRAM AUTH DEBUG: {message}")
 
