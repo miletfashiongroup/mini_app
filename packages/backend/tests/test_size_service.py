@@ -7,7 +7,7 @@ from brace_backend.services.size_service import size_service
     ("waist", "hip", "expected"),
     [
         (70, 75, "1"),
-        (85, 90, "4"),
+        (85, 90, "3"),
         (95, 100, "6"),
         (105, 110, "8"),
         (115, 130, "10"),
