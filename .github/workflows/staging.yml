@@ -52,12 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     steps:
-      - name: Skip deploy (missing secrets)
-        if: ${{ secrets.STAGING_HOST == '' || secrets.STAGING_SSH_KEY == '' || secrets.STAGING_PATH == '' }}
-        run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH to enable deploy."
-
       - name: Write SSH key
-        if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
         run: |
           echo "${STAGING_SSH_KEY}" > /tmp/ssh_key
           chmod 600 /tmp/ssh_key
@@ -65,7 +60,6 @@ jobs:
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
 
       - name: Deploy via SSH
-        if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
         env:
           STAGING_HOST: ${{ secrets.STAGING_HOST }}
           STAGING_PATH: ${{ secrets.STAGING_PATH }}

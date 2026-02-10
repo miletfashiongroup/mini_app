@@ -54,12 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - name: Skip deploy (missing secrets)
-        if: ${{ secrets.PROD_HOST == '' || secrets.PROD_SSH_KEY == '' || secrets.PROD_PATH == '' }}
-        run: echo "Prod secrets not set; add PROD_HOST/PROD_SSH_KEY/PROD_PATH to enable deploy."
-
       - name: Write SSH key
-        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
         run: |
           echo "${PROD_SSH_KEY}" > /tmp/ssh_key
           chmod 600 /tmp/ssh_key
@@ -67,7 +62,6 @@ jobs:
           PROD_SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
 
       - name: Deploy via SSH (backup → migrate → rollout)
-        if: ${{ secrets.PROD_HOST != '' && secrets.PROD_SSH_KEY != '' && secrets.PROD_PATH != '' }}
         env:
           PROD_HOST: ${{ secrets.PROD_HOST }}
           PROD_PATH: ${{ secrets.PROD_PATH }}
