@@ -472,12 +472,6 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
-    def ensure_analytics_salt(self) -> Settings:
-        if self.analytics_enabled and self.is_production and not self.analytics_hash_salt:
-            raise ValueError("Analytics hash salt is required in production.")
-        return self
-
-    @model_validator(mode="after")
     def ensure_production_safety(self) -> Settings:
         """Fail fast when production safety rails are violated."""
         if not self.is_production:
@@ -498,16 +492,37 @@ class Settings(BaseSettings):
 
         return self
 
+    @model_validator(mode="after")
+    def ensure_analytics_salt(self) -> Settings:
+        if self.analytics_enabled and self.is_production and not self.analytics_hash_salt:
+            raise ValueError("Analytics hash salt is required in production.")
+        return self
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     try:
         return Settings()
     except ValidationError as exc:  # pragma: no cover - fails fast during startup
-        raise RuntimeError(
-            "Telegram credentials are required. Define BRACE_TELEGRAM_BOT_TOKEN "
-            "or TELEGRAM_BOT_TOKEN in .env, infra/docker-compose.prod.yml, and k8s/deploy.yaml."
-        ) from exc
+        messages = [err.get("msg", "") for err in exc.errors()]
+        priority = [
+            "Redis is required in production",
+            "Dev mode is not allowed in production",
+            "PII encryption key is required in production",
+            "Sentry DSN is required in production",
+            "Analytics hash salt is required in production",
+        ]
+        for key in priority:
+            for msg in messages:
+                if key in msg:
+                    raise RuntimeError(msg) from exc
+        for msg in messages:
+            if "Telegram bot token is required" in msg or "Dev Telegram token is not allowed in production" in msg:
+                raise RuntimeError(
+                    "Telegram credentials are required. Define BRACE_TELEGRAM_BOT_TOKEN "
+                    "or TELEGRAM_BOT_TOKEN in .env, infra/docker-compose.prod.yml, and k8s/deploy.yaml."
+                ) from exc
+        raise RuntimeError("Configuration error. Check environment variables.") from exc
 
 
 settings = get_settings()
