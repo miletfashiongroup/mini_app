@@ -49,6 +49,7 @@ jobs:
   deploy:
     name: Deploy to Staging
     needs: build-and-push
+    if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -67,10 +68,11 @@ jobs:
           FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
+          STAGING_PATH_B64=$(printf %s "$STAGING_PATH" | base64 -w 0)
           ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" <<EOF
           set -euo pipefail
           REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
-          STAGING_PATH="${STAGING_PATH}"
+          STAGING_PATH="$(printf %s "$STAGING_PATH_B64" | base64 -d)"
 
           mkdir -p "$STAGING_PATH"
           if [ ! -d "$STAGING_PATH/.git" ]; then
@@ -93,3 +95,9 @@ jobs:
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
           EOF
+
+  skip-deploy:
+    if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH to enable deploy."
