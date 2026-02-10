@@ -8,11 +8,14 @@ const mode = (rawEnv.VITE_ENV || rawEnv.MODE || 'dev').toLowerCase();
 
 export const env = {
   env: mode,
-  apiBaseUrl:
-    normalizeUrl(
-      rawEnv.VITE_API_BASE_URL || rawEnv.VITE_BACKEND_URL,
-      'http://localhost:8000',
-    ),
+  apiBaseUrl: normalizeUrl(
+    rawEnv.VITE_API_BASE_URL || rawEnv.VITE_BACKEND_URL,
+    typeof window !== undefined
+      ? mode === production
+        ? window.location.origin
+        : http://localhost:8000
+      : http://localhost:8000,
+  ),
   appBaseUrl:
     normalizeUrl(rawEnv.VITE_APP_BASE_URL || rawEnv.VITE_APP_URL, 'http://localhost:4173') ||
     (typeof window !== 'undefined' ? window.location.origin : undefined),
