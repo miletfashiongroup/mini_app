@@ -20,6 +20,7 @@ jobs:
       BRACE_TELEGRAM_BOT_TOKEN: dummy
       BRACE_DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
       BRACE_REDIS_URL: 'memory://'
+      BRACE_PII_ENCRYPTION_KEY: dummy
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
