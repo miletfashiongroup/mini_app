@@ -40,24 +40,15 @@ jobs:
 
       - name: Build & push backend
         run: |
-          docker buildx build \
-            -f packages/backend/Dockerfile \
-            -t ${{ steps.tags.outputs.backend_image }} \
-            -t ${{ steps.tags.outputs.backend_image_stage }} \
-            --push .
+          docker buildx build             -f packages/backend/Dockerfile             -t ${{ steps.tags.outputs.backend_image }}             -t ${{ steps.tags.outputs.backend_image_stage }}             --push .
 
       - name: Build & push frontend
         run: |
-          docker buildx build \
-            -f packages/frontend/Dockerfile \
-            -t ${{ steps.tags.outputs.frontend_image }} \
-            -t ${{ steps.tags.outputs.frontend_image_stage }} \
-            --push .
+          docker buildx build             -f packages/frontend/Dockerfile             -t ${{ steps.tags.outputs.frontend_image }}             -t ${{ steps.tags.outputs.frontend_image_stage }}             --push .
 
   deploy:
     name: Deploy to Staging
     needs: build-and-push
-    if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
@@ -95,7 +86,6 @@ jobs:
           export SCHEDULER_IMAGE="${BACKEND_IMAGE}"
           export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
 
-          # Default to .env.staging if present, otherwise .env
           ENV_FILE="../.env.staging"
           [ -f "$ENV_FILE" ] || ENV_FILE="../.env"
           export ENV_FILE
@@ -103,9 +93,3 @@ jobs:
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
           EOF
-
-  skip-deploy:
-    if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH to enable deploy."
