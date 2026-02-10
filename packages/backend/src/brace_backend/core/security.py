@@ -78,8 +78,8 @@ def _redact_value(value: Any) -> Any:
     return value
 
 
-def parse_init_data(raw: str) -> dict[str, str]:
-    """Decode Telegram init data query string into raw string values.
+def parse_init_data(raw: str) -> dict[str, Any]:
+    """Decode Telegram init data query string into raw values.
 
     The frontend should pass `Telegram.WebApp.initData` as-is, but in practice it can arrive:
     - URL-encoded twice (`%3D`, `%26`, etc.)
@@ -94,6 +94,19 @@ def parse_init_data(raw: str) -> dict[str, str]:
             data[key] = value
         return data
 
+    def _decode_json_fields(data: dict[str, str]) -> dict[str, Any]:
+        if "user" not in data:
+            return data
+        user_raw = data.get("user", "")
+        try:
+            user_obj = json.loads(user_raw)
+        except (TypeError, JSONDecodeError):
+            return data
+        decoded: dict[str, Any] = dict(data)
+        decoded["user_raw"] = user_raw
+        decoded["user"] = user_obj
+        return decoded
+
     normalized = raw.lstrip("?")
     if normalized.startswith("tgWebAppData="):
         normalized = normalized.split("tgWebAppData=", 1)[1]
@@ -101,11 +114,11 @@ def parse_init_data(raw: str) -> dict[str, str]:
     # Try up to two decoding passes to handle double-encoded inputs reliably.
     candidates = [normalized, unquote_plus(normalized)]
     for candidate in candidates:
-        data = _parse(candidate)
+        data = _decode_json_fields(_parse(candidate))
         if "hash" in data:
             return data
     # Last resort: one more unquote if still no hash.
-    return _parse(unquote_plus(unquote_plus(normalized)))
+    return _decode_json_fields(_parse(unquote_plus(unquote_plus(normalized))))
 
 
 def build_data_check_string(payload: dict[str, Any]) -> str:
@@ -147,7 +160,7 @@ def build_signature(
     ).hexdigest()
 
 
-def validate_payload_schema(payload: dict[str, str]) -> None:
+def validate_payload_schema(payload: dict[str, Any]) -> None:
     """Ensure Telegram payload contains the minimum required structure."""
     user = payload.get("user")
     if not user:
@@ -258,6 +271,14 @@ def verify_init_data(init_data: str) -> TelegramInitData:
     )
 
     parsed = parse_init_data(init_data)
+
+    def _payload_for_signature(source: dict[str, Any]) -> dict[str, Any]:
+        payload = dict(source)
+        user_raw = payload.pop("user_raw", None)
+        if user_raw is not None:
+            payload["user"] = user_raw
+        return payload
+
     provided_hash = parsed.pop("hash", None)
     if not provided_hash:
         _log_auth_debug("hash_missing", keys=list(parsed.keys()))
@@ -277,7 +298,8 @@ def verify_init_data(init_data: str) -> TelegramInitData:
     if not secret_candidates:
         raise AccessDeniedError("Telegram bot token is not configured.")
 
-    check_string = build_data_check_string(parsed)
+    signature_payload = _payload_for_signature(parsed)
+    check_string = build_data_check_string(signature_payload)
     _log_auth_debug(
         "signature_inputs_prepared",
         check_string_length=len(check_string),
@@ -288,20 +310,23 @@ def verify_init_data(init_data: str) -> TelegramInitData:
     hashes_match = False
     expected_hash = ""
     for secret_source in secret_candidates:
-        expected_hash = build_signature(parsed, secret_token=secret_source, check_string=check_string)
+        payload_for_hash = dict(signature_payload)
+        expected_hash = build_signature(
+            payload_for_hash, secret_token=secret_source, check_string=check_string
+        )
         hashes_match = hmac.compare_digest(expected_hash, provided_hash)
         if hashes_match:
             break
-        if "signature" in parsed:
+        if "signature" in payload_for_hash:
             # Some Telegram Mini Apps SDKs include "signature" in init data but still compute hash without it.
-            signature_value = parsed.pop("signature", None)
-            fallback_check_string = build_data_check_string(parsed)
+            signature_value = payload_for_hash.pop("signature", None)
+            fallback_check_string = build_data_check_string(payload_for_hash)
             fallback_hash = build_signature(
-                parsed, secret_token=secret_source, check_string=fallback_check_string
+                payload_for_hash, secret_token=secret_source, check_string=fallback_check_string
             )
             hashes_match = hmac.compare_digest(fallback_hash, provided_hash)
             if signature_value is not None:
-                parsed["signature"] = signature_value
+                payload_for_hash["signature"] = signature_value
             if hashes_match:
                 break
 
@@ -342,12 +367,17 @@ def verify_init_data(init_data: str) -> TelegramInitData:
         _replay_protector.ensure_unique(nonce)
         _log_auth_debug("nonce_ok", nonce=nonce)
 
-    user_raw = parsed.get("user", "")
-    try:
-        parsed["user"] = json.loads(user_raw)
-    except JSONDecodeError as exc:
-        _log_auth_debug("user_json_invalid", user_raw=user_raw[:120])
-        raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
+    user_value = parsed.get("user", "")
+    if isinstance(user_value, dict):
+        user_obj = user_value
+    else:
+        try:
+            user_obj = json.loads(user_value)
+        except JSONDecodeError as exc:
+            _log_auth_debug("user_json_invalid", user_raw=str(user_value)[:120])
+            raise AccessDeniedError("Telegram user payload cannot be decoded.") from exc
+    parsed["user"] = user_obj
+    parsed.pop("user_raw", None)
     if "id" not in parsed["user"]:
         raise AccessDeniedError("Telegram init data user payload is invalid.")
 
