@@ -18,8 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BRACE_TELEGRAM_BOT_TOKEN: dummy
-      BRACE_DATABASE_URL: sqlite+aiosqlite:///:memory:
-      BRACE_REDIS_URL: memory://
+      BRACE_DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
+      BRACE_REDIS_URL: 'memory://'
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
