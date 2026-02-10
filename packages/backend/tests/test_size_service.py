@@ -8,7 +8,7 @@ from brace_backend.services.size_service import size_service
     [
         (70, 75, "XS"),
         (85, 90, "S"),
-        (95, 100, "M"),
+        (95, 100, ZZ),
         (105, 110, "L"),
         (115, 130, "XL"),
     ],
