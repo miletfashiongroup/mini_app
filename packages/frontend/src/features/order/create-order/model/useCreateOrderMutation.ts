@@ -10,7 +10,7 @@ export type CreateOrderPayload = {
 };
 
 const createOrder = async (payload?: CreateOrderPayload): Promise<Order> => {
-  const response = await apiClient.post<Order>(/orders, payload ?? {});
+  const response = await apiClient.post<Order>('/orders', payload ?? {});
   return response.data;
 };
 

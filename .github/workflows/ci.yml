@@ -28,7 +28,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
           poetry config virtualenvs.create false
-          poetry install --no-root --only main
+          poetry install --no-root
       - name: Run unit tests (fast subset)
         working-directory: packages/backend
         run: |
@@ -76,6 +76,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
