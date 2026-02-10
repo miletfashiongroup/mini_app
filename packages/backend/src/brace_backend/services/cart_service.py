@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from uuid import UUID
 
 from brace_backend.core.exceptions import NotFoundError, ValidationError
@@ -13,22 +12,6 @@ MAX_CART_ITEM_QUANTITY = 10
 
 
 class CartService:
-    async def _resolve_active_price(self, uow: UnitOfWork, variant) -> int | None:
-        if variant.active_price_minor_units is not None:
-            return variant.active_price_minor_units
-        await uow.session.refresh(variant, attribute_names=["prices"])
-        now = datetime.now(tz=timezone.utc)
-        active_price = None
-        for price in sorted(variant.prices, key=lambda item: item.starts_at, reverse=True):
-            compare_now = now if price.starts_at.tzinfo else now.replace(tzinfo=None)
-            if price.starts_at <= compare_now and (price.ends_at is None or price.ends_at > compare_now):
-                active_price = price.price_minor_units
-                break
-        if active_price is None and variant.prices:
-            active_price = max(variant.prices, key=lambda item: item.starts_at).price_minor_units
-        variant.active_price_minor_units = active_price
-        return active_price
-
     async def get_cart(self, uow: UnitOfWork, user_id: UUID) -> CartCollection:
         items = await uow.carts.get_for_user(user_id)
         schema_items = [self._to_schema(item) for item in items]
@@ -50,8 +33,7 @@ class CartService:
         variant = next((v for v in product.variants if v.size == payload.size), None)
         if not variant or variant.is_deleted:
             raise ValidationError("Variant with requested size is unavailable.")
-        active_price = await self._resolve_active_price(uow, variant)
-        if active_price is None:
+        if variant.active_price_minor_units is None:
             raise ValidationError("Active price is missing for the requested variant.")
 
         existing = await uow.carts.find_existing(
@@ -61,7 +43,7 @@ class CartService:
             new_quantity = existing.quantity + payload.quantity
             self._validate_quantity(new_quantity)
             self._validate_stock(new_quantity, variant.stock)
-            existing.unit_price_minor_units = active_price
+            existing.unit_price_minor_units = variant.active_price_minor_units
             existing.quantity = new_quantity
             existing.variant_id = variant.id
             cart_item = existing
@@ -74,7 +56,7 @@ class CartService:
                 variant_id=variant.id,
                 size=payload.size,
                 quantity=payload.quantity,
-                unit_price_minor_units=active_price,
+                unit_price_minor_units=variant.active_price_minor_units,
             )
             await uow.carts.add(cart_item)
             cart_item.product = product
@@ -109,15 +91,14 @@ class CartService:
         variant = next((v for v in product.variants if v.size == cart_item.size), None)
         if not variant or variant.is_deleted:
             raise ValidationError("Variant with requested size is unavailable.")
-        active_price = await self._resolve_active_price(uow, variant)
-        if active_price is None:
+        if variant.active_price_minor_units is None:
             raise ValidationError("Active price is missing for the requested variant.")
 
         self._validate_quantity(payload.quantity)
         self._validate_stock(payload.quantity, variant.stock)
         cart_item.quantity = payload.quantity
         cart_item.variant_id = variant.id
-        cart_item.unit_price_minor_units = active_price
+        cart_item.unit_price_minor_units = variant.active_price_minor_units
         await uow.commit()
         await uow.refresh(cart_item)
         logger.info(
@@ -158,9 +139,9 @@ class CartService:
                 f"Quantity must be between 1 and {MAX_CART_ITEM_QUANTITY} per product."
             )
 
-    def _validate_stock(self, quantity: int, stock: int) -> None:
-        if quantity > stock:
-            raise ValidationError("Not enough stock for the requested quantity.")
+    def _validate_stock(self, requested: int, stock: int | None) -> None:
+        if stock is not None and requested > stock:
+            raise ValidationError("Requested quantity exceeds available stock.")
 
 
 cart_service = CartService()

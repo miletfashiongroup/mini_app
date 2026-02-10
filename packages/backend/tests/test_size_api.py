@@ -10,4 +10,4 @@ async def test_size_calculation_endpoint(api_client):
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["data"]["size"] == "5"
+    assert payload["data"]["size"] == "M"

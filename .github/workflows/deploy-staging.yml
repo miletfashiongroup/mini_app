@@ -1,0 +1,23 @@
+name: Deploy staging
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  DEPLOY_ENABLED: ${{ secrets.STAGING_DEPLOY_ENABLED || false }}
+
+jobs:
+  deploy:
+    if: env.DEPLOY_ENABLED == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ssh key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+      - name: Deploy via docker-compose
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_HOST }} "cd /root/brace__1/releases/2026-02-03/src && git fetch --all && git reset --hard origin/main && docker compose -f infra/docker-compose.prod.yml pull && docker compose -f infra/docker-compose.prod.yml up -d --build backend frontend admin-bot support-bot scheduler"

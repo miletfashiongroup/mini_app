@@ -8,7 +8,6 @@ type Props = {
   iconOnly?: boolean;
   to?: string;
   fallbackTo?: string;
-  state?: unknown;
 };
 
 const getFromState = (state: unknown) => {
@@ -25,7 +24,6 @@ export const BackButton = ({
   iconOnly = false,
   to,
   fallbackTo,
-  state,
 }: Props) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,11 +32,7 @@ export const BackButton = ({
 
   const handleClick = useCallback(() => {
     if (target) {
-      if (state && target === to) {
-        navigate(target, { state });
-      } else {
-        navigate(target);
-      }
+      navigate(target);
       return;
     }
     if (typeof window !== 'undefined' && window.history.length > 1) {

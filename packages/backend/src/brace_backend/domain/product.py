@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from brace_backend.domain.base import BaseModel, SoftDeleteMixin
 from sqlalchemy import (
@@ -113,16 +113,6 @@ class ProductVariant(BaseModel, SoftDeleteMixin):
     prices: Mapped[list["ProductPrice"]] = relationship(
         back_populates="variant", cascade="all, delete-orphan", order_by="ProductPrice.starts_at"
     )
-
-    @property
-    def price_minor_units(self) -> int | None:
-        """Back-compat accessor for legacy callers that expect a single price on variants."""
-        if self.active_price_minor_units is not None:
-            return self.active_price_minor_units
-        if not self.prices:
-            return None
-        # Fall back to the latest known price in-memory if the active price isn't loaded.
-        return self.prices[-1].price_minor_units
 
 
 class ProductMedia(BaseModel, SoftDeleteMixin):
