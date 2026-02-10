@@ -49,10 +49,19 @@ jobs:
   deploy:
     name: Deploy to Staging
     needs: build-and-push
-    if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      - name: Validate staging secrets
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_PATH: ${{ secrets.STAGING_PATH }}
+        run: |
+          [ -n "${STAGING_HOST}" ]
+          [ -n "${STAGING_SSH_KEY}" ]
+          [ -n "${STAGING_PATH}" ]
+
       - name: Write SSH key
         run: |
           echo "${STAGING_SSH_KEY}" > /tmp/ssh_key
@@ -95,9 +104,3 @@ jobs:
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
           EOF
-
-  skip-deploy:
-    if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH to enable deploy."
