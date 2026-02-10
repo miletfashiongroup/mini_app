@@ -9,11 +9,20 @@ from brace_backend.schemas.main_screen import (
 
 class SizeService:
     _SIZE_TABLE = [
-        {"size": "XS", "waist": (0, 75), "hip": (0, 80)},
-        {"size": "S", "waist": (76, 90), "hip": (81, 95)},
-        {"size": "M", "waist": (91, 100), "hip": (96, 105)},
-        {"size": "L", "waist": (101, 110), "hip": (106, 120)},
-        {"size": "XL", "waist": (111, 999), "hip": (121, 999)},
+        {"size": "1", "waist": (74, 78), "hip": (92, 96)},
+        {"size": "2", "waist": (78, 82), "hip": (96, 109)},
+        {"size": "3", "waist": (82, 86), "hip": (100, 104)},
+        {"size": "4", "waist": (86, 90), "hip": (104, 108)},
+        {"size": "5", "waist": (90, 94), "hip": (108, 112)},
+        {"size": "6", "waist": (94, 98), "hip": (112, 116)},
+        {"size": "7", "waist": (98, 103), "hip": (116, 120)},
+        {"size": "8", "waist": (103, 107), "hip": (120, 124)},
+        {"size": "9", "waist": (107, 112), "hip": (124, 128)},
+        {"size": "10", "waist": (112, 117), "hip": (128, 132)},
+        {"size": "11", "waist": (117, 121), "hip": (132, 136)},
+        {"size": "12", "waist": (121, 126), "hip": (136, 140)},
+        {"size": "13", "waist": (126, 130), "hip": (140, 144)},
+        {"size": "14", "waist": (130, 134), "hip": (144, 148)},
     ]
 
     def calculate(self, payload: SizeCalculationRequest) -> SizeCalculationResponse:
