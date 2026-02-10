@@ -274,9 +274,7 @@ def verify_init_data(init_data: str) -> TelegramInitData:
 
     def _payload_for_signature(source: dict[str, Any]) -> dict[str, Any]:
         payload = dict(source)
-        user_raw = payload.pop("user_raw", None)
-        if user_raw is not None:
-            payload["user"] = user_raw
+        payload.pop("user_raw", None)
         return payload
 
     provided_hash = parsed.pop("hash", None)
