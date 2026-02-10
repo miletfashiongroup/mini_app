@@ -67,7 +67,7 @@ jobs:
           FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" <<'EOF'
+          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" <<EOF
           set -euo pipefail
           REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
           STAGING_PATH="${STAGING_PATH}"
