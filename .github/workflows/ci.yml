@@ -20,13 +20,16 @@ jobs:
       BRACE_TELEGRAM_BOT_TOKEN: dummy
       BRACE_DATABASE_URL: 'sqlite+aiosqlite:///:memory:'
       BRACE_REDIS_URL: 'memory://'
-      BRACE_PII_ENCRYPTION_KEY: "asr6lGbcL1OgIWbICg-i5PJGw8g1xmvYrFU9Xg8-EhQ="
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - name: Generate test Fernet key
+        run: |
+          key=$(python -c "import base64,os;print(base64.urlsafe_b64encode(os.urandom(32)).decode())")
+          echo "BRACE_PII_ENCRYPTION_KEY=$key" >> $GITHUB_ENV
       - name: Install backend deps
         working-directory: packages/backend
         run: |
