@@ -90,4 +90,3 @@ class OrderItemFactory(factory.Factory):
     size = fuzzy.FuzzyChoice(["S", "M", "L", "XL"])
     quantity = 1
     unit_price_minor_units = 2999
-PY'
