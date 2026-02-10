@@ -97,8 +97,8 @@ jobs:
           export SCHEDULER_IMAGE="${BACKEND_IMAGE}"
           export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
 
-          ENV_FILE="../.env.staging"
-          [ -f "$ENV_FILE" ] || ENV_FILE="../.env"
+          ENV_FILE="$STAGING_PATH/.env.staging"
+          [ -f "$ENV_FILE" ] || ENV_FILE="$STAGING_PATH/.env"
           export ENV_FILE
 
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
