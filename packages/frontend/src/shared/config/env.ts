@@ -10,11 +10,11 @@ export const env = {
   env: mode,
   apiBaseUrl: normalizeUrl(
     rawEnv.VITE_API_BASE_URL || rawEnv.VITE_BACKEND_URL,
-    typeof window !== undefined
-      ? mode === production
+    typeof window !== "undefined"
+      ? mode === "production"
         ? window.location.origin
-        : http://localhost:8000
-      : http://localhost:8000,
+        : "http://localhost:8000"
+      : "http://localhost:8000",
   ),
   appBaseUrl:
     normalizeUrl(rawEnv.VITE_APP_BASE_URL || rawEnv.VITE_APP_URL, 'http://localhost:4173') ||
