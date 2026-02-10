@@ -1,17 +1,30 @@
+from datetime import datetime, timezone
+
 import pytest
 from brace_backend.core.exceptions import NotFoundError, ValidationError
+from brace_backend.domain.product import ProductPrice
 from brace_backend.schemas.cart import CartItemCreate
 from brace_backend.services.cart_service import cart_service
 
 pytestmark = pytest.mark.asyncio
 
 
-async def test_add_item_merges_existing(uow, session, user_factory, product_factory, product_variant_factory):
+async def test_add_item_merges_existing(
+    uow, session, user_factory, product_factory, product_variant_factory
+):
     """Adding the same product twice should merge quantities instead of duplicating rows."""
     user = user_factory()
     product = product_factory()
     variant = product_variant_factory(product=product, size="M")
     product.variants.append(variant)
+    variant.prices.append(
+        ProductPrice(
+            variant=variant,
+            price_minor_units=3000,
+            currency_code="RUB",
+            starts_at=datetime.now(tz=timezone.utc),
+        )
+    )
     session.add_all([user, product])
     await session.flush()
 
@@ -25,11 +38,13 @@ async def test_add_item_merges_existing(uow, session, user_factory, product_fact
     assert cart.items[0].quantity == 2
 
 
-async def test_get_cart_returns_total(uow, session, user_factory, product_factory, product_variant_factory):
+async def test_get_cart_returns_total(
+    uow, session, user_factory, product_factory, product_variant_factory
+):
     """Cart summary should report the aggregated total_minor_units for all entries."""
     user = user_factory()
     product = product_factory()
-    variant = product_variant_factory(product=product, size="L")
+    variant = product_variant_factory(product=product, size="L", price_minor_units=3200)
     product.variants.append(variant)
     session.add_all([user, product])
     await session.flush()
@@ -39,7 +54,7 @@ async def test_get_cart_returns_total(uow, session, user_factory, product_factor
 
     cart = await cart_service.get_cart(uow, user.id)
 
-    assert cart.total_minor_units == variant.price_minor_units * 3
+    assert cart.total_minor_units == (variant.active_price_minor_units or 0) * 3
     assert cart.items[0].product_name == product.name
     assert cart.items[0].quantity == 3
 
@@ -71,6 +86,14 @@ async def test_add_item_enforces_quantity_limit(
     product = product_factory()
     variant = product_variant_factory(product=product, size="M", stock=20)
     product.variants.append(variant)
+    variant.prices.append(
+        ProductPrice(
+            variant=variant,
+            price_minor_units=2500,
+            currency_code="RUB",
+            starts_at=datetime.now(tz=timezone.utc),
+        )
+    )
     session.add_all([user, product])
     await session.flush()
 
@@ -93,6 +116,14 @@ async def test_add_item_enforces_stock(
     product = product_factory()
     variant = product_variant_factory(product=product, size="S", stock=3)
     product.variants.append(variant)
+    variant.prices.append(
+        ProductPrice(
+            variant=variant,
+            price_minor_units=2500,
+            currency_code="RUB",
+            starts_at=datetime.now(tz=timezone.utc),
+        )
+    )
     session.add_all([user, product])
     await session.flush()
 
@@ -131,8 +162,24 @@ async def test_cart_totals_multiple_variants(
     """Mixing variants with different prices should keep the aggregated total precise."""
     user = user_factory()
     product = product_factory()
-    variant_a = product_variant_factory(product=product, size="S", price_minor_units=1234)
-    variant_b = product_variant_factory(product=product, size="M", price_minor_units=5678)
+    variant_a = product_variant_factory(product=product, size="S")
+    variant_b = product_variant_factory(product=product, size="M")
+    variant_a.prices.append(
+        ProductPrice(
+            variant=variant_a,
+            price_minor_units=1234,
+            currency_code="RUB",
+            starts_at=datetime.now(tz=timezone.utc),
+        )
+    )
+    variant_b.prices.append(
+        ProductPrice(
+            variant=variant_b,
+            price_minor_units=5678,
+            currency_code="RUB",
+            starts_at=datetime.now(tz=timezone.utc),
+        )
+    )
     product.variants.extend([variant_a, variant_b])
     session.add_all([user, product])
     await session.flush()
@@ -145,5 +192,5 @@ async def test_cart_totals_multiple_variants(
     )
 
     cart = await cart_service.get_cart(uow, user.id)
-    expected_total = 2 * variant_a.price_minor_units + variant_b.price_minor_units
+    expected_total = 2 * (variant_a.active_price_minor_units or 0) + (variant_b.active_price_minor_units or 0)
     assert cart.total_minor_units == expected_total

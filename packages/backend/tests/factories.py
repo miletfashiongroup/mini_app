@@ -43,14 +43,27 @@ class ProductVariantFactory(factory.Factory):
 
     @factory.post_generation
     def price_minor_units(self, create, extracted, **kwargs):
-        value = extracted if extracted is not None else 3999
+        if extracted is None:
+            return
         price = ProductPrice(
-            product_variant_id=self.id,
-            price_minor_units=value,
+            variant=self,
+            price_minor_units=extracted,
             currency_code="RUB",
             starts_at=datetime.now(tz=timezone.utc),
         )
         self.prices.append(price)
+
+
+class ProductPriceFactory(factory.Factory):
+    class Meta:
+        model = ProductPrice
+
+    id = factory.LazyFunction(uuid.uuid4)
+    variant = factory.SubFactory(ProductVariantFactory)
+    product_variant_id = factory.LazyAttribute(lambda obj: obj.variant.id)
+    price_minor_units = 3999
+    currency_code = "RUB"
+    starts_at = factory.LazyFunction(lambda: datetime.now(tz=timezone.utc))
 
 
 class CartItemFactory(factory.Factory):
