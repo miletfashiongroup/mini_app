@@ -15,10 +15,10 @@ class UserFactory(factory.Factory):
 
     id = factory.LazyFunction(uuid.uuid4)
     telegram_id = factory.Sequence(lambda n: 1_000_000 + n)
-    first_name = factory.Faker(first_name)
-    last_name = factory.Faker(last_name)
-    username = factory.Faker(user_name)
-    language_code = ru
+    first_name = factory.Faker("first_name")
+    last_name = factory.Faker("last_name")
+    username = factory.Faker("user_name")
+    language_code = "ru"
 
 
 class ProductFactory(factory.Factory):
@@ -26,9 +26,9 @@ class ProductFactory(factory.Factory):
         model = Product
 
     id = factory.LazyFunction(uuid.uuid4)
-    name = factory.Sequence(lambda n: fProduct {n})
-    description = factory.Faker(sentence)
-    hero_media_url = factory.Faker(image_url)
+    name = factory.Sequence(lambda n: f"Product {n}")
+    description = factory.Faker("sentence")
+    hero_media_url = factory.Faker("image_url")
 
 
 class ProductVariantFactory(factory.Factory):
@@ -38,7 +38,7 @@ class ProductVariantFactory(factory.Factory):
     id = factory.LazyFunction(uuid.uuid4)
     product = factory.SubFactory(ProductFactory)
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
-    size = fuzzy.FuzzyChoice([S, M, L, XL])
+    size = fuzzy.FuzzyChoice(["S", "M", "L", "XL"])
     stock = 100
 
     @factory.post_generation
@@ -47,7 +47,7 @@ class ProductVariantFactory(factory.Factory):
         price = ProductPrice(
             product_variant_id=self.id,
             price_minor_units=value,
-            currency_code=RUB,
+            currency_code="RUB",
             starts_at=datetime.now(tz=timezone.utc),
         )
         self.prices.append(price)
@@ -62,7 +62,7 @@ class CartItemFactory(factory.Factory):
     user_id = factory.LazyAttribute(lambda obj: obj.user.id)
     product = factory.SubFactory(ProductFactory)
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
-    size = fuzzy.FuzzyChoice([M, L])
+    size = fuzzy.FuzzyChoice(["M", "L"])
     quantity = 1
     unit_price_minor_units = 2999
 
@@ -74,7 +74,7 @@ class OrderFactory(factory.Factory):
     id = factory.LazyFunction(uuid.uuid4)
     user = factory.SubFactory(UserFactory)
     user_id = factory.LazyAttribute(lambda obj: obj.user.id)
-    status = pending
+    status = "pending"
     total_amount_minor_units = 0
 
 
@@ -87,6 +87,7 @@ class OrderItemFactory(factory.Factory):
     order_id = factory.LazyAttribute(lambda obj: obj.order.id)
     product = factory.SubFactory(ProductFactory)
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
-    size = fuzzy.FuzzyChoice([S, M, L, XL])
+    size = fuzzy.FuzzyChoice(["S", "M", "L", "XL"])
     quantity = 1
     unit_price_minor_units = 2999
+PY'
