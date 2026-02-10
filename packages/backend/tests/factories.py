@@ -43,11 +43,10 @@ class ProductVariantFactory(factory.Factory):
 
     @factory.post_generation
     def price_minor_units(self, create, extracted, **kwargs):
-        if extracted is None:
-            return
+        value = extracted if extracted is not None else 3999
         price = ProductPrice(
             variant=self,
-            price_minor_units=extracted,
+            price_minor_units=value,
             currency_code="RUB",
             starts_at=datetime.now(tz=timezone.utc),
         )
