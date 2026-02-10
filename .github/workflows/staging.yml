@@ -77,11 +77,12 @@ jobs:
           FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          STAGING_PATH_B64=$(printf %s "$STAGING_PATH" | base64 -w 0)
-          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" <<EOF
+          STAGING_PATH_CLEAN=$(printf %s "$STAGING_PATH" | tr -d rn)
+          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" \
+            "STAGING_PATH= BACKEND_IMAGE= FRONTEND_IMAGE= GITHUB_REPOSITORY= bash -s" <<EOF
           set -euo pipefail
           REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
-          STAGING_PATH="$(printf %s "$STAGING_PATH_B64" | base64 -d)"
+          STAGING_PATH="${STAGING_PATH}"
 
           mkdir -p "$STAGING_PATH"
           if [ ! -d "$STAGING_PATH/.git" ]; then
