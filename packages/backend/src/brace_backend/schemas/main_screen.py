@@ -19,8 +19,8 @@ class BannerListResponse(BaseModel):
 
 
 class SizeCalculationRequest(BaseModel):
-    waist: int = Field(ge=40, le=160)
-    hip: int = Field(ge=40, le=160)
+    waist: float = Field(gt=0)
+    hip: float = Field(gt=0)
 
 
 class SizeCalculationResponse(BaseModel):

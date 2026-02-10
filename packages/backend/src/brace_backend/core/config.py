@@ -439,6 +439,45 @@ class Settings(BaseSettings):
     )
 
     @model_validator(mode="after")
+    def ensure_telegram_credentials(self) -> Settings:
+        """Allow both BRACE_* and bare Telegram env vars while enforcing presence."""
+        prod_token = (self.telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+        dev_token = (
+            os.getenv("BRACE_TELEGRAM_DEV_TOKEN", "").strip() or self.telegram_dev_fallback_token
+        )
+        bot_token = prod_token
+        using_dev_token = False
+
+        if not bot_token and self.is_development and self.allow_dev_mode and self.telegram_dev_mode:
+            bot_token = dev_token
+            using_dev_token = True
+
+        if not bot_token:
+            raise ValueError(
+                "Telegram bot token is required. "
+                "Set BRACE_TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN."
+            )
+        if self.is_production and using_dev_token:
+            raise ValueError("Dev Telegram token is not allowed in production.")
+        # Use object.__setattr__ to bypass validate_assignment and avoid recursion
+        if self.telegram_bot_token != bot_token:
+            object.__setattr__(self, "telegram_bot_token", bot_token)
+
+        webapp_secret = (
+            self.telegram_webapp_secret or os.getenv("TELEGRAM_WEBAPP_SECRET") or ""
+        ).strip()
+        # Use object.__setattr__ to bypass validate_assignment and avoid recursion
+        if self.telegram_webapp_secret != webapp_secret:
+            object.__setattr__(self, "telegram_webapp_secret", webapp_secret or None)
+        return self
+
+    @model_validator(mode="after")
+    def ensure_analytics_salt(self) -> Settings:
+        if self.analytics_enabled and self.is_production and not self.analytics_hash_salt:
+            raise ValueError("Analytics hash salt is required in production.")
+        return self
+
+    @model_validator(mode="after")
     def ensure_production_safety(self) -> Settings:
         """Fail fast when production safety rails are violated."""
         if not self.is_production:
@@ -459,71 +498,16 @@ class Settings(BaseSettings):
 
         return self
 
-    @model_validator(mode="after")
-    def ensure_telegram_credentials(self) -> Settings:
-        """Allow both BRACE_* and bare Telegram env vars while enforcing presence."""
-        prod_token = (self.telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
-        dev_token = (
-            os.getenv("BRACE_TELEGRAM_DEV_TOKEN", "").strip() or self.telegram_dev_fallback_token
-        )
-        bot_token = prod_token
-        using_dev_token = False
-
-        if not bot_token and self.is_development and self.allow_dev_mode and self.telegram_dev_mode:
-            if dev_token:
-                bot_token = dev_token
-                using_dev_token = True
-
-        if not bot_token and self.is_production:
-            raise ValueError(
-                "Telegram bot token is required. "
-                "Set BRACE_TELEGRAM_BOT_TOKEN or TELEGRAM_BOT_TOKEN."
-            )
-        if self.is_production and using_dev_token:
-            raise ValueError("Dev Telegram token is not allowed in production.")
-        # Use object.__setattr__ to bypass validate_assignment and avoid recursion
-        if bot_token and self.telegram_bot_token != bot_token:
-            object.__setattr__(self, "telegram_bot_token", bot_token)
-
-        webapp_secret = (
-            self.telegram_webapp_secret or os.getenv("TELEGRAM_WEBAPP_SECRET") or ""
-        ).strip()
-        # Use object.__setattr__ to bypass validate_assignment and avoid recursion
-        if self.telegram_webapp_secret != webapp_secret:
-            object.__setattr__(self, "telegram_webapp_secret", webapp_secret or None)
-        return self
-
-    @model_validator(mode="after")
-    def ensure_analytics_salt(self) -> Settings:
-        if self.analytics_enabled and self.is_production and not self.analytics_hash_salt:
-            raise ValueError("Analytics hash salt is required in production.")
-        return self
-
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     try:
         return Settings()
     except ValidationError as exc:  # pragma: no cover - fails fast during startup
-        messages = [err.get("msg", "") for err in exc.errors()]
-        priority = [
-            "Redis is required in production",
-            "Dev mode is not allowed in production",
-            "PII encryption key is required in production",
-            "Sentry DSN is required in production",
-            "Analytics hash salt is required in production",
-        ]
-        for key in priority:
-            for msg in messages:
-                if key in msg:
-                    raise RuntimeError(msg) from exc
-        for msg in messages:
-            if "Telegram bot token is required" in msg or "Dev Telegram token is not allowed in production" in msg:
-                raise RuntimeError(
-                    "Telegram credentials are required. Define BRACE_TELEGRAM_BOT_TOKEN "
-                    "or TELEGRAM_BOT_TOKEN in .env, infra/docker-compose.prod.yml, and k8s/deploy.yaml."
-                ) from exc
-        raise RuntimeError("Invalid configuration; check environment variables.") from exc
+        raise RuntimeError(
+            "Telegram credentials are required. Define BRACE_TELEGRAM_BOT_TOKEN "
+            "or TELEGRAM_BOT_TOKEN in .env, infra/docker-compose.prod.yml, and k8s/deploy.yaml."
+        ) from exc
 
 
 settings = get_settings()

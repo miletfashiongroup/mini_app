@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime, timezone
 
 import factory
 from brace_backend.domain.cart import CartItem
 from brace_backend.domain.order import Order, OrderItem
-from brace_backend.domain.product import Product, ProductPrice, ProductVariant
+from brace_backend.domain.product import Product, ProductVariant
 from brace_backend.domain.user import User
 from factory import fuzzy
 
@@ -39,30 +38,8 @@ class ProductVariantFactory(factory.Factory):
     product = factory.SubFactory(ProductFactory)
     product_id = factory.LazyAttribute(lambda obj: obj.product.id)
     size = fuzzy.FuzzyChoice(["S", "M", "L", "XL"])
-    stock = 100
-
-    @factory.post_generation
-    def price_minor_units(self, create, extracted, **kwargs):
-        value = extracted if extracted is not None else 3999
-        price = ProductPrice(
-            variant=self,
-            price_minor_units=value,
-            currency_code="RUB",
-            starts_at=datetime.now(tz=timezone.utc),
-        )
-        self.prices.append(price)
-
-
-class ProductPriceFactory(factory.Factory):
-    class Meta:
-        model = ProductPrice
-
-    id = factory.LazyFunction(uuid.uuid4)
-    variant = factory.SubFactory(ProductVariantFactory)
-    product_variant_id = factory.LazyAttribute(lambda obj: obj.variant.id)
     price_minor_units = 3999
-    currency_code = "RUB"
-    starts_at = factory.LazyFunction(lambda: datetime.now(tz=timezone.utc))
+    stock = 100
 
 
 class CartItemFactory(factory.Factory):

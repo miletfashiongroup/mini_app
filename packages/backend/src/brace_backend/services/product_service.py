@@ -9,24 +9,6 @@ from brace_backend.schemas.products import ProductRead
 
 
 class ProductService:
-    async def _ensure_active_prices(self, uow: UnitOfWork, products: list[Product]) -> None:
-        from datetime import datetime, timezone
-        now = datetime.now(tz=timezone.utc)
-        for product in products:
-            for variant in product.variants:
-                if variant.active_price_minor_units is not None:
-                    continue
-                await uow.session.refresh(variant, attribute_names=["prices"])
-                active_price = None
-                for price in sorted(variant.prices, key=lambda item: item.starts_at, reverse=True):
-                    compare_now = now if price.starts_at.tzinfo else now.replace(tzinfo=None)
-                    if price.starts_at <= compare_now and (price.ends_at is None or price.ends_at > compare_now):
-                        active_price = price.price_minor_units
-                        break
-                if active_price is None and variant.prices:
-                    active_price = max(variant.prices, key=lambda item: item.starts_at).price_minor_units
-                variant.active_price_minor_units = active_price
-
     async def list_products(
         self,
         uow: UnitOfWork,
@@ -38,7 +20,6 @@ class ProductService:
         products, total = await uow.products.list_products(
             page=page, page_size=page_size, category=category
         )
-        await self._ensure_active_prices(uow, products)
         rating_stats = await uow.reviews.list_product_rating_stats([product.id for product in products])
         return [
             self._to_schema(
@@ -55,20 +36,14 @@ class ProductService:
             raise NotFoundError("Product not found.")
         rating_stats = await uow.reviews.list_product_rating_stats([product.id])
         rating_value, rating_count = rating_stats.get(product.id, (product.rating_value, product.rating_count))
-
-        # Ensure variants have an active price for detail responses.
-        await self._ensure_active_prices(uow, [product])
-
         return self._to_schema(
             product,
             rating_value_override=rating_value,
             rating_count_override=rating_count,
         )
 
-
     async def list_related(self, uow: UnitOfWork, product_id: UUID, limit: int = 4) -> list[ProductRead]:
         products = await uow.products.list_related(product_id=product_id, limit=limit)
-        await self._ensure_active_prices(uow, products)
         rating_stats = await uow.reviews.list_product_rating_stats([product.id for product in products])
         return [
             self._to_schema(

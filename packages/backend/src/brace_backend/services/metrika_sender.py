@@ -95,9 +95,8 @@ async def send_pageview(
 def enqueue_events(
     *,
     events: list[tuple[str, datetime, str | None]],
-    client_id: str | None = None,
-    client_id_raw: str | None = None,
-    device_id_raw: str | None = None,
+    client_id_raw: str | None,
+    device_id_raw: str | None,
     user_id: Optional[str],
 ) -> None:
     if not settings.metrika_enabled:
@@ -106,7 +105,7 @@ def enqueue_events(
     token = settings.metrika_measurement_token
     if not counter_id or not token:
         return
-    resolved_client_id = client_id or _cid_from_ids(client_id_raw, device_id_raw, user_id)
+    client_id = _cid_from_ids(client_id_raw, device_id_raw, user_id)
 
     for name, occurred_at, screen in events:
         if name == "screen_view":
@@ -115,7 +114,7 @@ def enqueue_events(
                     counter_id=counter_id,
                     measurement_token=token,
                     occurred_at=occurred_at,
-                    client_id=resolved_client_id,
+                    client_id=client_id,
                     user_id=user_id,
                     screen=screen,
                 )
@@ -126,7 +125,7 @@ def enqueue_events(
                 measurement_token=token,
                 event_name=name,
                 occurred_at=occurred_at,
-                client_id=resolved_client_id,
+                client_id=client_id,
                 user_id=user_id,
             )
         )

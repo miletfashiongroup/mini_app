@@ -66,18 +66,7 @@ class OrderService:
                 raise ValidationError("Insufficient stock for the requested product.")
             variant.stock -= item.quantity
 
-            await uow.session.refresh(variant, attribute_names=["prices"])
-            price = None
-            from datetime import datetime, timezone
-            now = datetime.now(tz=timezone.utc)
-            for price_obj in sorted(variant.prices, key=lambda item: item.starts_at, reverse=True):
-                compare_now = now if price_obj.starts_at.tzinfo else now.replace(tzinfo=None)
-                if price_obj.starts_at <= compare_now and (price_obj.ends_at is None or price_obj.ends_at > compare_now):
-                    price = price_obj.price_minor_units
-                    break
-            if price is None and variant.prices:
-                price = max(variant.prices, key=lambda item: item.starts_at).price_minor_units
-            variant.active_price_minor_units = price
+            price = variant.active_price_minor_units
             if price is None:
                 raise ValidationError("Active price is missing for the requested variant.")
 
@@ -297,8 +286,7 @@ class OrderService:
 
     def _compute_idempotency(self, cart_items) -> str:
         digest = hashlib.sha256()
-        for item in sorted(cart_items, key=lambda x: str(x.id)):
-            digest.update(str(item.id).encode())
+        for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
             digest.update(str(item.product_id).encode())
             digest.update(str(item.variant_id).encode())
             digest.update(str(item.quantity).encode())

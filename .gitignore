@@ -37,9 +37,6 @@ volumes/
 infra/metabase/*.env
 infra/metabase/*.pass
 wheelhouse/
-!wheelhouse/
 packages/wheelhouse/
 wheelhouse-requirements.txt
 packages/backend/requirements.txt
-
-!wheelhouse/.gitkeep

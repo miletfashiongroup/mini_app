@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from @tanstack/react-query;
 
 import { cartKeys } from '@/entities/cart/api/cartApi';
 import { orderKeys } from '@/entities/order/api/orderApi';
@@ -10,7 +10,7 @@ export type CreateOrderPayload = {
 };
 
 const createOrder = async (payload?: CreateOrderPayload): Promise<Order> => {
-  const response = await apiClient.post<Order>('/orders', payload ?? {});
+  const response = await apiClient.post<Order>(/orders, payload ?? {});
   return response.data;
 };
 
