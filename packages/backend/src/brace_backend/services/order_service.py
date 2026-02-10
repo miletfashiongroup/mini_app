@@ -297,7 +297,8 @@ class OrderService:
 
     def _compute_idempotency(self, cart_items) -> str:
         digest = hashlib.sha256()
-        for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
+        for item in sorted(cart_items, key=lambda x: str(x.id)):
+            digest.update(str(item.id).encode())
             digest.update(str(item.product_id).encode())
             digest.update(str(item.variant_id).encode())
             digest.update(str(item.quantity).encode())
