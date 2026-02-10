@@ -8,11 +8,11 @@ from brace_backend.services.order_service import order_service
 pytestmark = pytest.mark.asyncio
 
 
-async def _prepare_product(session, user_factory, product_factory, product_variant_factory, size="S", stock=10):
+async def _prepare_product(session, user_factory, product_factory, product_variant_factory, size="S", stock=10, price_minor_units=None):
     """Utility to persist a user and product with a single variant for order scenarios."""
     user = user_factory()
     product = product_factory()
-    variant = product_variant_factory(product=product, size=size, stock=stock)
+    variant = product_variant_factory(product=product, size=size, stock=stock, price_minor_units=price_minor_units)
     product.variants.append(variant)
     session.add_all([user, product])
     await session.flush()
@@ -22,7 +22,7 @@ async def _prepare_product(session, user_factory, product_factory, product_varia
 async def test_create_order_consumes_cart(uow, session, user_factory, product_factory, product_variant_factory):
     """Creating an order should empty the cart and keep pagination totals accurate."""
     user, product, variant = await _prepare_product(
-        session, user_factory, product_factory, product_variant_factory, size="S"
+        session, user_factory, product_factory, product_variant_factory, size="S", price_minor_units=3333
     )
 
     await cart_service.add_item(
@@ -32,9 +32,9 @@ async def test_create_order_consumes_cart(uow, session, user_factory, product_fa
     )
 
     created = await order_service.create_order(uow, user_id=user.id, payload=OrderCreate())
-    assert created.total_minor_units == variant.price_minor_units * 2
+    assert created.total_minor_units == variant.active_price_minor_units * 2
     assert len(created.items) == 1
-    assert created.items[0].unit_price_minor_units == variant.price_minor_units
+    assert created.items[0].unit_price_minor_units == variant.active_price_minor_units
 
     orders, total = await order_service.list_orders(uow, user.id, page=1, page_size=10)
     assert len(orders) == 1
@@ -49,9 +49,8 @@ async def test_create_order_preserves_minor_unit_precision(
 ):
     """Order totals must remain exact with repeating decimals converted to minor units."""
     user, product, variant = await _prepare_product(
-        session, user_factory, product_factory, product_variant_factory, size="S"
+        session, user_factory, product_factory, product_variant_factory, size="S", price_minor_units=3333
     )
-    variant.price_minor_units = 3333
     await session.flush()
 
     await cart_service.add_item(
@@ -92,7 +91,7 @@ async def test_create_order_persists_metadata(
     )
     assert created.shipping_address == "Test street 1"
     assert created.note == "Leave at door"
-    assert created.total_minor_units == variant.price_minor_units
+    assert created.total_minor_units == variant.active_price_minor_units
 
 
 async def test_create_order_deducts_stock(
@@ -154,7 +153,7 @@ async def test_list_orders_without_pagination_returns_all(
 ):
     """Providing no page parameters should return the complete order history."""
     user, product, variant = await _prepare_product(
-        session, user_factory, product_factory, product_variant_factory, size="S"
+        session, user_factory, product_factory, product_variant_factory, size="S", price_minor_units=3333
     )
 
     await cart_service.add_item(

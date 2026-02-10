@@ -40,27 +40,28 @@ jobs:
 
       - name: Build & push backend
         run: |
-          docker buildx build \
-            -f packages/backend/Dockerfile \
-            -t ${{ steps.tags.outputs.backend_image }} \
-            -t ${{ steps.tags.outputs.backend_image_stage }} \
-            --push .
+          docker buildx build             -f packages/backend/Dockerfile             -t ${{ steps.tags.outputs.backend_image }}             -t ${{ steps.tags.outputs.backend_image_stage }}             --push .
 
       - name: Build & push frontend
         run: |
-          docker buildx build \
-            -f packages/frontend/Dockerfile \
-            -t ${{ steps.tags.outputs.frontend_image }} \
-            -t ${{ steps.tags.outputs.frontend_image_stage }} \
-            --push .
+          docker buildx build             -f packages/frontend/Dockerfile             -t ${{ steps.tags.outputs.frontend_image }}             -t ${{ steps.tags.outputs.frontend_image_stage }}             --push .
 
   deploy:
     name: Deploy to Staging
     needs: build-and-push
-    if: ${{ secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '' }}
     runs-on: ubuntu-latest
     environment: staging
     steps:
+      - name: Validate staging secrets
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_PATH: ${{ secrets.STAGING_PATH }}
+        run: |
+          [ -n "${STAGING_HOST}" ]
+          [ -n "${STAGING_SSH_KEY}" ]
+          [ -n "${STAGING_PATH}" ]
+
       - name: Write SSH key
         run: |
           echo "${STAGING_SSH_KEY}" > /tmp/ssh_key
@@ -76,7 +77,8 @@ jobs:
           FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}" <<'EOF'
+          STAGING_PATH_CLEAN=$(printf %s "$STAGING_PATH" | tr -d '\r\n')
+          ssh -o StrictHostKeyChecking=no -i /tmp/ssh_key "${STAGING_HOST}"             "STAGING_PATH='${STAGING_PATH_CLEAN}' BACKEND_IMAGE='${BACKEND_IMAGE}' FRONTEND_IMAGE='${FRONTEND_IMAGE}' GITHUB_REPOSITORY='${GITHUB_REPOSITORY}' bash -s" <<'EOF'
           set -euo pipefail
           REPO_URL="https://github.com/${GITHUB_REPOSITORY}.git"
           STAGING_PATH="${STAGING_PATH}"
@@ -95,17 +97,10 @@ jobs:
           export SCHEDULER_IMAGE="${BACKEND_IMAGE}"
           export FRONTEND_IMAGE="${FRONTEND_IMAGE}"
 
-          # Default to .env.staging if present, otherwise .env
-          ENV_FILE="../.env.staging"
-          [ -f "$ENV_FILE" ] || ENV_FILE="../.env"
+          ENV_FILE="$STAGING_PATH/.env.staging"
+          [ -f "$ENV_FILE" ] || ENV_FILE="$STAGING_PATH/.env"
           export ENV_FILE
 
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml pull backend admin-bot scheduler frontend
           docker compose --env-file "$ENV_FILE" -f infra/docker-compose.prod.yml up -d backend admin-bot scheduler frontend
           EOF
-
-  skip-deploy:
-    if: ${{ !(secrets.STAGING_HOST != '' && secrets.STAGING_SSH_KEY != '' && secrets.STAGING_PATH != '') }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Staging secrets not set; add STAGING_HOST/STAGING_SSH_KEY/STAGING_PATH to enable deploy."

@@ -50,7 +50,12 @@ export const ProductReviewsPage = () => {
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white pb-24 font-montserrat text-[#29292B]">
       <div className="px-4 pt-6">
-        <BackButton iconOnly to={`/product/${product.id}`} fallbackTo={backFallback} />
+        <BackButton
+          iconOnly
+          to={`/product/${product.id}`}
+          fallbackTo={backFallback}
+          state={{ from: '/catalog' }}
+        />
         <h1 className="mt-3 text-[20px] font-semibold">Отзывы {product.name}</h1>
       </div>
       <ProductReviewsSection reviews={reviews} showCta={false} />

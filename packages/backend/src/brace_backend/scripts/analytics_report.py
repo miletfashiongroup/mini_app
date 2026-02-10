@@ -87,11 +87,7 @@ def _weekly_message(session: Session, target_date: date) -> str:
     )
 
 
-<<<<<<< HEAD
-async def _send_and_store(report_type: str, report_date: date, message: str) -> None:
-=======
 async def _send_and_store(report_type: str, report_date: date, message: str, *, dry_run: bool) -> None:
->>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
     engine = create_engine(ensure_sync_dsn(settings.database_url), future=True)
     with Session(engine) as session:
         report = AnalyticsReport(
@@ -104,15 +100,6 @@ async def _send_and_store(report_type: str, report_date: date, message: str, *, 
         session.commit()
         session.refresh(report)
 
-<<<<<<< HEAD
-        sent = await send_analytics_report(message, report_type=report_type)
-        if sent:
-            report.status = "sent"
-            report.sent_at = datetime.now(tz=timezone.utc)
-        else:
-            report.status = "failed"
-            report.meta = {"error": "telegram_send_failed"}
-=======
         if dry_run:
             report.status = "dry_run"
             report.meta = {"dry_run": True}
@@ -124,29 +111,19 @@ async def _send_and_store(report_type: str, report_date: date, message: str, *, 
             else:
                 report.status = "failed"
                 report.meta = {"error": "telegram_send_failed"}
->>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
         session.add(report)
         session.commit()
 
 
-<<<<<<< HEAD
-def run_report(report_type: str, target_date: date) -> None:
-=======
 def run_report(report_type: str, target_date: date, dry_run: bool) -> None:
->>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
     engine = create_engine(ensure_sync_dsn(settings.database_url), future=True)
     with Session(engine) as session:
         if report_type == "daily":
             message = _daily_message(session, target_date)
         else:
             message = _weekly_message(session, target_date)
-<<<<<<< HEAD
-    asyncio.run(_send_and_store(report_type, target_date, message))
-    logger.info("analytics_report_done", report_type=report_type, report_date=str(target_date))
-=======
     asyncio.run(_send_and_store(report_type, target_date, message, dry_run=dry_run))
     logger.info("analytics_report_done", report_type=report_type, report_date=str(target_date), dry_run=dry_run)
->>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
 
 
 def _parse_date(value: str) -> date:
@@ -157,21 +134,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Analytics reports to Telegram.")
     parser.add_argument("--type", choices=["daily", "weekly"], default="daily")
     parser.add_argument("--date", help="Date in YYYY-MM-DD (UTC). Defaults to yesterday.")
-<<<<<<< HEAD
-=======
     parser.add_argument("--dry-run", action="store_true", help="Store report without sending Telegram.")
->>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
     args = parser.parse_args()
 
     target_date = _parse_date(args.date) if args.date else (datetime.now(tz=timezone.utc).date() - timedelta(days=1))
     if not settings.analytics_report_enabled:
         logger.info("analytics_report_disabled")
         return
-<<<<<<< HEAD
-    run_report(args.type, target_date)
-=======
     run_report(args.type, target_date, dry_run=args.dry_run)
->>>>>>> f313b8a46037aa845ec1c2a17a6126ea14c2331d
 
 
 if __name__ == "__main__":
