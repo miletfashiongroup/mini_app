@@ -6,11 +6,14 @@ from brace_backend.services.size_service import size_service
 @pytest.mark.parametrize(
     ("waist", "hip", "expected"),
     [
-        (70, 75, "XS"),
-        (85, 90, "S"),
-        (95, 100, "M"),
-        (105, 110, "L"),
-        (115, 130, "XL"),
+        (70, 75, "1"),
+        (80, 97, "2"),
+        (83, 101, "3"),
+        (92, 98, "5"),
+        (104, 121, "8"),
+        (110, 126, "9"),
+        (118, 140, "12"),
+        (140, 150, "14"),
     ],
 )
 def test_size_service_buckets(waist, hip, expected):
