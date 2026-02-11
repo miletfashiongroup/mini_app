@@ -106,6 +106,18 @@ class TelegramBotService:
             return
 
         if text.startswith("/start"):
+            payload = text.split(maxsplit=1)[1].strip().lower() if len(text.split(maxsplit=1)) > 1 else ""
+            if payload in {"phone", "phone_update", "update_phone"}:
+                await self._send_message(
+                    chat_id,
+                    "Пожалуйста, поделитесь контактным телефоном.",
+                    reply_markup={
+                        "keyboard": [[{"text": "Поделиться контактом", "request_contact": True}]],
+                        "resize_keyboard": True,
+                        "one_time_keyboard": True,
+                    },
+                )
+                return
             await self._prompt_next(uow, chat_id, user)
             return
 
