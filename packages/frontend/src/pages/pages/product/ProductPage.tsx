@@ -217,7 +217,7 @@ export const ProductPage = () => {
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white text-[#29292B] font-montserrat pb-24">
-      <ProductHeader showBack backFallback="/catalog" />
+      <ProductHeader showBack backTo="/catalog" backFallback="/catalog" />
       <ProductTitle title={product.name} />
       <ProductMediaCarousel
         ref={mediaCarouselRef}
