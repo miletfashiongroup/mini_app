@@ -45,7 +45,7 @@ class ReferralService:
                 if existing:
                     return existing
                 continue
-        raise ValidationError("Unable to generate referral code.")
+        raise ValidationError("Не удалось создать реферальный код.")
 
     async def apply_referral_code(
         self, uow: UnitOfWork, *, user_id: UUID, code: str
@@ -53,16 +53,16 @@ class ReferralService:
         code_normalized = code.strip().upper()
         ref_code = await uow.referral_codes.get_by_code(code_normalized)
         if not ref_code or not ref_code.is_active:
-            raise ValidationError("Referral code is invalid.")
+            raise ValidationError("Реферальный код недействителен.")
         if ref_code.owner_user_id == user_id:
-            raise ValidationError("Self-referral is not allowed.")
+            raise ValidationError("Нельзя использовать свой реферальный код.")
 
-        if await uow.orders.has_completed(user_id=user_id):
-            raise ValidationError("Referral code can only be applied before first purchase.")
+        if await uow.orders.has_any(user_id=user_id):
+            raise ValidationError("Реферальный код можно применить только до первого заказа.")
 
         existing = await uow.referral_bindings.get_for_referee(user_id)
         if existing:
-            raise ConflictError("Referral code already applied.")
+            raise ConflictError("Реферальный код уже применён.")
 
         binding = ReferralBinding(
             referrer_user_id=ref_code.owner_user_id,
@@ -77,7 +77,7 @@ class ReferralService:
             return binding
         except IntegrityError:
             await uow.rollback()
-            raise ConflictError("Referral code already applied.")
+            raise ConflictError("Реферальный код уже применён.")
 
     async def list_invited(self, uow: UnitOfWork, *, user_id: UUID) -> list[ReferralBinding]:
         return await uow.referral_bindings.list_for_referrer(user_id)

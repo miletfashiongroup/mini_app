@@ -109,24 +109,23 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         result = await self.session.scalars(stmt)
         return result.unique().one_or_none()
 
+    async def has_any(self, *, user_id: UUID) -> bool:
+        stmt = select(Order.id).where(Order.user_id == user_id).limit(1)
+        return await self.session.scalar(stmt) is not None
+
     async def has_completed(self, *, user_id: UUID) -> bool:
-        stmt = (
-            select(Order.id)
-            .where(Order.user_id == user_id, Order.status == "completed")
-            .limit(1)
-        )
+        stmt = select(Order.id).where(
+            Order.user_id == user_id,
+            Order.status.in_(("delivered", "completed")),
+        ).limit(1)
         return await self.session.scalar(stmt) is not None
 
     async def has_completed_with_payment_fingerprint(
         self, *, user_id: UUID, payment_fingerprint: str
     ) -> bool:
-        stmt = (
-            select(Order.id)
-            .where(
-                Order.user_id == user_id,
-                Order.status == "completed",
-                Order.payment_fingerprint == payment_fingerprint,
-            )
-            .limit(1)
-        )
+        stmt = select(Order.id).where(
+            Order.user_id == user_id,
+            Order.status.in_(("delivered", "completed")),
+            Order.payment_fingerprint == payment_fingerprint,
+        ).limit(1)
         return await self.session.scalar(stmt) is not None
