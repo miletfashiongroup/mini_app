@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
 
 import starIcon from '@/assets/images/StarIcon.svg';
+import { voteProductReview } from '@/entities/product/api/productApi';
 import ProductMainCTA from './ProductMainCTA';
 import { ReviewImageLightbox } from './ReviewImageLightbox';
 
@@ -15,6 +17,7 @@ export type ProductReview = {
   text: string;
   helpfulCount?: number;
   notHelpfulCount?: number;
+  userVote?: -1 | 0 | 1;
   utpLabel?: string;
   utpSegments?: number;
   utpActiveIndex?: number;
@@ -262,10 +265,16 @@ const ProductReviewCard = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount ?? 0);
   const [notHelpfulCount, setNotHelpfulCount] = useState(review.notHelpfulCount ?? 0);
-  const [activeVote, setActiveVote] = useState<-1 | 0 | 1>(0);
+  const [activeVote, setActiveVote] = useState<-1 | 0 | 1>(review.userVote ?? 0);
   const textContainerRef = useRef<HTMLDivElement | null>(null);
   const [canExpand, setCanExpand] = useState(review.text.length > 220);
   const handleToggle = () => setIsExpanded((prev) => !prev);
+
+  useEffect(() => {
+    setHelpfulCount(review.helpfulCount ?? 0);
+    setNotHelpfulCount(review.notHelpfulCount ?? 0);
+    setActiveVote(review.userVote ?? 0);
+  }, [review.helpfulCount, review.notHelpfulCount, review.userVote]);
 
   useLayoutEffect(() => {
     if (isExpanded || !textContainerRef.current) {
@@ -276,31 +285,58 @@ const ProductReviewCard = ({
     setCanExpand(hasOverflow || review.text.length > 220);
   }, [review.text, isExpanded]);
 
+  const voteMutation = useMutation({
+    mutationFn: (vote: -1 | 0 | 1) => voteProductReview(review.id, { vote }),
+    onSuccess: (data) => {
+      setHelpfulCount(data.helpful_count);
+      setNotHelpfulCount(data.not_helpful_count);
+      setActiveVote((data.user_vote as -1 | 0 | 1) ?? 0);
+    },
+  });
+
+  const applyVote = (nextVote: -1 | 0 | 1, prevVote: -1 | 0 | 1) => {
+    const deltaHelpful =
+      (prevVote === 1 ? -1 : 0) + (nextVote === 1 ? 1 : 0);
+    const deltaNotHelpful =
+      (prevVote === -1 ? -1 : 0) + (nextVote === -1 ? 1 : 0);
+    setHelpfulCount((count) => Math.max(0, count + deltaHelpful));
+    setNotHelpfulCount((count) => Math.max(0, count + deltaNotHelpful));
+    setActiveVote(nextVote);
+  };
+
   const handleHelpful = () => {
-    setActiveVote((prev) => {
-      if (prev === 1) {
-        setHelpfulCount((count) => Math.max(0, count - 1));
-        return 0;
-      }
-      if (prev === -1) {
-        setNotHelpfulCount((count) => Math.max(0, count - 1));
-      }
-      setHelpfulCount((count) => count + 1);
-      return 1;
+    if (voteMutation.isPending) {
+      return;
+    }
+    const prevVote = activeVote;
+    const prevHelpful = helpfulCount;
+    const prevNotHelpful = notHelpfulCount;
+    const nextVote: -1 | 0 | 1 = prevVote === 1 ? 0 : 1;
+    applyVote(nextVote, prevVote);
+    voteMutation.mutate(nextVote, {
+      onError: () => {
+        setActiveVote(prevVote);
+        setHelpfulCount(prevHelpful);
+        setNotHelpfulCount(prevNotHelpful);
+      },
     });
   };
 
   const handleNotHelpful = () => {
-    setActiveVote((prev) => {
-      if (prev === -1) {
-        setNotHelpfulCount((count) => Math.max(0, count - 1));
-        return 0;
-      }
-      if (prev === 1) {
-        setHelpfulCount((count) => Math.max(0, count - 1));
-      }
-      setNotHelpfulCount((count) => count + 1);
-      return -1;
+    if (voteMutation.isPending) {
+      return;
+    }
+    const prevVote = activeVote;
+    const prevHelpful = helpfulCount;
+    const prevNotHelpful = notHelpfulCount;
+    const nextVote: -1 | 0 | 1 = prevVote === -1 ? 0 : -1;
+    applyVote(nextVote, prevVote);
+    voteMutation.mutate(nextVote, {
+      onError: () => {
+        setActiveVote(prevVote);
+        setHelpfulCount(prevHelpful);
+        setNotHelpfulCount(prevNotHelpful);
+      },
     });
   };
 

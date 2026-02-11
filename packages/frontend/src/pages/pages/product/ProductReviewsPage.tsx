@@ -22,6 +22,7 @@ export const ProductReviewsPage = () => {
     text: review.text,
     helpfulCount: review.helpful_count ?? 0,
     notHelpfulCount: review.not_helpful_count ?? 0,
+    userVote: (review.user_vote as -1 | 0 | 1 | undefined) ?? 0,
     gallery: review.media?.map((media) => media.url) ?? [],
   }));
 

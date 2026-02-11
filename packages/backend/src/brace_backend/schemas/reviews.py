@@ -27,6 +27,18 @@ class ProductReviewRead(BaseModel):
     author_name: str
     helpful_count: int = 0
     not_helpful_count: int = 0
+    user_vote: int = 0
     size_label: str | None = None
     purchase_date: datetime | None = None
     media: list[ProductReviewMediaRead] = Field(default_factory=list)
+
+
+class ProductReviewVoteRequest(BaseModel):
+    vote: int = Field(ge=-1, le=1)
+
+
+class ProductReviewVoteResponse(BaseModel):
+    review_id: UUID
+    helpful_count: int
+    not_helpful_count: int
+    user_vote: int

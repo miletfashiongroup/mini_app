@@ -9,7 +9,7 @@ from brace_backend.db.uow import UnitOfWork
 from brace_backend.domain.user import User
 from brace_backend.schemas.common import Pagination, SuccessResponse
 from brace_backend.schemas.products import ProductRead
-from brace_backend.schemas.reviews import ProductReviewRead
+from brace_backend.schemas.reviews import ProductReviewRead, ProductReviewVoteRequest, ProductReviewVoteResponse
 from brace_backend.services.product_service import product_service
 from brace_backend.services.review_service import review_service
 
@@ -113,8 +113,19 @@ async def product_reviews(
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[list[ProductReviewRead]]:
     _ = current_user
-    reviews = await review_service.list_product_reviews(uow, product_id)
+    reviews = await review_service.list_product_reviews(uow, product_id, user_id=current_user.id)
     return SuccessResponse[list[ProductReviewRead]](data=reviews)
+
+
+@router.post("/reviews/{review_id}/vote", response_model=SuccessResponse[ProductReviewVoteResponse])
+async def vote_review(
+    review_id: UUID,
+    payload: ProductReviewVoteRequest,
+    current_user: User = Depends(get_current_user),
+    uow: UnitOfWork = Depends(get_uow),
+) -> SuccessResponse[ProductReviewVoteResponse]:
+    result = await review_service.vote_review(uow, review_id, user_id=current_user.id, vote=payload.vote)
+    return SuccessResponse[ProductReviewVoteResponse](data=result)
 
 
 __all__ = ["router"]

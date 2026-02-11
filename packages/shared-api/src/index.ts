@@ -44,9 +44,19 @@ export interface components {
       author_name: string;
       helpful_count?: number;
       not_helpful_count?: number;
+      user_vote?: number;
       size_label?: string | null;
       purchase_date?: string | null;
       media?: components['schemas']['ProductReviewMediaRead'][];
+    };
+    ProductReviewVoteRequest: {
+      vote: number;
+    };
+    ProductReviewVoteResponse: {
+      review_id: string;
+      helpful_count: number;
+      not_helpful_count: number;
+      user_vote: number;
     };
     CartItemRead: {
       id: string;

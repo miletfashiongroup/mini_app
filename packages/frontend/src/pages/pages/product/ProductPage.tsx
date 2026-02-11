@@ -104,6 +104,7 @@ export const ProductPage = () => {
         text: review.text,
         helpfulCount: review.helpful_count ?? 0,
         notHelpfulCount: review.not_helpful_count ?? 0,
+        userVote: (review.user_vote as -1 | 0 | 1 | undefined) ?? 0,
         gallery: review.media?.map((media) => media.url) ?? [],
       })),
     [productReviews],
@@ -216,7 +217,7 @@ export const ProductPage = () => {
 
   return (
     <div className="relative mx-auto flex min-h-screen w-full max-w-[1000px] flex-col overflow-x-hidden bg-white text-[#29292B] font-montserrat pb-24">
-      <ProductHeader showBack backFallback="/catalog" />
+      <ProductHeader showBack backTo="/catalog" backFallback="/catalog" />
       <ProductTitle title={product.name} />
       <ProductMediaCarousel
         ref={mediaCarouselRef}
