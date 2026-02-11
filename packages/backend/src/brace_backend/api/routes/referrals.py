@@ -5,7 +5,7 @@ import string
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy import text
 
@@ -87,7 +87,7 @@ async def _get_or_create_code(uow: UnitOfWork, user_id: UUID) -> tuple[UUID, str
 @limiter.limit("10/minute")
 async def apply_referral_code(
     request: Request,
-    payload: ReferralApplyRequest | None = None,
+    payload: ReferralApplyRequest | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[ReferralBindingRead]:
