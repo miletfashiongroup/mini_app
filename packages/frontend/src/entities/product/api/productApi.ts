@@ -23,6 +23,17 @@ export type ProductListResult = {
   pagination: Pagination | null;
 };
 
+export type ProductReviewVotePayload = {
+  vote: -1 | 0 | 1;
+};
+
+export type ProductReviewVoteResult = {
+  review_id: string;
+  helpful_count: number;
+  not_helpful_count: number;
+  user_vote: number;
+};
+
 export const fetchProducts = async (
   params?: { page?: number; pageSize?: number; category?: string },
 ): Promise<ProductListResult> => {
@@ -54,5 +65,13 @@ export const fetchRelatedProducts = async (productId: string): Promise<ProductLi
 
 export const fetchProductReviews = async (productId: string): Promise<ProductReview[]> => {
   const response = await apiClient.get<ProductReview[]>(`/products/${productId}/reviews`);
+  return response.data;
+};
+
+export const voteProductReview = async (
+  reviewId: string,
+  payload: ProductReviewVotePayload,
+): Promise<ProductReviewVoteResult> => {
+  const response = await apiClient.post<ProductReviewVoteResult>(`/products/reviews/${reviewId}/vote`, payload);
   return response.data;
 };

@@ -59,6 +59,24 @@ class ProductReviewRepository(SQLAlchemyRepository[ProductReview]):
         result = await self.session.execute(stmt)
         return [(row[0], int(row[1] or 0), int(row[2] or 0)) for row in result.all()]
 
+    async def get_user_vote(self, review_id: UUID, user_id: UUID) -> ProductReviewVote | None:
+        stmt = select(ProductReviewVote).where(
+            ProductReviewVote.review_id == review_id,
+            ProductReviewVote.user_id == user_id,
+        )
+        result = await self.session.scalars(stmt)
+        return result.first()
+
+    async def list_user_votes(self, review_ids: Sequence[UUID], user_id: UUID) -> dict[UUID, int]:
+        if not review_ids:
+            return {}
+        stmt = select(ProductReviewVote.review_id, ProductReviewVote.vote).where(
+            ProductReviewVote.review_id.in_(review_ids),
+            ProductReviewVote.user_id == user_id,
+        )
+        result = await self.session.execute(stmt)
+        return {row[0]: int(row[1]) for row in result.all()}
+
     async def list_product_rating_stats(self, product_ids: Sequence[UUID]) -> dict[UUID, tuple[float, int]]:
         if not product_ids:
             return {}
