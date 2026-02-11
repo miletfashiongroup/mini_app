@@ -54,7 +54,7 @@ export const ProductReviewsPage = () => {
         <BackButton iconOnly to={`/product/${product.id}`} fallbackTo={backFallback} />
         <h1 className="mt-3 text-[20px] font-semibold">Отзывы {product.name}</h1>
       </div>
-      <ProductReviewsSection reviews={reviews} showCta={false} />
+      <ProductReviewsSection reviews={reviews} productId={productId} showCta={false} />
     </div>
   );
 };

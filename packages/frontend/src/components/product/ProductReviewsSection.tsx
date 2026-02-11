@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useState, useEffect, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import starIcon from '@/assets/images/StarIcon.svg';
+import { productKeys } from '@/entities/product/api/productApi';
 import { voteProductReview } from '@/entities/product/api/productApi';
 import ProductMainCTA from './ProductMainCTA';
 import { ReviewImageLightbox } from './ReviewImageLightbox';
@@ -256,9 +257,11 @@ const ReviewFooter = ({
 
 const ProductReviewCard = ({
   review,
+  productId,
   onImageClick,
 }: {
   review: ProductReview;
+  productId?: string;
   onImageClick?: (review: ProductReview, index: number) => void;
 }) => {
   const ratingStarsCount = review.ratingStarsCount ?? 5;
@@ -266,6 +269,7 @@ const ProductReviewCard = ({
   const [helpfulCount, setHelpfulCount] = useState(review.helpfulCount ?? 0);
   const [notHelpfulCount, setNotHelpfulCount] = useState(review.notHelpfulCount ?? 0);
   const [activeVote, setActiveVote] = useState<-1 | 0 | 1>(review.userVote ?? 0);
+  const queryClient = useQueryClient();
   const textContainerRef = useRef<HTMLDivElement | null>(null);
   const [canExpand, setCanExpand] = useState(review.text.length > 220);
   const handleToggle = () => setIsExpanded((prev) => !prev);
@@ -291,6 +295,25 @@ const ProductReviewCard = ({
       setHelpfulCount(data.helpful_count);
       setNotHelpfulCount(data.not_helpful_count);
       setActiveVote((data.user_vote as -1 | 0 | 1) ?? 0);
+      if (productId) {
+        queryClient.setQueryData(
+          [...productKeys.detail(productId), 'reviews'],
+          (oldData: ProductReview[] | undefined) =>
+            oldData?.map((item) =>
+              item.id === review.id
+                ? {
+                    ...item,
+                    helpfulCount: data.helpful_count,
+                    notHelpfulCount: data.not_helpful_count,
+                    userVote: (data.user_vote as -1 | 0 | 1) ?? 0,
+                    helpful_count: data.helpful_count,
+                    not_helpful_count: data.not_helpful_count,
+                    user_vote: (data.user_vote as -1 | 0 | 1) ?? 0,
+                  }
+                : item,
+            ),
+        );
+      }
     },
   });
 
@@ -388,11 +411,13 @@ const ProductReviewsMoreLink = ({ onClick, to }: { onClick?: () => void; to?: st
 
 const ProductReviewsSection = ({
   reviews,
+  productId,
   onMoreReviews,
   moreLinkTo,
   showCta = true,
 }: {
   reviews: ProductReview[];
+  productId?: string;
   onMoreReviews?: () => void;
   moreLinkTo?: string;
   showCta?: boolean;
@@ -407,6 +432,7 @@ const ProductReviewsSection = ({
           <ProductReviewCard
             key={review.id}
             review={review}
+            productId={productId}
             onImageClick={(targetReview, index) => {
               setActiveReview(targetReview);
               setActiveIndex(index);
