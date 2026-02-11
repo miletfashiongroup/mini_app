@@ -10,7 +10,7 @@ from brace_backend.schemas.main_screen import (
 class SizeService:
     _SIZE_TABLE = [
         {"size": "1", "waist": (74, 78), "hip": (92, 96)},
-        {"size": "2", "waist": (78, 82), "hip": (96, 109)},
+        {"size": "2", "waist": (78, 82), "hip": (96, 100)},
         {"size": "3", "waist": (82, 86), "hip": (100, 104)},
         {"size": "4", "waist": (86, 90), "hip": (104, 108)},
         {"size": "5", "waist": (90, 94), "hip": (108, 112)},

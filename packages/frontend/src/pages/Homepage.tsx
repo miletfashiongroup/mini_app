@@ -453,7 +453,7 @@ const SizeCalculatorSection = () => {
   const isValidMeasurement = (value: number) => Number.isInteger(value) && value >= 40 && value <= 160;
   const sanitizeNumberInput = (value: string) => value.replace(/[^\d]/g, '');
 
-  const updateValidation = (nextWaist: string, nextHip: string) => {
+  const updateValidation = (nextWaist: string, nextHip: string, requireBoth = false) => {
     const waistNum = Number(nextWaist);
     const hipNum = Number(nextHip);
     const waistProvided = nextWaist.trim() !== '';
@@ -461,13 +461,13 @@ const SizeCalculatorSection = () => {
     const waistValid = waistProvided && isValidMeasurement(waistNum);
     const hipValid = hipProvided && isValidMeasurement(hipNum);
 
-    if (!waistProvided && !hipProvided) {
-      setValidationError(null);
+    if (!waistProvided || !hipProvided) {
+      setValidationError(requireBoth ? 'Введите корректные значения от 40 до 160 см' : null);
       return { waistValid, hipValid };
     }
 
     if (!waistValid || !hipValid) {
-      setValidationError('Введите корректные значения от 40 до 160 см.');
+      setValidationError('Введите корректные значения от 40 до 160 см');
     } else {
       setValidationError(null);
     }
@@ -476,7 +476,7 @@ const SizeCalculatorSection = () => {
   };
 
   const handleCalculate = () => {
-    const { waistValid, hipValid } = updateValidation(waist, hip);
+    const { waistValid, hipValid } = updateValidation(waist, hip, true);
     if (!waistValid || !hipValid) {
       setResult(null);
       setShowChecks(false);
