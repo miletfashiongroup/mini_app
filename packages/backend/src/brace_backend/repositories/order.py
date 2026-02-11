@@ -108,3 +108,25 @@ class OrderRepository(SQLAlchemyRepository[Order]):
         stmt = self._base_stmt().where(Order.user_id == user_id, Order.id == order_id)
         result = await self.session.scalars(stmt)
         return result.unique().one_or_none()
+
+    async def has_completed(self, *, user_id: UUID) -> bool:
+        stmt = (
+            select(Order.id)
+            .where(Order.user_id == user_id, Order.status == "completed")
+            .limit(1)
+        )
+        return await self.session.scalar(stmt) is not None
+
+    async def has_completed_with_payment_fingerprint(
+        self, *, user_id: UUID, payment_fingerprint: str
+    ) -> bool:
+        stmt = (
+            select(Order.id)
+            .where(
+                Order.user_id == user_id,
+                Order.status == "completed",
+                Order.payment_fingerprint == payment_fingerprint,
+            )
+            .limit(1)
+        )
+        return await self.session.scalar(stmt) is not None
