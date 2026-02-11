@@ -3,16 +3,40 @@ const normalizeUrl = (value?: string, fallback?: string) => {
   return result || undefined;
 };
 
+const getOrigin = (value?: string) => {
+  if (!value) return undefined;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return undefined;
+  }
+};
+
+const isBraceDomain = (origin?: string) =>
+  Boolean(origin && origin.endsWith('bracefashion.online'));
+
 const rawEnv = import.meta.env;
 const mode = (rawEnv.VITE_ENV || rawEnv.MODE || 'dev').toLowerCase();
+const windowOrigin = typeof window !== 'undefined' ? window.location.origin : undefined;
+const configuredApi = normalizeUrl(rawEnv.VITE_API_BASE_URL || rawEnv.VITE_BACKEND_URL);
+const configuredOrigin = getOrigin(configuredApi);
+
+const resolvedApiBaseUrl = (() => {
+  if (
+    windowOrigin &&
+    configuredOrigin &&
+    configuredOrigin !== windowOrigin &&
+    isBraceDomain(windowOrigin) &&
+    isBraceDomain(configuredOrigin)
+  ) {
+    return windowOrigin;
+  }
+  return normalizeUrl(configuredApi, windowOrigin || 'http://localhost:8000');
+})();
 
 export const env = {
   env: mode,
-  apiBaseUrl:
-    normalizeUrl(
-      rawEnv.VITE_API_BASE_URL || rawEnv.VITE_BACKEND_URL,
-      'http://localhost:8000',
-    ),
+  apiBaseUrl: resolvedApiBaseUrl,
   appBaseUrl:
     normalizeUrl(rawEnv.VITE_APP_BASE_URL || rawEnv.VITE_APP_URL, 'http://localhost:4173') ||
     (typeof window !== 'undefined' ? window.location.origin : undefined),
