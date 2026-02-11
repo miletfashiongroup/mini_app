@@ -37,6 +37,34 @@ export const ReferralPage = () => {
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
 
+  const copyText = async (text: string) => {
+    if (!text) return false;
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch {
+        // fallback below
+      }
+    }
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-1000px';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return ok;
+    } catch {
+      return false;
+    }
+  };
+
   const applyMutation = useMutation({
     mutationFn: (code: string) => applyReferralCode(code),
     onSuccess: () => {
@@ -54,11 +82,12 @@ export const ReferralPage = () => {
   const handleCopy = async () => {
     if (!stats?.code) return;
     const text = stats.code;
-    try {
-      await navigator.clipboard.writeText(text);
+    const ok = await copyText(text);
+    if (ok) {
+      WebApp?.HapticFeedback?.impactOccurred?.('light');
       setApplyMessage('Код скопирован.');
       setApplyError(null);
-    } catch {
+    } else {
       setApplyMessage('Не удалось скопировать код.');
     }
   };
