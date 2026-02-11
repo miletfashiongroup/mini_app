@@ -272,7 +272,8 @@ export const CartPage = () => {
   const totalPrice = formatRubles(totalMinorUnits);
   const { data: bonusData } = useBonusBalance();
   const bonusBalance = bonusData?.balance ?? 0;
-  const eligibleBonusMinor = Math.min(bonusBalance * 100, Math.floor(totalMinorUnits / 2));
+  const eligibleBonusRubles = Math.min(bonusBalance, Math.floor(totalMinorUnits / 200));
+  const eligibleBonusMinor = eligibleBonusRubles * 100;
   const [useBonus, setUseBonus] = useState(false);
   const bonusAppliedMinor = useBonus ? eligibleBonusMinor : 0;
   const payableMinorUnits = totalMinorUnits - bonusAppliedMinor;

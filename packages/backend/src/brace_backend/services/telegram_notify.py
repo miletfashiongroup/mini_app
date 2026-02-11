@@ -142,11 +142,20 @@ async def notify_user_order_status(
 
 
 def _build_order_message(order: Order, user: User) -> str:
+    payable_minor_units = order.total_amount_minor_units - (order.bonus_applied_minor_units or 0)
     lines = [
         "Новый заказ",
         f"Заказ: {escape(str(order.id))}",
         f"Статус: {STATUS_LABELS.get(order.status, order.status)}",
         f"Сумма: {_format_money(order.total_amount_minor_units)}",
+        *(
+            [
+                f"Списано бонусами: -{_format_money(order.bonus_applied_minor_units)}",
+                f"К оплате: {_format_money(payable_minor_units)}",
+            ]
+            if order.bonus_applied_minor_units
+            else []
+        ),
         "",
         "Покупатель:",
         f"Телеграм ID: {escape(str(user.telegram_id))}",
