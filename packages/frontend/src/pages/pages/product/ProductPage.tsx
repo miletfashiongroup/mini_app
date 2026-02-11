@@ -258,6 +258,7 @@ export const ProductPage = () => {
       />
       <ProductReviewsSection
         reviews={previewReviews}
+        productId={productId}
         moreLinkTo={productId ? `/product/${productId}/reviews` : undefined}
         showCta={false}
       />
