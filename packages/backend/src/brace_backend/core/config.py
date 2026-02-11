@@ -235,6 +235,7 @@ class Settings(BaseSettings):
         description="Enable Yandex Metrika server-side events.",
     )
     metrika_counter_id: str | None = Field(default=None)
+    metrika_measurement_token: str | None = Field(default=None)
     analytics_report_enabled: bool = Field(
         default=False,
         description="Enable scheduled analytics reports to Telegram.",
