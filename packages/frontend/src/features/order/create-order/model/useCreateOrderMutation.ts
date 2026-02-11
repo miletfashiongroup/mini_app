@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from @tanstack/react-query;
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { cartKeys } from '@/entities/cart/api/cartApi';
 import { orderKeys } from '@/entities/order/api/orderApi';
