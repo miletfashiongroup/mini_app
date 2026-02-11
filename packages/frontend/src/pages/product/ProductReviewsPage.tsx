@@ -22,6 +22,7 @@ export const ProductReviewsPage = () => {
     text: review.text,
     helpfulCount: review.helpful_count ?? 0,
     notHelpfulCount: review.not_helpful_count ?? 0,
+    userVote: (review.user_vote as -1 | 0 | 1 | undefined) ?? 0,
     gallery: review.media?.map((media) => media.url) ?? [],
   }));
 
@@ -53,7 +54,7 @@ export const ProductReviewsPage = () => {
         <BackButton iconOnly to={`/product/${product.id}`} fallbackTo={backFallback} />
         <h1 className="mt-3 text-[20px] font-semibold">Отзывы {product.name}</h1>
       </div>
-      <ProductReviewsSection reviews={reviews} showCta={false} />
+      <ProductReviewsSection reviews={reviews} productId={productId} showCta={false} />
     </div>
   );
 };
