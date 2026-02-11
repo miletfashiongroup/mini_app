@@ -86,9 +86,25 @@ export const OrderDetailsPage = () => {
         </PageBlock>
         {data ? (
           <PageBlock title="Итого">
-            <div className="flex items-center justify-between text-[15px]">
-              <span>Сумма</span>
-              <span className="font-semibold text-[#29292B]">{formatPrice(data.total_minor_units)}</span>
+            <div className="flex flex-col gap-2 text-[15px]">
+              <div className="flex items-center justify-between">
+                <span>Сумма</span>
+                <span className="font-semibold text-[#29292B]">{formatPrice(data.total_minor_units)}</span>
+              </div>
+              {data.bonus_applied_minor_units ? (
+                <div className="flex items-center justify-between text-[#5A5A5C]">
+                  <span>Списано бонусами</span>
+                  <span className="font-semibold text-[#29292B]">
+                    -{formatPrice(data.bonus_applied_minor_units)}
+                  </span>
+                </div>
+              ) : null}
+              <div className="flex items-center justify-between">
+                <span>К оплате</span>
+                <span className="font-semibold text-[#29292B]">
+                  {formatPrice(data.payable_minor_units ?? data.total_minor_units)}
+                </span>
+              </div>
             </div>
           </PageBlock>
         ) : null}

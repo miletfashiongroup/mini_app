@@ -11,6 +11,7 @@ from brace_backend.domain.product import ProductVariant
 from brace_backend.services.audit_service import audit_service
 from brace_backend.services.analytics_service import analytics_service
 from brace_backend.schemas.orders import OrderCreate, OrderRead
+from brace_backend.services.bonus_service import bonus_service
 from brace_backend.services.referral_service import referral_service
 from brace_backend.services.telegram_notify import (
     notify_manager_order,
@@ -74,7 +75,13 @@ class OrderService:
             line_total = item.quantity * price
             total_amount_minor_units += line_total
 
-        idempotency_key = self._compute_idempotency(cart_items)
+        requested_bonus_minor = int(payload.bonus_minor_units or 0)
+        if requested_bonus_minor < 0:
+            raise ValidationError("Bonus amount must be non-negative.")
+        if requested_bonus_minor % 100 != 0:
+            raise ValidationError("Bonus amount must be a multiple of 100.")
+
+        idempotency_key = self._compute_idempotency(cart_items, requested_bonus_minor)
         existing_order = await uow.orders.get_by_idempotency(user_id=user_id, idempotency_key=idempotency_key)
         if existing_order:
             await uow.session.refresh(existing_order, attribute_names=["items"])
@@ -103,6 +110,22 @@ class OrderService:
             await uow.session.delete(item)
 
         order.total_amount_minor_units = total_amount_minor_units
+
+        if requested_bonus_minor > 0:
+            available_bonus_minor = await bonus_service.balance(uow, user_id=user_id) * 100
+            max_allowed_minor = min(available_bonus_minor, total_amount_minor_units // 2)
+            if requested_bonus_minor > max_allowed_minor:
+                raise ValidationError("Requested bonus amount exceeds the allowed limit.")
+            await bonus_service.debit(
+                uow,
+                user_id=user_id,
+                amount=requested_bonus_minor // 100,
+                order_id=order.id,
+                reason="order_payment",
+                commit=False,
+            )
+            order.bonus_applied_minor_units = requested_bonus_minor
+
         await uow.commit()
         await uow.session.refresh(order, attribute_names=["items"])
         await audit_service.log(
@@ -137,6 +160,8 @@ class OrderService:
             properties={
                 "order_id": str(order.id),
                 "order_total_minor_units": total_amount_minor_units,
+                "order_bonus_applied_minor_units": order.bonus_applied_minor_units or 0,
+                "order_payable_minor_units": total_amount_minor_units - (order.bonus_applied_minor_units or 0),
                 "currency": "RUB",
                 "items_count": len(order.items),
             },
@@ -284,20 +309,24 @@ class OrderService:
         )
         logger.info("order_deleted_admin", order_id=str(order.id))
 
-    def _compute_idempotency(self, cart_items) -> str:
+    def _compute_idempotency(self, cart_items, bonus_minor_units: int) -> str:
         digest = hashlib.sha256()
         for item in sorted(cart_items, key=lambda x: str(x.variant_id)):
             digest.update(str(item.product_id).encode())
             digest.update(str(item.variant_id).encode())
             digest.update(str(item.quantity).encode())
             digest.update(str(item.unit_price_minor_units).encode())
+        digest.update(str(bonus_minor_units).encode())
         return digest.hexdigest()
 
     def _to_schema(self, order: Order) -> OrderRead:
+        payable_minor_units = order.total_amount_minor_units - (order.bonus_applied_minor_units or 0)
         return OrderRead(
             id=order.id,
             status=order.status,
             total_minor_units=order.total_amount_minor_units,
+            bonus_applied_minor_units=order.bonus_applied_minor_units or 0,
+            payable_minor_units=payable_minor_units,
             shipping_address=order.shipping_address,
             note=order.note,
             created_at=order.created_at,

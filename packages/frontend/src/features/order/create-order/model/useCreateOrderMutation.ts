@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { cartKeys } from '@/entities/cart/api/cartApi';
+import { bonusKeys } from '@/entities/bonus/api/bonusApi';
 import { orderKeys } from '@/entities/order/api/orderApi';
 import type { Order } from '@/entities/order/model/types';
 import { apiClient } from '@/shared/api/httpClient';
@@ -20,6 +21,8 @@ export const useCreateOrderMutation = () => {
     mutationFn: createOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cartKeys.all });
+      queryClient.invalidateQueries({ queryKey: bonusKeys.balance });
+      queryClient.invalidateQueries({ queryKey: bonusKeys.ledger });
       queryClient.invalidateQueries({ queryKey: orderKeys.list });
     },
   });

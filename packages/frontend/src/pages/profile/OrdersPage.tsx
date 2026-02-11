@@ -25,7 +25,9 @@ const formatOrderStage = (status?: string) => {
   return ORDER_STATUS_LABELS[key] || status;
 };
 
-const OrderCard = ({ order, onClick }: { order: Order; onClick: () => void }) => (
+const OrderCard = ({ order, onClick }: { order: Order; onClick: () => void }) => {
+  const payableMinor = order.payable_minor_units ?? order.total_minor_units;
+  return (
   <button
     type="button"
     onClick={onClick}
@@ -41,10 +43,11 @@ const OrderCard = ({ order, onClick }: { order: Order; onClick: () => void }) =>
       <span>
         {new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium' }).format(new Date(order.created_at))}
       </span>
-      <span className="font-semibold text-[#29292B]">{formatPrice(order.total_minor_units)}</span>
+      <span className="font-semibold text-[#29292B]">{formatPrice(payableMinor)}</span>
     </div>
   </button>
-);
+  );
+};
 
 export const OrdersPage = () => {
   const navigate = useNavigate();

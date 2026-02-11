@@ -23,6 +23,8 @@ class OrderRead(BaseModel):
     id: UUID
     status: str
     total_minor_units: int
+    bonus_applied_minor_units: int = 0
+    payable_minor_units: int = 0
     shipping_address: str | None = None
     note: str | None = None
     created_at: datetime
@@ -35,3 +37,4 @@ class OrderCreate(BaseModel):
     comment: str | None = Field(default=None, max_length=512)
     shipping_address: str | None = Field(default=None, max_length=512)  # legacy
     note: str | None = None  # legacy
+    bonus_minor_units: int | None = Field(default=None, ge=0)

@@ -91,6 +91,8 @@ export interface components {
       id: string;
       status: string;
       total_minor_units: number;
+      bonus_applied_minor_units?: number;
+      payable_minor_units?: number;
       shipping_address: string | null;
       note: string | null;
       created_at: string;
