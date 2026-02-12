@@ -87,12 +87,16 @@ async def _get_or_create_code(uow: UnitOfWork, user_id: UUID) -> tuple[UUID, str
 @limiter.limit("10/minute")
 async def apply_referral_code(
     request: Request,
-    payload: ReferralApplyRequest | None = Body(default=None),
+    payload: dict | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     uow: UnitOfWork = Depends(get_uow),
 ) -> SuccessResponse[ReferralBindingRead]:
     # Accept code from JSON body, query param or form; be lenient to avoid 422
-    code_value = (payload.code if payload else None) or request.query_params.get("code") or ""
+    code_value = (
+        (payload.get("code") if isinstance(payload, dict) else None)
+        or request.query_params.get("code")
+        or ""
+    )
     if not code_value:
         try:
             data = await request.json()
