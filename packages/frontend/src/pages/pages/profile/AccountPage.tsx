@@ -227,7 +227,7 @@ export const AccountPage = () => {
       )}
       {showEditForm ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 text-[#29292B] shadow-2xl">
+          <div className="w-full max-w-md max-h-[85vh] overflow-y-auto rounded-3xl bg-white p-6 text-[#29292B] shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-bold">Редактирование профиля</h2>
